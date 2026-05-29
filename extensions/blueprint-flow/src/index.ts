@@ -18,6 +18,9 @@ import {
 import { saveMemoryTool, searchMemoryTool } from "./tools/memory.js";
 // Tools
 import { createProjectTool, listProjectsTool } from "./tools/project.js";
+import { researchRepoTool } from "./tools/research-repo.js";
+import { researchWebTool } from "./tools/research-web.js";
+import { reviewGateTool } from "./tools/review-gate.js";
 
 export default function (pi: ExtensionAPI) {
 	const cwd = process.cwd();
@@ -48,6 +51,9 @@ export default function (pi: ExtensionAPI) {
 	pi.registerTool(getInterviewHistoryTool);
 	pi.registerTool(saveMemoryTool);
 	pi.registerTool(searchMemoryTool);
+	pi.registerTool(researchRepoTool);
+	pi.registerTool(researchWebTool);
+	pi.registerTool(reviewGateTool);
 
 	// Register commands (will be expanded in checkpoint 6)
 	pi.registerCommand("blueprint:init", {
