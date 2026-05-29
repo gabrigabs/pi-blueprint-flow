@@ -1,11 +1,10 @@
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
 	BLUEPRINT_PORT,
 	FLOW_STEPS,
 	getDataDir,
 	getDbPath,
+	resolveWebDistPath,
 	STEP_LABELS,
 } from "./config.js";
 import type { Feature } from "./db.js";
@@ -86,12 +85,18 @@ export default function (pi: ExtensionAPI) {
 			try {
 				const dbPath = getDbPath(cwd);
 				initDb(dbPath);
-				const baseDir = dirname(fileURLToPath(import.meta.url));
-				const webDist = join(baseDir, "..", "web", "dist");
-				await startServer(webDist);
-				ctx.ui.notify(
-					`Blueprint cockpit running at http://localhost:${BLUEPRINT_PORT}`,
-				);
+				const { path: webDist, found: webUiFound } = resolveWebDistPath();
+				await startServer(webDist, webUiFound);
+
+				if (webUiFound) {
+					ctx.ui.notify(
+						`Blueprint cockpit running at http://localhost:${BLUEPRINT_PORT}`,
+					);
+				} else {
+					ctx.ui.notify(
+						`Blueprint server running at http://localhost:${BLUEPRINT_PORT}, but web UI not found at ${webDist}. Run: cd extensions/blueprint-flow/web && npm install && npm run build`,
+					);
+				}
 			} catch (err: any) {
 				ctx.ui.notify(`Failed to start server: ${err.message}`);
 			}

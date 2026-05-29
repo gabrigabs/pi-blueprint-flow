@@ -1,160 +1,269 @@
-import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
 import fastifyWebsocket from "@fastify/websocket";
-import { existsSync } from "node:fs";
+import Fastify from "fastify";
 import { BLUEPRINT_PORT } from "./config.js";
 import { getDb } from "./db.js";
 import { bus } from "./events.js";
-import type { Feature, Project, Artifact, Memory, Interview, Step } from "./db.js";
 
 let server: ReturnType<typeof Fastify> | null = null;
 const wsClients = new Set<any>();
 
-export async function startServer(webDistPath: string): Promise<void> {
-  if (server) return; // Already running
+const BUILD_INSTRUCTIONS_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blueprint Flow — Web UI Not Built</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0a0a0f; color: #e5e7eb; padding: 2rem; max-width: 640px; margin: 0 auto; }
+    h1 { color: #f59e0b; }
+    code { background: #1f2937; padding: 0.2em 0.5em; border-radius: 4px; font-size: 0.9em; }
+    pre { background: #1f2937; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    .status { color: #ef4444; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Blueprint Flow</h1>
+  <p class="status">Web UI has not been built yet.</p>
+  <p>The Blueprint server is running, but the static web UI files were not found.</p>
+  <h2>To fix this:</h2>
+  <pre><code>cd extensions/blueprint-flow/web
+npm install
+npm run build</code></pre>
+  <p>Then run <code>/blueprint:ui</code> again in Pi.</p>
+  <h2>API is available</h2>
+  <p>REST API endpoints at <code>/api/*</code> and WebSocket at <code>/ws</code> are working normally.</p>
+  <ul>
+    <li><a href="/health">/health</a></li>
+    <li><a href="/api/status">/api/status</a></li>
+    <li><a href="/api/projects">/api/projects</a></li>
+  </ul>
+</body>
+</html>`;
 
-  server = Fastify({ logger: false });
+export async function startServer(
+	webDistPath: string,
+	webUiFound: boolean,
+): Promise<void> {
+	if (server) return; // Already running
 
-  await server.register(fastifyWebsocket);
+	server = Fastify({ logger: false });
 
-  // Serve static web UI if built
-  if (existsSync(webDistPath)) {
-    await server.register(fastifyStatic, {
-      root: webDistPath,
-      prefix: "/",
-    });
-  }
+	await server.register(fastifyWebsocket);
 
-  // WebSocket endpoint
-  server.get("/ws", { websocket: true }, (socket) => {
-    wsClients.add(socket);
-    socket.on("close", () => wsClients.delete(socket));
+	// Serve static web UI if built
+	if (webUiFound) {
+		await server.register(fastifyStatic, {
+			root: webDistPath,
+			prefix: "/",
+			index: ["index.html"],
+		});
+	}
 
-    // Send initial state
-    try {
-      const db = getDb();
-      const projects = db.prepare("SELECT * FROM projects ORDER BY updated_at DESC").all();
-      socket.send(JSON.stringify({ type: "init", data: { projects } }));
-    } catch {
-      // DB might not be ready
-    }
-  });
+	// --- Diagnostic endpoints ---
 
-  // Broadcast events to all WebSocket clients
-  const broadcastEvent = (type: string, data: unknown) => {
-    const msg = JSON.stringify({ type, data });
-    for (const client of wsClients) {
-      try {
-        client.send(msg);
-      } catch {
-        wsClients.delete(client);
-      }
-    }
-  };
+	server.get("/health", async () => ({
+		status: "ok",
+		uptime: process.uptime(),
+	}));
 
-  // Subscribe to bus events for real-time updates
-  bus.on("project:created", (data) => broadcastEvent("project:created", data));
-  bus.on("feature:created", (data) => broadcastEvent("feature:created", data));
-  bus.on("feature:updated", (data) => broadcastEvent("feature:updated", data));
-  bus.on("step:advanced", (data) => broadcastEvent("step:advanced", data));
-  bus.on("artifact:saved", (data) => broadcastEvent("artifact:saved", data));
-  bus.on("memory:saved", (data) => broadcastEvent("memory:saved", data));
-  bus.on("interview:asked", (data) => broadcastEvent("interview:asked", data));
-  bus.on("interview:answered", (data) => broadcastEvent("interview:answered", data));
+	server.get("/api/status", async () => {
+		let dbInitialized = false;
+		try {
+			getDb();
+			dbInitialized = true;
+		} catch {}
 
-  // --- REST API ---
+		return {
+			ok: true,
+			port: BLUEPRINT_PORT,
+			dbInitialized,
+			webUiFound,
+			webDistPath,
+			version: "0.1.0",
+		};
+	});
 
-  // Projects
-  server.get("/api/projects", async () => {
-    const db = getDb();
-    return db
-      .prepare(
-        `SELECT p.*, COUNT(f.id) as feature_count
+	// --- WebSocket endpoint ---
+
+	server.get("/ws", { websocket: true }, (socket: any) => {
+		wsClients.add(socket);
+		socket.on("close", () => wsClients.delete(socket));
+
+		// Send initial state
+		try {
+			const db = getDb();
+			const projects = db
+				.prepare("SELECT * FROM projects ORDER BY updated_at DESC")
+				.all();
+			socket.send(JSON.stringify({ type: "init", data: { projects } }));
+		} catch {
+			// DB might not be ready
+		}
+	});
+
+	// Broadcast events to all WebSocket clients
+	const broadcastEvent = (type: string, data: unknown) => {
+		const msg = JSON.stringify({ type, data });
+		for (const client of wsClients) {
+			try {
+				client.send(msg);
+			} catch {
+				wsClients.delete(client);
+			}
+		}
+	};
+
+	// Subscribe to bus events for real-time updates
+	bus.on("project:created", (data) => broadcastEvent("project:created", data));
+	bus.on("feature:created", (data) => broadcastEvent("feature:created", data));
+	bus.on("feature:updated", (data) => broadcastEvent("feature:updated", data));
+	bus.on("step:advanced", (data) => broadcastEvent("step:advanced", data));
+	bus.on("artifact:saved", (data) => broadcastEvent("artifact:saved", data));
+	bus.on("memory:saved", (data) => broadcastEvent("memory:saved", data));
+	bus.on("interview:asked", (data) => broadcastEvent("interview:asked", data));
+	bus.on("interview:answered", (data) =>
+		broadcastEvent("interview:answered", data),
+	);
+
+	// --- REST API ---
+
+	// Projects
+	server.get("/api/projects", async () => {
+		const db = getDb();
+		return db
+			.prepare(
+				`SELECT p.*, COUNT(f.id) as feature_count
          FROM projects p
          LEFT JOIN features f ON f.project_id = p.id
          GROUP BY p.id
-         ORDER BY p.updated_at DESC`
-      )
-      .all();
-  });
+         ORDER BY p.updated_at DESC`,
+			)
+			.all();
+	});
 
-  server.get<{ Params: { id: string } }>("/api/projects/:id", async (req) => {
-    const db = getDb();
-    const project = db.prepare("SELECT * FROM projects WHERE id = ?").get(req.params.id);
-    if (!project) return { error: "not_found" };
-    return project;
-  });
+	server.get("/api/projects/:id", async (req: any, reply: any) => {
+		const db = getDb();
+		const project = db
+			.prepare("SELECT * FROM projects WHERE id = ?")
+			.get(req.params.id);
+		if (!project) {
+			return reply
+				.code(404)
+				.send({ error: "not_found", message: "Project not found" });
+		}
+		return project;
+	});
 
-  // Features
-  server.get<{ Params: { projectId: string } }>("/api/projects/:projectId/features", async (req) => {
-    const db = getDb();
-    return db
-      .prepare("SELECT * FROM features WHERE project_id = ? ORDER BY updated_at DESC")
-      .all(req.params.projectId);
-  });
+	// Features
+	server.get("/api/projects/:projectId/features", async (req: any) => {
+		const db = getDb();
+		return db
+			.prepare(
+				"SELECT * FROM features WHERE project_id = ? ORDER BY updated_at DESC",
+			)
+			.all(req.params.projectId);
+	});
 
-  server.get<{ Params: { id: string } }>("/api/features/:id", async (req) => {
-    const db = getDb();
-    const feature = db.prepare("SELECT * FROM features WHERE id = ?").get(req.params.id);
-    if (!feature) return { error: "not_found" };
-    return feature;
-  });
+	server.get("/api/features/:id", async (req: any, reply: any) => {
+		const db = getDb();
+		const feature = db
+			.prepare("SELECT * FROM features WHERE id = ?")
+			.get(req.params.id);
+		if (!feature) {
+			return reply
+				.code(404)
+				.send({ error: "not_found", message: "Feature not found" });
+		}
+		return feature;
+	});
 
-  // Steps
-  server.get<{ Params: { featureId: string } }>("/api/features/:featureId/steps", async (req) => {
-    const db = getDb();
-    return db
-      .prepare("SELECT * FROM steps WHERE feature_id = ? ORDER BY rowid")
-      .all(req.params.featureId);
-  });
+	// Steps
+	server.get("/api/features/:featureId/steps", async (req: any) => {
+		const db = getDb();
+		return db
+			.prepare("SELECT * FROM steps WHERE feature_id = ? ORDER BY rowid")
+			.all(req.params.featureId);
+	});
 
-  // Artifacts
-  server.get<{ Params: { featureId: string } }>("/api/features/:featureId/artifacts", async (req) => {
-    const db = getDb();
-    return db
-      .prepare("SELECT id, feature_id, step_name, type, filename, created_at FROM artifacts WHERE feature_id = ? ORDER BY created_at DESC")
-      .all(req.params.featureId);
-  });
+	// Artifacts
+	server.get("/api/features/:featureId/artifacts", async (req: any) => {
+		const db = getDb();
+		return db
+			.prepare(
+				"SELECT id, feature_id, step_name, type, filename, created_at FROM artifacts WHERE feature_id = ? ORDER BY created_at DESC",
+			)
+			.all(req.params.featureId);
+	});
 
-  server.get<{ Params: { id: string } }>("/api/artifacts/:id", async (req) => {
-    const db = getDb();
-    const artifact = db.prepare("SELECT * FROM artifacts WHERE id = ?").get(req.params.id);
-    if (!artifact) return { error: "not_found" };
-    return artifact;
-  });
+	server.get("/api/artifacts/:id", async (req: any, reply: any) => {
+		const db = getDb();
+		const artifact = db
+			.prepare("SELECT * FROM artifacts WHERE id = ?")
+			.get(req.params.id);
+		if (!artifact) {
+			return reply
+				.code(404)
+				.send({ error: "not_found", message: "Artifact not found" });
+		}
+		return artifact;
+	});
 
-  // Interviews
-  server.get<{ Params: { featureId: string } }>("/api/features/:featureId/interviews", async (req) => {
-    const db = getDb();
-    return db
-      .prepare("SELECT * FROM interviews WHERE feature_id = ? ORDER BY created_at ASC")
-      .all(req.params.featureId);
-  });
+	// Interviews
+	server.get("/api/features/:featureId/interviews", async (req: any) => {
+		const db = getDb();
+		return db
+			.prepare(
+				"SELECT * FROM interviews WHERE feature_id = ? ORDER BY created_at ASC",
+			)
+			.all(req.params.featureId);
+	});
 
-  // Memories
-  server.get<{ Params: { projectId: string } }>("/api/projects/:projectId/memories", async (req) => {
-    const db = getDb();
-    return db
-      .prepare("SELECT * FROM memories WHERE project_id = ? ORDER BY created_at DESC LIMIT 50")
-      .all(req.params.projectId);
-  });
+	// Memories
+	server.get("/api/projects/:projectId/memories", async (req: any) => {
+		const db = getDb();
+		return db
+			.prepare(
+				"SELECT * FROM memories WHERE project_id = ? ORDER BY created_at DESC LIMIT 50",
+			)
+			.all(req.params.projectId);
+	});
 
-  // Start listening
-  await server.listen({ port: BLUEPRINT_PORT, host: "127.0.0.1" });
-  bus.emit("server:started", { port: BLUEPRINT_PORT });
+	// --- SPA Fallback / Not Found Handler ---
+
+	server.setNotFoundHandler((req: any, reply: any) => {
+		// API and WS routes get a proper JSON 404
+		if (req.url.startsWith("/api/") || req.url === "/ws") {
+			return reply.code(404).send({ error: "Not Found", statusCode: 404 });
+		}
+
+		// Non-API routes: serve SPA or build instructions
+		if (webUiFound) {
+			return reply.sendFile("index.html");
+		}
+
+		return reply
+			.code(503)
+			.header("content-type", "text/html; charset=utf-8")
+			.send(BUILD_INSTRUCTIONS_HTML);
+	});
+
+	// Start listening
+	await server.listen({ port: BLUEPRINT_PORT, host: "127.0.0.1" });
+	bus.emit("server:started", { port: BLUEPRINT_PORT });
 }
 
 export async function stopServer(): Promise<void> {
-  if (!server) return;
+	if (!server) return;
 
-  for (const client of wsClients) {
-    try {
-      client.close();
-    } catch {}
-  }
-  wsClients.clear();
+	for (const client of wsClients) {
+		try {
+			client.close();
+		} catch {}
+	}
+	wsClients.clear();
 
-  await server.close();
-  server = null;
-  bus.emit("server:stopped", {});
+	await server.close();
+	server = null;
+	bus.emit("server:stopped", {});
 }
