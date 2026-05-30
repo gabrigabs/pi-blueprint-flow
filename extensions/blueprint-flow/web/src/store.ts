@@ -108,8 +108,6 @@ export interface Workflow {
 
 export type ConnectionState = "connected" | "reconnecting" | "disconnected";
 
-export type ViewMode = "kanban" | "canvas";
-
 export type ModalType =
 	| "create_project"
 	| "import_project"
@@ -132,14 +130,13 @@ interface BlueprintStore {
 	selectedProjectId: string | null;
 	selectedFeatureId: string | null;
 	selectedArtifactId: string | null;
+	selectedNodeId: string | null;
 	connected: boolean;
 	connectionState: ConnectionState;
 	activeModal: ModalType;
-	viewMode: ViewMode;
 
 	// Panel visibility
 	sidebarCollapsed: boolean;
-	rightPanelCollapsed: boolean;
 	footerCollapsed: boolean;
 
 	// Content versioning (for real-time updates)
@@ -160,11 +157,10 @@ interface BlueprintStore {
 	selectProject: (id: string | null) => void;
 	selectFeature: (id: string | null) => void;
 	selectArtifact: (id: string | null) => void;
+	selectNode: (id: string | null) => void;
 	setConnected: (connected: boolean) => void;
 	setConnectionState: (state: ConnectionState) => void;
-	setViewMode: (mode: ViewMode) => void;
 	toggleSidebar: () => void;
-	toggleRightPanel: () => void;
 	toggleFooter: () => void;
 	incrementArtifactVersion: () => void;
 	openModal: (modal: ModalType) => void;
@@ -185,13 +181,12 @@ export const useStore = create<BlueprintStore>((set) => ({
 	selectedProjectId: null,
 	selectedFeatureId: null,
 	selectedArtifactId: null,
+	selectedNodeId: null,
 	connected: false,
 	connectionState: "disconnected" as ConnectionState,
 	activeModal: null,
-	viewMode: "kanban" as ViewMode,
 
 	sidebarCollapsed: false,
-	rightPanelCollapsed: false,
 	footerCollapsed: false,
 	artifactContentVersion: 0,
 
@@ -220,15 +215,13 @@ export const useStore = create<BlueprintStore>((set) => ({
 			selectedArtifactId: null,
 		}),
 	selectFeature: (id) =>
-		set({ selectedFeatureId: id, selectedArtifactId: null }),
+		set({ selectedFeatureId: id, selectedArtifactId: null, selectedNodeId: null }),
 	selectArtifact: (id) => set({ selectedArtifactId: id }),
+	selectNode: (id) => set({ selectedNodeId: id }),
 	setConnected: (connected) => set({ connected }),
 	setConnectionState: (connectionState) => set({ connectionState }),
-	setViewMode: (viewMode) => set({ viewMode }),
 	toggleSidebar: () =>
 		set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-	toggleRightPanel: () =>
-		set((state) => ({ rightPanelCollapsed: !state.rightPanelCollapsed })),
 	toggleFooter: () =>
 		set((state) => ({ footerCollapsed: !state.footerCollapsed })),
 	incrementArtifactVersion: () =>
