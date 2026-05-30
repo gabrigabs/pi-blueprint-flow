@@ -1,4 +1,4 @@
-import { Loader2, Radio, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { Loader2, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Radio, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useEffect } from "react";
 import { ActionRunPanel } from "./components/ActionRunPanel";
 import { ArtifactInspector } from "./components/ArtifactInspector";
@@ -11,11 +11,13 @@ import { ProjectSidebar } from "./components/ProjectSidebar";
 import { Toasts } from "./components/Toasts";
 import { VerticalKanban } from "./components/VerticalKanban";
 import { WorkflowEditor } from "./components/WorkflowEditor";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { useStore } from "./store";
 
 export function App() {
 	useWebSocket();
+	useKeyboardShortcuts();
 	const {
 		connected,
 		connectionState,
@@ -24,6 +26,12 @@ export function App() {
 		activeModal,
 		bridgeStatus,
 		actionRuns,
+		sidebarCollapsed,
+		rightPanelCollapsed,
+		footerCollapsed,
+		toggleSidebar,
+		toggleRightPanel,
+		toggleFooter,
 	} = useStore();
 
 	const currentFeature = useStore((s) =>
@@ -108,8 +116,31 @@ export function App() {
 					)}
 				</div>
 
-				{/* Right: Status indicators */}
+				{/* Right: Panel toggles + Status indicators */}
 				<div className="flex items-center gap-4">
+					{/* Panel toggle buttons */}
+					<div className="flex items-center gap-1">
+						<button
+							onClick={toggleSidebar}
+							title={`${sidebarCollapsed ? "Show" : "Hide"} sidebar [\u005B]`}
+							className="rounded p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
+							style={{ color: sidebarCollapsed ? "var(--text-muted)" : "var(--text-tertiary)" }}
+						>
+							{sidebarCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+						</button>
+						<button
+							onClick={toggleRightPanel}
+							title={`${rightPanelCollapsed ? "Show" : "Hide"} panel [\u005D]`}
+							className="rounded p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
+							style={{ color: rightPanelCollapsed ? "var(--text-muted)" : "var(--text-tertiary)" }}
+						>
+							{rightPanelCollapsed ? <PanelRightOpen size={14} /> : <PanelRightClose size={14} />}
+						</button>
+					</div>
+
+					{/* Separator */}
+					<div className="h-4 w-px" style={{ background: "var(--border-subtle)" }} />
+
 					{/* Active run telemetry */}
 					{activeRun && (
 						<div
@@ -167,15 +198,17 @@ export function App() {
 			{/* ═══ Main Layout ═══ */}
 			<div className="flex flex-1 overflow-hidden">
 				{/* Left sidebar — Navigation */}
-				<aside
-					className="w-64 shrink-0 overflow-y-auto scrollbar-thin border-r"
-					style={{
-						borderColor: "var(--border-subtle)",
-						background: "var(--bg-elevated)",
-					}}
-				>
-					<ProjectSidebar />
-				</aside>
+				{!sidebarCollapsed && (
+					<aside
+						className="w-64 shrink-0 overflow-y-auto scrollbar-thin border-r transition-all duration-200"
+						style={{
+							borderColor: "var(--border-subtle)",
+							background: "var(--bg-elevated)",
+						}}
+					>
+						<ProjectSidebar />
+					</aside>
+				)}
 
 				{/* Center — Flow Canvas */}
 				<main
@@ -189,17 +222,19 @@ export function App() {
 							</div>
 
 							{/* Right panel — Instruments */}
-							<aside
-								className="w-96 shrink-0 overflow-y-auto scrollbar-thin border-l"
-								style={{
-									borderColor: "var(--border-subtle)",
-									background: "var(--bg-elevated)",
-								}}
-							>
-								<ActionRunPanel />
-								<ArtifactInspector />
-								<InterviewPanel />
-							</aside>
+							{!rightPanelCollapsed && (
+								<aside
+									className="w-96 shrink-0 overflow-y-auto scrollbar-thin border-l transition-all duration-200"
+									style={{
+										borderColor: "var(--border-subtle)",
+										background: "var(--bg-elevated)",
+									}}
+								>
+									<ActionRunPanel />
+									<ArtifactInspector />
+									<InterviewPanel />
+								</aside>
+							)}
 						</div>
 					) : (
 						<div className="flex flex-1 items-center justify-center">
@@ -237,9 +272,9 @@ export function App() {
 			</div>
 
 			{/* ═══ Bottom Panel — Knowledge Base ═══ */}
-			{selectedProjectId && (
+			{selectedProjectId && !footerCollapsed && (
 				<footer
-					className="h-48 shrink-0 overflow-y-auto scrollbar-thin border-t"
+					className="h-48 shrink-0 overflow-y-auto scrollbar-thin border-t transition-all duration-200"
 					style={{
 						borderColor: "var(--border-subtle)",
 						background: "var(--bg-elevated)",

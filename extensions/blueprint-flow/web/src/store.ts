@@ -132,6 +132,11 @@ interface BlueprintStore {
 	connectionState: ConnectionState;
 	activeModal: ModalType;
 
+	// Panel visibility
+	sidebarCollapsed: boolean;
+	rightPanelCollapsed: boolean;
+	footerCollapsed: boolean;
+
 	setProjects: (projects: Project[]) => void;
 	setFeatures: (features: Feature[]) => void;
 	setSteps: (steps: Step[]) => void;
@@ -149,6 +154,9 @@ interface BlueprintStore {
 	selectArtifact: (id: string | null) => void;
 	setConnected: (connected: boolean) => void;
 	setConnectionState: (state: ConnectionState) => void;
+	toggleSidebar: () => void;
+	toggleRightPanel: () => void;
+	toggleFooter: () => void;
 	openModal: (modal: ModalType) => void;
 	closeModal: () => void;
 }
@@ -170,6 +178,10 @@ export const useStore = create<BlueprintStore>((set) => ({
 	connected: false,
 	connectionState: "disconnected" as ConnectionState,
 	activeModal: null,
+
+	sidebarCollapsed: false,
+	rightPanelCollapsed: false,
+	footerCollapsed: false,
 
 	setProjects: (projects) => set({ projects }),
 	setFeatures: (features) => set({ features }),
@@ -200,6 +212,12 @@ export const useStore = create<BlueprintStore>((set) => ({
 	selectArtifact: (id) => set({ selectedArtifactId: id }),
 	setConnected: (connected) => set({ connected }),
 	setConnectionState: (connectionState) => set({ connectionState }),
+	toggleSidebar: () =>
+		set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+	toggleRightPanel: () =>
+		set((state) => ({ rightPanelCollapsed: !state.rightPanelCollapsed })),
+	toggleFooter: () =>
+		set((state) => ({ footerCollapsed: !state.footerCollapsed })),
 	openModal: (modal) => set({ activeModal: modal }),
 	closeModal: () => set({ activeModal: null }),
 }));

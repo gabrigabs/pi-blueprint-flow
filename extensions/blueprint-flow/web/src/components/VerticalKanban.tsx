@@ -15,7 +15,7 @@ import {
 	ShieldCheck,
 	Workflow,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api";
 import type { ActionRun } from "../store";
 import { useStore } from "../store";
@@ -99,6 +99,39 @@ export function VerticalKanban() {
 		s.features.find((f) => f.id === s.selectedFeatureId),
 	);
 	const [expandedStep, setExpandedStep] = useState<string | null>(null);
+	const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+
+	// Keyboard navigation handler
+	const handleStepNav = useCallback(
+		(e: Event) => {
+			const detail = (e as CustomEvent).detail;
+			if (steps.length === 0) return;
+
+			if (detail === "next") {
+				setFocusedIndex((prev) => {
+					const next = Math.min(prev + 1, steps.length - 1);
+					return next;
+				});
+			} else if (detail === "prev") {
+				setFocusedIndex((prev) => {
+					const next = Math.max(prev - 1, 0);
+					return next;
+				});
+			} else if (detail === "toggle") {
+				if (focusedIndex >= 0 && focusedIndex < steps.length) {
+					const stepName = steps[focusedIndex].name;
+					setExpandedStep((prev) => (prev === stepName ? null : stepName));
+				}
+			}
+		},
+		[steps, focusedIndex],
+	);
+
+	useEffect(() => {
+		window.addEventListener("blueprint:step-nav", handleStepNav);
+		return () =>
+			window.removeEventListener("blueprint:step-nav", handleStepNav);
+	}, [handleStepNav]);
 
 	// Load active workflow for label resolution
 	useEffect(() => {
@@ -156,7 +189,7 @@ export function VerticalKanban() {
 					</span>
 				)}
 			</div>
-			{steps.map((step) => {
+			{steps.map((step, index) => {
 				const style = STATUS_STYLES[step.status] || STATUS_STYLES.pending;
 				const stepArtifacts = artifacts.filter(
 					(a) => a.step_name === step.name,
@@ -169,6 +202,7 @@ export function VerticalKanban() {
 					step.status === "running" || step.status === "needs_user";
 				const isCurrentStep = currentFeature?.current_step === step.name;
 				const isExpanded = expandedStep === step.name;
+				const isFocused = focusedIndex === index;
 				const label =
 					labelMap[step.name] || FALLBACK_LABELS[step.name] || step.name;
 				const icon = STEP_ICONS[step.name] || <CircleDot size={14} />;
@@ -179,7 +213,7 @@ export function VerticalKanban() {
 						key={step.id}
 						className={`rounded-lg border px-3.5 py-2.5 transition-all ${style.bg} ${style.border} ${
 							isActive ? (style.glow ?? "") : ""
-						}`}
+						} ${isFocused ? "ring-1 ring-amber-400/50" : ""}`}
 					>
 						{/* Step header */}
 						<div
