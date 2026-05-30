@@ -35,11 +35,13 @@ export function stepsToNodes(
 	actionRuns?: ActionRun[],
 	selectedNodeId?: string | null,
 ): Node<StepNodeData>[] {
-	const pendingInterviews = interviews?.filter((i) => !i.answer) ?? [];
 
 	return steps.map((step, index) => {
 		const stepArtifacts = artifacts.filter((a) => a.step_name === step.name);
 		const stepActivities = actionRuns?.filter((r) => r.step_name === step.name) ?? [];
+		const stepInterviews = step.name === "interview"
+			? (interviews?.filter((i) => !i.answer) ?? [])
+			: [];
 		const isSelected = step.id === selectedNodeId;
 
 		return {
@@ -52,9 +54,7 @@ export function stepsToNodes(
 				stepName: step.name,
 				artifactCount: stepArtifacts.length,
 				artifacts: stepArtifacts.map((a) => ({ id: a.id, filename: a.filename, type: a.type })),
-				interviewCount: step.status === "needs_user"
-					? pendingInterviews.length
-					: 0,
+				interviewCount: stepInterviews.length,
 				activityCount: stepActivities.length,
 				isCurrentStep: step.status === "running" || step.status === "needs_user",
 				isSelected,
@@ -170,7 +170,9 @@ export function stepsToSatelliteNodes(
 	const stepColor = STEP_COLORS_MAP[step.name] ?? "#5b9bd5";
 	const stepArtifacts = artifacts.filter((a) => a.step_name === step.name);
 	const stepActivities = actionRuns?.filter((r) => r.step_name === step.name) ?? [];
-	const pendingInterviews = interviews?.filter((i) => !i.answer && step.status === "needs_user") ?? [];
+	const stepInterviews = interviews?.filter((i) => i.feature_id === step.feature_id) ?? [];
+	const pendingInterviews = stepInterviews.filter((i) => !i.answer);
+	const answeredInterviews = stepInterviews.filter((i) => i.answer && !i.answer.startsWith("[SKIPPED]"));
 
 	const satellites: Node<SatelliteNodeData>[] = [];
 	const baseX = parentNode.position.x + NODE_WIDTH + SATELLITE_OFFSET_X;
@@ -209,20 +211,38 @@ export function stepsToSatelliteNodes(
 		idx++;
 	});
 
-	if (pendingInterviews.length > 0) {
-		satellites.push({
-			id: `sat-interview-${step.id}`,
-			type: "artifactSatellite",
-			position: { x: baseX, y: baseY + idx * (SATELLITE_HEIGHT + SATELLITE_GAP) },
-			data: {
-				artifactId: "",
-				filename: `Interview (${pendingInterviews.length})`,
-				type: "interview",
-				stepColor,
-				isInterview: true,
-				interviewCount: pendingInterviews.length,
-			},
-		});
+	if (step.name === "interview" && stepInterviews.length > 0) {
+		if (pendingInterviews.length > 0) {
+			satellites.push({
+				id: `sat-interview-pending-${step.id}`,
+				type: "artifactSatellite",
+				position: { x: baseX, y: baseY + idx * (SATELLITE_HEIGHT + SATELLITE_GAP) },
+				data: {
+					artifactId: "",
+					filename: `Pending (${pendingInterviews.length})`,
+					type: "interview",
+					stepColor,
+					isInterview: true,
+					interviewCount: pendingInterviews.length,
+				},
+			});
+			idx++;
+		}
+		if (answeredInterviews.length > 0) {
+			satellites.push({
+				id: `sat-interview-done-${step.id}`,
+				type: "artifactSatellite",
+				position: { x: baseX, y: baseY + idx * (SATELLITE_HEIGHT + SATELLITE_GAP) },
+				data: {
+					artifactId: "",
+					filename: `Answered (${answeredInterviews.length})`,
+					type: "interview",
+					stepColor,
+					isInterview: true,
+					interviewCount: answeredInterviews.length,
+				},
+			});
+		}
 	}
 
 	return satellites;
