@@ -92,6 +92,8 @@ export interface WorkflowStep {
 	label: string;
 	actionType?: string;
 	optional?: boolean;
+	modelId?: string;
+	thinkingLevel?: string;
 }
 
 export interface Workflow {
@@ -215,7 +217,11 @@ export const useStore = create<BlueprintStore>((set) => ({
 			selectedArtifactId: null,
 		}),
 	selectFeature: (id) =>
-		set({ selectedFeatureId: id, selectedArtifactId: null, selectedNodeId: null }),
+		set({
+			selectedFeatureId: id,
+			selectedArtifactId: null,
+			selectedNodeId: null,
+		}),
 	selectArtifact: (id) => set({ selectedArtifactId: id }),
 	selectNode: (id) => set({ selectedNodeId: id }),
 	setConnected: (connected) => set({ connected }),
@@ -225,7 +231,9 @@ export const useStore = create<BlueprintStore>((set) => ({
 	toggleFooter: () =>
 		set((state) => ({ footerCollapsed: !state.footerCollapsed })),
 	incrementArtifactVersion: () =>
-		set((state) => ({ artifactContentVersion: state.artifactContentVersion + 1 })),
+		set((state) => ({
+			artifactContentVersion: state.artifactContentVersion + 1,
+		})),
 	openModal: (modal) => set({ activeModal: modal }),
 	closeModal: () => set({ activeModal: null }),
 }));

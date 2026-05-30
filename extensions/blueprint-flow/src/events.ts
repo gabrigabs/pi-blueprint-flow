@@ -41,6 +41,18 @@ export interface BlueprintEvents {
 	"action:completed": { id: string; status: string };
 	"action:failed": { id: string; error: string };
 	"import:pi_analysis_requested": { reportId: string; actionRunId: string };
+	"config:updated": {
+		models: {
+			id: string;
+			name: string;
+			provider: string;
+			reasoning: boolean;
+			contextWindow: number;
+			maxTokens: number;
+			cost: { input: number; output: number };
+		}[];
+		currentThinkingLevel: string | null;
+	};
 }
 
 class EventBus {

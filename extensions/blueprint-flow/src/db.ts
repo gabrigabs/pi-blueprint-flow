@@ -122,6 +122,7 @@ export interface ActionRunRow {
 	model_id: string | null;
 	effort_level: string | null;
 	execution_mode: string | null;
+	thinking_level: string | null;
 	error: string | null;
 	started_at: string | null;
 	completed_at: string | null;
@@ -412,6 +413,8 @@ const MIGRATIONS = [
 	)`,
 	`CREATE INDEX IF NOT EXISTS idx_design_variants_feature ON design_variants(feature_id)`,
 	`CREATE INDEX IF NOT EXISTS idx_design_tokens_project ON design_tokens(project_id)`,
+	// v0.6.0: Thinking level per action run
+	`ALTER TABLE action_runs ADD COLUMN thinking_level TEXT`,
 ];
 
 let db: Database.Database | null = null;
@@ -532,11 +535,12 @@ export function createActionRun(input: {
 	modelId?: string | null;
 	effortLevel?: string | null;
 	executionMode?: string | null;
+	thinkingLevel?: string | null;
 }): ActionRunRow {
 	const database = getDb();
 	const stmt = database.prepare(`
-		INSERT INTO action_runs (id, project_id, feature_id, action_type, step_name, status, prompt, model_id, effort_level, execution_mode)
-		VALUES (?, ?, ?, ?, ?, 'created', ?, ?, ?, ?)
+		INSERT INTO action_runs (id, project_id, feature_id, action_type, step_name, status, prompt, model_id, effort_level, execution_mode, thinking_level)
+		VALUES (?, ?, ?, ?, ?, 'created', ?, ?, ?, ?, ?)
 	`);
 	stmt.run(
 		input.id,
@@ -548,6 +552,7 @@ export function createActionRun(input: {
 		input.modelId ?? null,
 		input.effortLevel ?? null,
 		input.executionMode ?? null,
+		input.thinkingLevel ?? null,
 	);
 	return getActionRun(input.id)!;
 }
@@ -698,6 +703,8 @@ export interface WorkflowStep {
 	label: string;
 	actionType?: string;
 	optional?: boolean;
+	modelId?: string;
+	thinkingLevel?: string;
 }
 
 const DEFAULT_WORKFLOW_STEPS: WorkflowStep[] = [
@@ -883,6 +890,15 @@ export function parseWorkflowSteps(workflow: WorkflowRow): WorkflowStep[] {
 	} catch {
 		return DEFAULT_WORKFLOW_STEPS;
 	}
+}
+
+export function getWorkflowStepConfig(
+	projectId: string,
+	stepName: string,
+): WorkflowStep | null {
+	const workflow = getProjectWorkflow(projectId);
+	const steps = parseWorkflowSteps(workflow);
+	return steps.find((s) => s.name === stepName) ?? null;
 }
 
 export function setProjectWorkflow(

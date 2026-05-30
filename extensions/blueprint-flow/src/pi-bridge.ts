@@ -6,6 +6,7 @@ import {
 	getActionRun,
 	getActiveActionRun,
 	getDb,
+	getWorkflowStepConfig,
 	updateActionRunStatus,
 } from "./db.js";
 import { bus } from "./events.js";
@@ -189,11 +190,16 @@ function attemptInjection(runId: string): void {
 	}
 
 	if (actionRun.execution_mode === "subagent") {
-		import("./services/subagent-executor.js").then(({ executeViaSubagent }) => {
-			executeViaSubagent(actionRun);
-		}).catch((err) => {
-			notifyAgentError(runId, `Failed to load subagent executor: ${err?.message}`);
-		});
+		import("./services/subagent-executor.js")
+			.then(({ executeViaSubagent }) => {
+				executeViaSubagent(actionRun);
+			})
+			.catch((err) => {
+				notifyAgentError(
+					runId,
+					`Failed to load subagent executor: ${err?.message}`,
+				);
+			});
 		return;
 	}
 
@@ -246,6 +252,36 @@ function attemptInjection(runId: string): void {
 			.run(prompt, runId);
 	} catch {
 		// non-critical — prompt storage is best-effort
+	}
+
+	// Apply model/thinking level before injection
+	// Priority: action run override > workflow step config > leave as-is
+	try {
+		const targetModelId =
+			actionRun.model_id ??
+			(actionRun.project_id && actionRun.step_name
+				? getWorkflowStepConfig(actionRun.project_id, actionRun.step_name)
+						?.modelId
+				: undefined) ??
+			null;
+		const targetThinking =
+			actionRun.thinking_level ??
+			(actionRun.project_id && actionRun.step_name
+				? getWorkflowStepConfig(actionRun.project_id, actionRun.step_name)
+						?.thinkingLevel
+				: undefined) ??
+			null;
+
+		if (targetModelId) {
+			const models = pi.getAvailableModels();
+			const model = models.find((m) => m.id === targetModelId);
+			if (model) pi.setModel(model);
+		}
+		if (targetThinking) {
+			pi.setThinkingLevel(targetThinking as any);
+		}
+	} catch {
+		// Non-critical — model/thinking setup is best-effort
 	}
 
 	updateActionRunStatus(runId, "injected");

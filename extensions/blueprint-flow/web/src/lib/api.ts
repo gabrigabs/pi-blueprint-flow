@@ -78,6 +78,8 @@ export interface AgentModelInfo {
 	provider: string;
 	reasoning: boolean;
 	contextWindow: number;
+	maxTokens: number;
+	cost: { input: number; output: number };
 }
 
 export type ThinkingLevel =

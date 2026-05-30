@@ -92,10 +92,7 @@ export function useWebSocket() {
 			);
 
 			retryTimerRef.current = setTimeout(() => {
-				retryDelayRef.current = Math.min(
-					delay * BACKOFF_FACTOR,
-					MAX_RETRY_MS,
-				);
+				retryDelayRef.current = Math.min(delay * BACKOFF_FACTOR, MAX_RETRY_MS);
 				connect();
 			}, delay);
 		}
@@ -300,6 +297,13 @@ export function useWebSocket() {
 			case "import:started":
 			case "import:completed":
 				debouncedRefresh("projects", refreshProjects);
+				break;
+
+			// --- Config events ---
+			case "config:updated":
+				window.dispatchEvent(
+					new CustomEvent("blueprint:config-updated", { detail: msg.data }),
+				);
 				break;
 
 			// --- Settings ---

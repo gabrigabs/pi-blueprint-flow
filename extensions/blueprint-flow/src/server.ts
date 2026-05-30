@@ -194,6 +194,7 @@ export async function startServer(
 		"action:completed",
 		"action:failed",
 		"import:pi_analysis_requested",
+		"config:updated",
 	] as const;
 
 	for (const event of broadcastedEvents) {
