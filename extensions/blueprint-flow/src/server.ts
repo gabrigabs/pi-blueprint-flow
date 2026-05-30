@@ -1,12 +1,17 @@
 import fastifyStatic from "@fastify/static";
 import fastifyWebsocket from "@fastify/websocket";
-import Fastify from "fastify";
+import Fastify, { type FastifyInstance } from "fastify";
 import { BLUEPRINT_PORT } from "./config.js";
 import { getDb } from "./db.js";
 import { bus } from "./events.js";
+import { registerActionRoutes } from "./routes/actions.js";
+import { registerArtifactRoutes } from "./routes/artifacts.js";
+import { registerFeatureRoutes } from "./routes/features.js";
+import { registerImportRoutes } from "./routes/import.js";
+import { registerProjectRoutes } from "./routes/projects.js";
 
-let server: ReturnType<typeof Fastify> | null = null;
-const wsClients = new Set<any>();
+let server: FastifyInstance | null = null;
+const wsClients = new Set<WebSocket>();
 
 const BUILD_INSTRUCTIONS_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -86,15 +91,16 @@ export async function startServer(
 
 	// --- WebSocket endpoint ---
 
-	server.get("/ws", { websocket: true }, (socket: any) => {
+	server.get("/ws", { websocket: true }, (socket: WebSocket) => {
 		wsClients.add(socket);
-		socket.on("close", () => wsClients.delete(socket));
+		socket.addEventListener("close", () => wsClients.delete(socket));
 
-		// Send initial state
 		try {
 			const db = getDb();
 			const projects = db
-				.prepare("SELECT * FROM projects ORDER BY updated_at DESC")
+				.prepare(
+					"SELECT * FROM projects WHERE archived = 0 ORDER BY updated_at DESC",
+				)
 				.all();
 			socket.send(JSON.stringify({ type: "init", data: { projects } }));
 		} catch {
@@ -102,7 +108,6 @@ export async function startServer(
 		}
 	});
 
-	// Broadcast events to all WebSocket clients
 	const broadcastEvent = (type: string, data: unknown) => {
 		const msg = JSON.stringify({ type, data });
 		for (const client of wsClients) {
@@ -114,21 +119,31 @@ export async function startServer(
 		}
 	};
 
-	// Subscribe to bus events for real-time updates
-	bus.on("project:created", (data) => broadcastEvent("project:created", data));
-	bus.on("feature:created", (data) => broadcastEvent("feature:created", data));
-	bus.on("feature:updated", (data) => broadcastEvent("feature:updated", data));
-	bus.on("step:advanced", (data) => broadcastEvent("step:advanced", data));
-	bus.on("artifact:saved", (data) => broadcastEvent("artifact:saved", data));
-	bus.on("memory:saved", (data) => broadcastEvent("memory:saved", data));
-	bus.on("interview:asked", (data) => broadcastEvent("interview:asked", data));
-	bus.on("interview:answered", (data) =>
-		broadcastEvent("interview:answered", data),
-	);
+	const broadcastedEvents = [
+		"project:created",
+		"project:updated",
+		"project:archived",
+		"feature:created",
+		"feature:updated",
+		"step:advanced",
+		"step:back",
+		"step:status_changed",
+		"artifact:saved",
+		"artifact:updated",
+		"memory:saved",
+		"interview:asked",
+		"interview:answered",
+		"import:started",
+		"import:completed",
+		"settings:saved",
+	] as const;
 
-	// --- REST API ---
+	for (const event of broadcastedEvents) {
+		bus.on(event, (data) => broadcastEvent(event, data));
+	}
 
-	// Projects
+	// --- REST API: Read endpoints ---
+
 	server.get("/api/projects", async () => {
 		const db = getDb();
 		return db
@@ -136,108 +151,148 @@ export async function startServer(
 				`SELECT p.*, COUNT(f.id) as feature_count
          FROM projects p
          LEFT JOIN features f ON f.project_id = p.id
+         WHERE p.archived = 0
          GROUP BY p.id
          ORDER BY p.updated_at DESC`,
 			)
 			.all();
 	});
 
-	server.get("/api/projects/:id", async (req: any, reply: any) => {
-		const db = getDb();
-		const project = db
-			.prepare("SELECT * FROM projects WHERE id = ?")
-			.get(req.params.id);
-		if (!project) {
-			return reply
-				.code(404)
-				.send({ error: "not_found", message: "Project not found" });
-		}
-		return project;
-	});
+	server.get<{ Params: { id: string } }>(
+		"/api/projects/:id",
+		async (req, reply) => {
+			const db = getDb();
+			const project = db
+				.prepare("SELECT * FROM projects WHERE id = ?")
+				.get(req.params.id);
+			if (!project) {
+				return reply
+					.code(404)
+					.send({ error: "not_found", message: "Project not found" });
+			}
+			return project;
+		},
+	);
 
-	// Features
-	server.get("/api/projects/:projectId/features", async (req: any) => {
-		const db = getDb();
-		return db
-			.prepare(
-				"SELECT * FROM features WHERE project_id = ? ORDER BY updated_at DESC",
-			)
-			.all(req.params.projectId);
-	});
+	server.get<{ Params: { projectId: string } }>(
+		"/api/projects/:projectId/features",
+		async (req) => {
+			const db = getDb();
+			return db
+				.prepare(
+					"SELECT * FROM features WHERE project_id = ? ORDER BY updated_at DESC",
+				)
+				.all(req.params.projectId);
+		},
+	);
 
-	server.get("/api/features/:id", async (req: any, reply: any) => {
-		const db = getDb();
-		const feature = db
-			.prepare("SELECT * FROM features WHERE id = ?")
-			.get(req.params.id);
-		if (!feature) {
-			return reply
-				.code(404)
-				.send({ error: "not_found", message: "Feature not found" });
-		}
-		return feature;
-	});
+	server.get<{ Params: { id: string } }>(
+		"/api/features/:id",
+		async (req, reply) => {
+			const db = getDb();
+			const feature = db
+				.prepare("SELECT * FROM features WHERE id = ?")
+				.get(req.params.id);
+			if (!feature) {
+				return reply
+					.code(404)
+					.send({ error: "not_found", message: "Feature not found" });
+			}
+			return feature;
+		},
+	);
 
-	// Steps
-	server.get("/api/features/:featureId/steps", async (req: any) => {
-		const db = getDb();
-		return db
-			.prepare("SELECT * FROM steps WHERE feature_id = ? ORDER BY rowid")
-			.all(req.params.featureId);
-	});
+	server.get<{ Params: { featureId: string } }>(
+		"/api/features/:featureId/steps",
+		async (req) => {
+			const db = getDb();
+			return db
+				.prepare("SELECT * FROM steps WHERE feature_id = ? ORDER BY rowid")
+				.all(req.params.featureId);
+		},
+	);
 
-	// Artifacts
-	server.get("/api/features/:featureId/artifacts", async (req: any) => {
-		const db = getDb();
-		return db
-			.prepare(
-				"SELECT id, feature_id, step_name, type, filename, created_at FROM artifacts WHERE feature_id = ? ORDER BY created_at DESC",
-			)
-			.all(req.params.featureId);
-	});
+	server.get<{ Params: { featureId: string } }>(
+		"/api/features/:featureId/artifacts",
+		async (req) => {
+			const db = getDb();
+			return db
+				.prepare(
+					"SELECT id, feature_id, step_name, type, filename, created_at FROM artifacts WHERE feature_id = ? ORDER BY created_at DESC",
+				)
+				.all(req.params.featureId);
+		},
+	);
 
-	server.get("/api/artifacts/:id", async (req: any, reply: any) => {
-		const db = getDb();
-		const artifact = db
-			.prepare("SELECT * FROM artifacts WHERE id = ?")
-			.get(req.params.id);
-		if (!artifact) {
-			return reply
-				.code(404)
-				.send({ error: "not_found", message: "Artifact not found" });
-		}
-		return artifact;
-	});
+	server.get<{ Params: { id: string } }>(
+		"/api/artifacts/:id",
+		async (req, reply) => {
+			const db = getDb();
+			const artifact = db
+				.prepare("SELECT * FROM artifacts WHERE id = ?")
+				.get(req.params.id);
+			if (!artifact) {
+				return reply
+					.code(404)
+					.send({ error: "not_found", message: "Artifact not found" });
+			}
+			return artifact;
+		},
+	);
 
-	// Interviews
-	server.get("/api/features/:featureId/interviews", async (req: any) => {
-		const db = getDb();
-		return db
-			.prepare(
-				"SELECT * FROM interviews WHERE feature_id = ? ORDER BY created_at ASC",
-			)
-			.all(req.params.featureId);
-	});
+	server.get<{ Params: { featureId: string } }>(
+		"/api/features/:featureId/interviews",
+		async (req) => {
+			const db = getDb();
+			return db
+				.prepare(
+					"SELECT * FROM interviews WHERE feature_id = ? ORDER BY created_at ASC",
+				)
+				.all(req.params.featureId);
+		},
+	);
 
-	// Memories
-	server.get("/api/projects/:projectId/memories", async (req: any) => {
-		const db = getDb();
-		return db
-			.prepare(
-				"SELECT * FROM memories WHERE project_id = ? ORDER BY created_at DESC LIMIT 50",
-			)
-			.all(req.params.projectId);
-	});
+	server.get<{ Params: { projectId: string } }>(
+		"/api/projects/:projectId/memories",
+		async (req) => {
+			const db = getDb();
+			return db
+				.prepare(
+					"SELECT * FROM memories WHERE project_id = ? ORDER BY created_at DESC LIMIT 50",
+				)
+				.all(req.params.projectId);
+		},
+	);
+
+	server.get<{ Params: { featureId: string } }>(
+		"/api/features/:featureId/settings",
+		async (req) => {
+			const db = getDb();
+			return (
+				db
+					.prepare(
+						"SELECT * FROM agent_run_settings WHERE feature_id = ? ORDER BY created_at DESC LIMIT 1",
+					)
+					.get(req.params.featureId) ?? null
+			);
+		},
+	);
+
+	// --- REST API: Write endpoints ---
+
+	registerProjectRoutes(server);
+	registerFeatureRoutes(server);
+	registerActionRoutes(server);
+	registerArtifactRoutes(server);
+	registerImportRoutes(server);
 
 	// --- SPA Fallback / Not Found Handler ---
 
-	server.setNotFoundHandler((req: any, reply: any) => {
-		// API and WS routes get a proper JSON 404
+	server.setNotFoundHandler((req, reply) => {
 		if (req.url.startsWith("/api/") || req.url === "/ws") {
 			return reply.code(404).send({ error: "Not Found", statusCode: 404 });
 		}
 
-		// Non-API routes: serve SPA or build instructions
 		if (webUiFound) {
 			return reply.sendFile("index.html");
 		}
