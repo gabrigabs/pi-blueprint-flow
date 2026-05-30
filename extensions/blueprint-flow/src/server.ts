@@ -12,6 +12,7 @@ import { registerFeatureRoutes } from "./routes/features.js";
 import { registerImportRoutes } from "./routes/import.js";
 import { registerInterviewRoutes } from "./routes/interviews.js";
 import { registerProjectRoutes } from "./routes/projects.js";
+import { registerWikiRoutes } from "./routes/wiki.js";
 import { registerWorkflowRoutes } from "./routes/workflows.js";
 
 let server: FastifyInstance | null = null;
@@ -318,6 +319,7 @@ export async function startServer(
 	registerImportRoutes(server);
 	registerInterviewRoutes(server);
 	registerConfigRoutes(server);
+	registerWikiRoutes(server);
 	registerWorkflowRoutes(server);
 
 	// --- SPA Fallback / Not Found Handler ---

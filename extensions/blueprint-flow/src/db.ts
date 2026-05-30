@@ -147,6 +147,38 @@ export interface WorkflowRow {
 	updated_at: string;
 }
 
+export interface WikiPage {
+	id: string;
+	project_id: string;
+	slug: string;
+	title: string;
+	category: string;
+	content_md: string;
+	summary: string | null;
+	updated_at: string;
+}
+
+export interface MemoryFact {
+	id: string;
+	project_id: string;
+	page_id: string | null;
+	category: string;
+	fact: string;
+	confidence: number;
+	source_type: string | null;
+	source_id: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface MemoryLink {
+	id: string;
+	project_id: string;
+	from_page_id: string;
+	to_page_id: string;
+	relation: string | null;
+}
+
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
@@ -287,6 +319,38 @@ CREATE TABLE IF NOT EXISTS workflows (
   updated_at TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS wiki_pages (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id),
+  slug TEXT NOT NULL,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL,
+  content_md TEXT NOT NULL,
+  summary TEXT,
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS memory_facts (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id),
+  page_id TEXT REFERENCES wiki_pages(id),
+  category TEXT NOT NULL,
+  fact TEXT NOT NULL,
+  confidence REAL DEFAULT 1.0,
+  source_type TEXT,
+  source_id TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS memory_links (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id),
+  from_page_id TEXT NOT NULL REFERENCES wiki_pages(id),
+  to_page_id TEXT NOT NULL REFERENCES wiki_pages(id),
+  relation TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_features_project ON features(project_id);
 CREATE INDEX IF NOT EXISTS idx_steps_feature ON steps(feature_id);
 CREATE INDEX IF NOT EXISTS idx_artifacts_feature ON artifacts(feature_id);
@@ -299,6 +363,12 @@ CREATE INDEX IF NOT EXISTS idx_action_runs_project ON action_runs(project_id);
 CREATE INDEX IF NOT EXISTS idx_action_runs_status ON action_runs(status);
 CREATE INDEX IF NOT EXISTS idx_action_run_events_run ON action_run_events(action_run_id);
 CREATE INDEX IF NOT EXISTS idx_workflows_project ON workflows(project_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_project ON wiki_pages(project_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_slug ON wiki_pages(project_id, slug);
+CREATE INDEX IF NOT EXISTS idx_memory_facts_project ON memory_facts(project_id);
+CREATE INDEX IF NOT EXISTS idx_memory_facts_page ON memory_facts(page_id);
+CREATE INDEX IF NOT EXISTS idx_memory_links_from ON memory_links(from_page_id);
+CREATE INDEX IF NOT EXISTS idx_memory_links_to ON memory_links(to_page_id);
 `;
 
 /** Incremental migrations for existing databases */

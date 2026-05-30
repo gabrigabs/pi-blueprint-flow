@@ -31,6 +31,12 @@ import { createProjectTool, listProjectsTool } from "./tools/project.js";
 import { researchRepoTool } from "./tools/research-repo.js";
 import { researchWebTool } from "./tools/research-web.js";
 import { reviewGateTool } from "./tools/review-gate.js";
+import {
+	memoryAddFactTool,
+	memoryRetrieveContextTool,
+	wikiSearchTool,
+	wikiUpsertPageTool,
+} from "./tools/wiki.js";
 
 export default function (pi: ExtensionAPI) {
 	const cwd = process.cwd();
@@ -83,6 +89,10 @@ export default function (pi: ExtensionAPI) {
 	pi.registerTool(researchRepoTool);
 	pi.registerTool(researchWebTool);
 	pi.registerTool(reviewGateTool);
+	pi.registerTool(wikiUpsertPageTool);
+	pi.registerTool(wikiSearchTool);
+	pi.registerTool(memoryAddFactTool);
+	pi.registerTool(memoryRetrieveContextTool);
 
 	// --- Commands ---
 
