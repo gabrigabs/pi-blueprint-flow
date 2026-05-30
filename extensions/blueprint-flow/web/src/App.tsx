@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { WorkflowCanvas } from "./components/canvas/WorkflowCanvas";
 import { CreateFeatureModal } from "./components/CreateFeatureModal";
 import { AppHeader } from "./components/layout/AppHeader";
-import { NodeSidebar } from "./components/NodeSidebar";
+import { KnowledgeModal } from "./components/KnowledgeModal";
 import { OnboardingModal } from "./components/onboarding/OnboardingModal";
 import { ProjectSidebar } from "./components/ProjectSidebar";
 import { Toasts } from "./components/Toasts";
@@ -18,7 +18,6 @@ export function App() {
 	const {
 		selectedProjectId,
 		selectedFeatureId,
-		selectedNodeId,
 		activeModal,
 		sidebarCollapsed,
 	} = useStore();
@@ -90,15 +89,13 @@ export function App() {
 						</div>
 					)}
 				</main>
-
-				{/* Right: Node detail panel */}
-				{selectedNodeId && selectedFeatureId && <NodeSidebar />}
 			</div>
 
 			{/* Modals */}
 			{activeModal === "onboarding" && <OnboardingModal />}
 			{activeModal === "create_feature" && <CreateFeatureModal />}
 			{activeModal === "workflow_editor" && <WorkflowEditor />}
+			{activeModal === "knowledge" && <KnowledgeModal />}
 
 			<Toasts />
 		</div>

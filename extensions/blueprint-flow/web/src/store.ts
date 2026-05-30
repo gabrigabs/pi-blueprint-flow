@@ -113,6 +113,7 @@ export type ModalType =
 	| "create_feature"
 	| "agent_settings"
 	| "workflow_editor"
+	| "knowledge"
 	| null;
 
 interface BlueprintStore {

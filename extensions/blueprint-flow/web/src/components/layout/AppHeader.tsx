@@ -1,4 +1,4 @@
-import { ChevronDown, Loader2, PanelLeftOpen, Radio, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { Brain, ChevronDown, Loader2, PanelLeftOpen, Radio, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useStore } from "../../store";
 
@@ -20,6 +20,7 @@ export function AppHeader() {
 	const currentFeature = useStore((s) => s.features.find((f) => f.id === s.selectedFeatureId));
 	const steps = useStore((s) => s.steps);
 	const currentStep = steps.find((s) => s.status === "running" || s.status === "needs_user");
+	const memories = useStore((s) => s.memories);
 
 	const activeRun = actionRuns.find((r) =>
 		["agent_running", "tool_running", "injected", "waiting_for_pi"].includes(r.status),
@@ -143,6 +144,27 @@ export function AppHeader() {
 						<Radio size={10} style={{ color: "var(--rose-400)" }} />
 						<span className="font-mono text-[10px]" style={{ color: "var(--rose-400)" }}>Pi Offline</span>
 					</div>
+				)}
+
+				{/* Knowledge base button */}
+				{selectedProjectId && (
+					<button
+						onClick={() => openModal("knowledge")}
+						title="Knowledge Base"
+						className="relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] transition-colors hover:bg-[var(--bg-surface-hover)]"
+						style={{ color: "var(--text-tertiary)" }}
+					>
+						<Brain size={13} />
+						<span className="hidden sm:inline">Knowledge</span>
+						{memories.length > 0 && (
+							<span
+								className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold"
+								style={{ background: "rgba(167, 139, 250, 0.2)", color: "#a78bfa" }}
+							>
+								{memories.length > 9 ? "9+" : memories.length}
+							</span>
+						)}
+					</button>
 				)}
 
 				<div className="flex items-center gap-1.5">
