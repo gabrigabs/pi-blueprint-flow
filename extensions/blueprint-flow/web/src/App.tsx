@@ -1,4 +1,4 @@
-import { Loader2, Radio, Wifi, WifiOff } from "lucide-react";
+import { Loader2, Radio, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useEffect } from "react";
 import { ActionRunPanel } from "./components/ActionRunPanel";
 import { ArtifactInspector } from "./components/ArtifactInspector";
@@ -18,6 +18,7 @@ export function App() {
 	useWebSocket();
 	const {
 		connected,
+		connectionState,
 		selectedProjectId,
 		selectedFeatureId,
 		activeModal,
@@ -137,10 +138,18 @@ export function App() {
 
 					{/* Connection indicator */}
 					<div className="flex items-center gap-1.5">
-						{connected ? (
+						{connectionState === "connected" ? (
 							<>
 								<div className="status-dot bg-emerald-400" />
 								<Wifi size={12} className="text-emerald-400/60" />
+							</>
+						) : connectionState === "reconnecting" ? (
+							<>
+								<div className="status-dot bg-amber-400 animate-pulse" />
+								<RefreshCw size={12} className="text-amber-400/70 animate-spin" />
+								<span className="font-mono text-[10px] text-amber-400/70">
+									RECONNECTING
+								</span>
 							</>
 						) : (
 							<>

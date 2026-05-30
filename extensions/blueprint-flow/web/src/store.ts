@@ -104,6 +104,8 @@ export interface Workflow {
 	updated_at: string;
 }
 
+export type ConnectionState = "connected" | "reconnecting" | "disconnected";
+
 export type ModalType =
 	| "create_project"
 	| "import_project"
@@ -127,6 +129,7 @@ interface BlueprintStore {
 	selectedFeatureId: string | null;
 	selectedArtifactId: string | null;
 	connected: boolean;
+	connectionState: ConnectionState;
 	activeModal: ModalType;
 
 	setProjects: (projects: Project[]) => void;
@@ -145,6 +148,7 @@ interface BlueprintStore {
 	selectFeature: (id: string | null) => void;
 	selectArtifact: (id: string | null) => void;
 	setConnected: (connected: boolean) => void;
+	setConnectionState: (state: ConnectionState) => void;
 	openModal: (modal: ModalType) => void;
 	closeModal: () => void;
 }
@@ -164,6 +168,7 @@ export const useStore = create<BlueprintStore>((set) => ({
 	selectedFeatureId: null,
 	selectedArtifactId: null,
 	connected: false,
+	connectionState: "disconnected" as ConnectionState,
 	activeModal: null,
 
 	setProjects: (projects) => set({ projects }),
@@ -194,6 +199,7 @@ export const useStore = create<BlueprintStore>((set) => ({
 		set({ selectedFeatureId: id, selectedArtifactId: null }),
 	selectArtifact: (id) => set({ selectedArtifactId: id }),
 	setConnected: (connected) => set({ connected }),
+	setConnectionState: (connectionState) => set({ connectionState }),
 	openModal: (modal) => set({ activeModal: modal }),
 	closeModal: () => set({ activeModal: null }),
 }));

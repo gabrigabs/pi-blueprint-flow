@@ -120,6 +120,18 @@ export async function startServer(
 		wsClients.add(socket);
 		socket.addEventListener("close", () => wsClients.delete(socket));
 
+		// Handle client messages (ping/pong heartbeat)
+		socket.addEventListener("message", (event) => {
+			try {
+				const msg = JSON.parse(String(event.data));
+				if (msg.type === "ping") {
+					socket.send(JSON.stringify({ type: "pong" }));
+				}
+			} catch {
+				// Ignore malformed messages
+			}
+		});
+
 		try {
 			const db = getDb();
 			const projects = db
