@@ -1,20 +1,32 @@
+import type {
+	ExtensionAPI,
+	SendMessageOptions,
+} from "@earendil-works/pi-coding-agent";
 import { nanoid } from "nanoid";
-import type { ExtensionAPI, SendMessageOptions } from "@earendil-works/pi-coding-agent";
-import { getPiRef } from "./services/pi-config-reader.js";
 import {
 	createActionRun,
 	createActionRunEvent,
+	getActionRun,
 	getActiveActionRun,
 	updateActionRunStatus,
 } from "./db.js";
 import { bus } from "./events.js";
-import type { ActionRunStatus, ActionType, RunBlueprintActionInput } from "./types.js";
+import { getPiRef } from "./services/pi-config-reader.js";
+import { buildPrompt, gatherPromptContext } from "./services/prompt-builder.js";
+import type {
+	ActionRunStatus,
+	ActionType,
+	RunBlueprintActionInput,
+} from "./types.js";
 
 export type BridgeStatus = "idle" | "busy" | "not_connected";
 
 export interface PiBridgeInterface {
 	getStatus(): BridgeStatus;
-	enqueue(input: RunBlueprintActionInput): { actionRunId: string; status: ActionRunStatus };
+	enqueue(input: RunBlueprintActionInput): {
+		actionRunId: string;
+		status: ActionRunStatus;
+	};
 	cancel(actionRunId: string): boolean;
 }
 
@@ -35,7 +47,10 @@ function getStatus(): BridgeStatus {
 	return "idle";
 }
 
-function enqueue(input: RunBlueprintActionInput): { actionRunId: string; status: ActionRunStatus } {
+function enqueue(input: RunBlueprintActionInput): {
+	actionRunId: string;
+	status: ActionRunStatus;
+} {
 	const pi = getPi();
 	const id = nanoid();
 
@@ -127,14 +142,53 @@ function processNext(): void {
 	if (currentRunId) return; // already processing
 	if (queue.length === 0) return;
 
+	const pi = getPi();
+	if (!pi) return; // can't process without Pi
+
 	const nextId = queue.shift()!;
 	currentRunId = nextId;
 
 	updateActionRunStatus(nextId, "waiting_for_pi");
 	bus.emit("action:updated", { id: nextId, status: "waiting_for_pi" });
 
-	// TODO: In Fatia 2, this will call prompt-builder and inject via pi.sendUserMessage
-	// For now, mark as waiting_for_pi (stub behavior)
+	// Build the prompt from DB context
+	const actionRun = getActionRun(nextId);
+	if (!actionRun) {
+		currentRunId = null;
+		processNext();
+		return;
+	}
+
+	const ctx = gatherPromptContext(actionRun);
+	const prompt = buildPrompt(ctx);
+
+	// Store the prompt in the DB
+	updateActionRunStatus(nextId, "injected");
+	bus.emit("action:updated", { id: nextId, status: "injected" });
+
+	createActionRunEvent({
+		id: nanoid(),
+		actionRunId: nextId,
+		type: "pi.prompt.injected",
+		message: `Prompt injected (${prompt.length} chars)`,
+		dataJson: JSON.stringify({ promptLength: prompt.length }),
+	});
+
+	// Determine delivery strategy
+	const deliverAs: "steer" | "followUp" = currentRunId ? "followUp" : "steer";
+
+	// Inject into Pi
+	try {
+		pi.sendUserMessage(prompt, { deliverAs });
+	} catch (err: any) {
+		currentRunId = null;
+		const errorMsg = err?.message ?? "Failed to inject prompt into Pi";
+		updateActionRunStatus(nextId, "failed", errorMsg);
+		bus.emit("action:failed", { id: nextId, error: errorMsg });
+		processNext();
+		return;
+	}
+
 	startActionTimeout(nextId);
 }
 
@@ -143,8 +197,15 @@ function startActionTimeout(actionRunId: string): void {
 	timeoutHandle = setTimeout(() => {
 		if (currentRunId === actionRunId) {
 			currentRunId = null;
-			updateActionRunStatus(actionRunId, "failed", "Action timed out after 5 minutes");
-			bus.emit("action:failed", { id: actionRunId, error: "Action timed out after 5 minutes" });
+			updateActionRunStatus(
+				actionRunId,
+				"failed",
+				"Action timed out after 5 minutes",
+			);
+			bus.emit("action:failed", {
+				id: actionRunId,
+				error: "Action timed out after 5 minutes",
+			});
 			processNext();
 		}
 	}, ACTION_TIMEOUT_MS);
@@ -178,7 +239,10 @@ export function notifyAgentError(actionRunId: string, error: string): void {
 }
 
 /** Update the status of the current run (e.g., agent_running, tool_running) */
-export function notifyStatusChange(actionRunId: string, status: ActionRunStatus): void {
+export function notifyStatusChange(
+	actionRunId: string,
+	status: ActionRunStatus,
+): void {
 	if (currentRunId !== actionRunId) return;
 	updateActionRunStatus(actionRunId, status);
 	bus.emit("action:updated", { id: actionRunId, status });

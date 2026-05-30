@@ -93,6 +93,21 @@ export function useWebSocket() {
 				}
 				break;
 
+			case "action:event":
+				// Dispatch custom event for live streaming in ActionRunPanel
+				if (msg.data.actionRunId) {
+					window.dispatchEvent(
+						new CustomEvent("blueprint:action-event", {
+							detail: {
+								actionRunId: msg.data.actionRunId,
+								type: msg.data.type,
+								message: msg.data.message,
+							},
+						}),
+					);
+				}
+				break;
+
 			case "action:completed":
 				if (msg.data.id) {
 					store.updateActionRun(msg.data.id, {

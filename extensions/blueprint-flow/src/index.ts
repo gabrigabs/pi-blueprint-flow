@@ -12,6 +12,7 @@ import { closeDb, getDb, initDb } from "./db.js";
 import { bus } from "./events.js";
 import { startServer, stopServer } from "./server.js";
 import { setPiRef } from "./services/pi-config-reader.js";
+import { registerPiEventListeners } from "./services/pi-event-listener.js";
 import { readArtifactTool, saveArtifactTool } from "./tools/artifacts.js";
 import { createFeatureTool, listFeaturesTool } from "./tools/feature.js";
 import {
@@ -35,6 +36,9 @@ export default function (pi: ExtensionAPI) {
 
 	// Store Pi reference for config/model access
 	setPiRef(pi);
+
+	// Register Pi event listeners for action run tracking
+	registerPiEventListeners(pi);
 
 	// Initialize database on session start
 	pi.on("session_start", async () => {
