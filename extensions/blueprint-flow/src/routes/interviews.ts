@@ -1,7 +1,53 @@
 import type { FastifyInstance } from "fastify";
+import { nanoid } from "nanoid";
 import { getDb } from "../db.js";
 import { bus } from "../events.js";
 import type { Interview } from "../db.js";
+
+function generateInterviewArtifact(featureId: string): void {
+	const db = getDb();
+	const interviews = db
+		.prepare(
+			"SELECT * FROM interviews WHERE feature_id = ? AND answer IS NOT NULL ORDER BY created_at ASC",
+		)
+		.all(featureId) as Interview[];
+
+	if (interviews.length === 0) return;
+
+	const lines: string[] = ["# Interview Summary\n"];
+
+	for (const interview of interviews) {
+		if (interview.answer?.startsWith("[SKIPPED]")) continue;
+		lines.push(`## ${interview.question}\n`);
+		if (interview.why) {
+			lines.push(`> *${interview.why}*\n`);
+		}
+		lines.push(`**Answer:** ${interview.answer}\n`);
+	}
+
+	if (lines.length <= 1) return;
+
+	const content = lines.join("\n");
+	const existingArtifact = db
+		.prepare(
+			"SELECT id FROM artifacts WHERE feature_id = ? AND step_name = 'interview' AND filename = 'interview-summary.md'",
+		)
+		.get(featureId) as { id: string } | undefined;
+
+	if (existingArtifact) {
+		db.prepare("UPDATE artifacts SET content = ? WHERE id = ?").run(
+			content,
+			existingArtifact.id,
+		);
+		bus.emit("artifact:updated", { id: existingArtifact.id, featureId });
+	} else {
+		const id = nanoid(12);
+		db.prepare(
+			"INSERT INTO artifacts (id, feature_id, step_name, type, filename, content) VALUES (?, ?, ?, ?, ?, ?)",
+		).run(id, featureId, "interview", "markdown", "interview-summary.md", content);
+		bus.emit("artifact:saved", { id, featureId, type: "markdown" });
+	}
+}
 
 export function registerInterviewRoutes(app: FastifyInstance): void {
 	// Get pending (unanswered) interviews for a feature
@@ -58,6 +104,7 @@ export function registerInterviewRoutes(app: FastifyInstance): void {
 			);
 
 			bus.emit("interview:answered", { id, answer: answer.trim() });
+			generateInterviewArtifact(interview.feature_id);
 
 			// Check if this was a required question blocking a step
 			if (interview.required) {
@@ -131,6 +178,7 @@ export function registerInterviewRoutes(app: FastifyInstance): void {
 			);
 
 			bus.emit("interview:answered", { id, answer: skipAnswer });
+			generateInterviewArtifact(interview.feature_id);
 
 			const updated = db
 				.prepare("SELECT * FROM interviews WHERE id = ?")
