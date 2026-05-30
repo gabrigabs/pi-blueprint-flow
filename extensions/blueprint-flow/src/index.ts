@@ -1,14 +1,15 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
 	BLUEPRINT_PORT,
+	detectLegacyDbPath,
 	FLOW_STEPS,
-	getDataDir,
-	getDbPath,
+	resolveDataDir,
+	resolveDbPath,
 	resolveWebDistPath,
 	STEP_LABELS,
 } from "./config.js";
 import type { Feature } from "./db.js";
-import { closeDb, getDb, initDb } from "./db.js";
+import { closeDb, getDb, initDb, migrateFromLegacyDb } from "./db.js";
 import { bus } from "./events.js";
 import { startServer, stopServer } from "./server.js";
 import { setPiRef } from "./services/pi-config-reader.js";
@@ -42,7 +43,19 @@ export default function (pi: ExtensionAPI) {
 
 	// Initialize database on session start
 	pi.on("session_start", async () => {
-		const dbPath = getDbPath(cwd);
+		const dbPath = resolveDbPath();
+
+		// Auto-migrate from legacy per-project path if it exists
+		const legacyPath = detectLegacyDbPath(cwd);
+		if (legacyPath) {
+			const migrated = migrateFromLegacyDb(legacyPath, dbPath);
+			if (migrated) {
+				pi.sendUserMessage(
+					`[Blueprint] Migrated data from legacy path (${legacyPath}) to stable location (${dbPath}). Your projects and memories are safe.`,
+				);
+			}
+		}
+
 		initDb(dbPath);
 	});
 
@@ -91,7 +104,7 @@ export default function (pi: ExtensionAPI) {
 		description: "Start the Blueprint web cockpit",
 		handler: async (_args, ctx) => {
 			try {
-				const dbPath = getDbPath(cwd);
+				const dbPath = resolveDbPath();
 				initDb(dbPath);
 				const { path: webDist, found: webUiFound } = resolveWebDistPath();
 				await startServer(webDist, webUiFound);
@@ -210,5 +223,85 @@ export default function (pi: ExtensionAPI) {
 				`Reset the current feature back to the "${step}" step. Find the active feature and use blueprint_reset_step.`,
 			);
 		},
+	});
+
+	pi.registerCommand("blueprint:doctor", {
+		description: "Diagnose Blueprint Flow health: paths, DB, UI, port",
+		handler: async (_args, ctx) => {
+			const dataDir = resolveDataDir();
+			const dbPath = resolveDbPath();
+			const { path: webDist, found: webUiFound } = resolveWebDistPath();
+			const legacyPath = detectLegacyDbPath(cwd);
+
+			let dbOk = false;
+			let projectCount = 0;
+			let featureCount = 0;
+			let lastError: string | null = null;
+
+			try {
+				const database = getDb();
+				dbOk = true;
+				projectCount = (
+					database
+						.prepare(
+							"SELECT COUNT(*) as count FROM projects WHERE archived = 0",
+						)
+						.get() as { count: number }
+				).count;
+				featureCount = (
+					database.prepare("SELECT COUNT(*) as count FROM features").get() as {
+						count: number;
+					}
+				).count;
+			} catch (err: any) {
+				lastError = err?.message ?? "DB not initialized";
+			}
+
+			const portInUse = await checkPort(BLUEPRINT_PORT);
+
+			const lines = [
+				"=== Blueprint Flow Doctor ===",
+				"",
+				`Data directory:    ${dataDir}`,
+				`Database path:     ${dbPath}`,
+				`Database status:   ${dbOk ? "OK" : `ERROR: ${lastError}`}`,
+				`Projects:          ${projectCount}`,
+				`Features:          ${featureCount}`,
+				"",
+				`Web dist path:     ${webDist}`,
+				`Web UI found:      ${webUiFound ? "YES" : "NO — run: cd extensions/blueprint-flow/web && npm install && npm run build"}`,
+				`Port ${BLUEPRINT_PORT}:          ${portInUse ? "IN USE (server running)" : "FREE"}`,
+				"",
+				`Legacy DB found:   ${legacyPath ?? "none"}`,
+				`BLUEPRINT_DATA_DIR: ${process.env.BLUEPRINT_DATA_DIR ?? "(not set)"}`,
+				`BLUEPRINT_WEB_DIST: ${process.env.BLUEPRINT_WEB_DIST ?? "(not set)"}`,
+				"",
+				`Version:           0.1.0`,
+				`Pi install path:   ${import.meta.url}`,
+			];
+
+			ctx.ui.notify(lines.join("\n"));
+		},
+	});
+}
+
+/** Check if a port is in use by attempting a connection */
+function checkPort(port: number): Promise<boolean> {
+	return new Promise((resolve) => {
+		import("node:net").then(({ createConnection }) => {
+			const socket = createConnection({ port, host: "127.0.0.1" });
+			socket.setTimeout(500);
+			socket.on("connect", () => {
+				socket.destroy();
+				resolve(true);
+			});
+			socket.on("timeout", () => {
+				socket.destroy();
+				resolve(false);
+			});
+			socket.on("error", () => {
+				resolve(false);
+			});
+		});
 	});
 }

@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import Database from "better-sqlite3";
 import type { FeatureStatus, FlowStep, StepStatus } from "./config.js";
@@ -340,6 +340,73 @@ export function initDb(dbPath: string): Database.Database {
 	seedDefaultWorkflow();
 
 	return db;
+}
+
+/**
+ * Migrates data from a legacy database path to the current one.
+ * Copies the file if the target doesn't exist yet, or merges if both exist.
+ * Returns true if migration was performed.
+ */
+export function migrateFromLegacyDb(
+	legacyPath: string,
+	targetPath: string,
+): boolean {
+	if (!existsSync(legacyPath)) return false;
+	if (legacyPath === targetPath) return false;
+
+	// If target doesn't exist yet, just copy the legacy DB
+	if (!existsSync(targetPath)) {
+		mkdirSync(dirname(targetPath), { recursive: true });
+		copyFileSync(legacyPath, targetPath);
+
+		// Also copy WAL/SHM if they exist
+		if (existsSync(`${legacyPath}-wal`)) {
+			copyFileSync(`${legacyPath}-wal`, `${targetPath}-wal`);
+		}
+		if (existsSync(`${legacyPath}-shm`)) {
+			copyFileSync(`${legacyPath}-shm`, `${targetPath}-shm`);
+		}
+		return true;
+	}
+
+	// Both exist — merge legacy data into target (skip duplicates)
+	const targetDb = new Database(targetPath);
+	targetDb.pragma("journal_mode = WAL");
+	targetDb.pragma("foreign_keys = OFF");
+
+	try {
+		targetDb.exec(`ATTACH DATABASE '${legacyPath}' AS legacy`);
+
+		const tables = [
+			"projects",
+			"features",
+			"steps",
+			"artifacts",
+			"memories",
+			"interviews",
+			"agent_run_settings",
+			"import_reports",
+			"action_runs",
+			"action_run_events",
+			"workflows",
+		];
+
+		for (const table of tables) {
+			try {
+				targetDb.exec(
+					`INSERT OR IGNORE INTO main.${table} SELECT * FROM legacy.${table}`,
+				);
+			} catch {
+				// Table might not exist in legacy — safe to skip
+			}
+		}
+
+		targetDb.exec("DETACH DATABASE legacy");
+	} finally {
+		targetDb.close();
+	}
+
+	return true;
 }
 
 export function getDb(): Database.Database {

@@ -53,17 +53,21 @@ pi install git:github.com/gabrigabs/pi-blueprint-flow
 The web cockpit (port 4377) is the operational center for Blueprint Flow:
 
 ### Projects
+
 - Create new projects with name, repo path, description, and stack
 - Import existing projects with automatic stack detection
 - Edit and archive projects
 
 ### Features / Tasks
+
 - Create features with type, priority, and risk level
 - Types: `feature`, `bugfix`, `refactor`, `spike`, `research`, `maintenance`
 - Each feature gets the full 10-step development flow
 
 ### Agent Run Settings
+
 Before executing any action, configure:
+
 - **Model**: Select or type a model identifier
 - **Effort level**: `fast` | `balanced` | `deep` | `max`
 - **Execution mode**: `draft` | `review` | `apply`
@@ -71,40 +75,78 @@ Before executing any action, configure:
 
 ### Effort Levels
 
-| Level | Use Case | Research | Interview | Review |
-|-------|----------|----------|-----------|--------|
-| Fast | Simple tasks, low risk | 3 results | 2 questions | Light |
-| Balanced | Standard features | 5 results | 5 questions | Normal |
-| Deep | Complex logic, integrations | 10 results | 8 questions | Strict |
-| Max | Architecture, migrations, critical | 15 results | 12 questions | Strict |
+| Level    | Use Case                           | Research   | Interview    | Review |
+| -------- | ---------------------------------- | ---------- | ------------ | ------ |
+| Fast     | Simple tasks, low risk             | 3 results  | 2 questions  | Light  |
+| Balanced | Standard features                  | 5 results  | 5 questions  | Normal |
+| Deep     | Complex logic, integrations        | 10 results | 8 questions  | Strict |
+| Max      | Architecture, migrations, critical | 15 results | 12 questions | Strict |
 
 ### Project Import
+
 Import existing repositories with:
+
 - Stack detection (languages, frameworks, build tools, test frameworks)
 - Script detection from package.json
 - Agentic file detection (AGENTS.md, CLAUDE.md, .cursor/rules, etc.)
 - Project profile generation
 - Safe scanning with path validation and size limits
 
+## Data Persistence
+
+Blueprint Flow stores all data (projects, memories, artifacts, SQLite database) in a **stable directory outside the Pi-installed clone**, so `pi update` never deletes your data.
+
+### Default location
+
+```
+~/.pi/blueprint-flow/
+  blueprint.sqlite      # Main database
+  artifacts/            # Exported artifact files
+  wiki/                 # Wiki pages (future)
+  projects/             # Per-project data
+  logs/                 # Diagnostic logs
+```
+
+### Environment variables
+
+| Variable             | Purpose                          | Default                |
+| -------------------- | -------------------------------- | ---------------------- |
+| `BLUEPRINT_DATA_DIR` | Override data directory location | `~/.pi/blueprint-flow` |
+| `BLUEPRINT_WEB_DIST` | Override web UI dist path        | Auto-detected          |
+
+### After `pi update`
+
+Your projects and memories are safe — they live in `~/.pi/blueprint-flow/`, not inside the Pi package directory.
+
+If the web UI stops working after update, run:
+
+```bash
+cd extensions/blueprint-flow/web && npm install && npm run build
+```
+
+Or use `/blueprint:doctor` to diagnose the issue.
+
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `/blueprint:init` | Initialize a new project |
-| `/blueprint:ui` | Open web cockpit (port 4377) |
-| `/blueprint:feature` | Create a new feature |
-| `/blueprint:status` | Show current flow state |
-| `/blueprint:advance` | Advance to next step |
-| `/blueprint:artifacts` | List artifacts for current feature |
-| `/blueprint:memory` | Search project memory |
-| `/blueprint:interview` | Start/resume interview |
-| `/blueprint:research` | Run repository research |
-| `/blueprint:review` | Run review gate |
-| `/blueprint:reset` | Reset feature to a previous step |
+| Command                | Description                          |
+| ---------------------- | ------------------------------------ |
+| `/blueprint:init`      | Initialize a new project             |
+| `/blueprint:ui`        | Open web cockpit (port 4377)         |
+| `/blueprint:doctor`    | Diagnose health: paths, DB, UI, port |
+| `/blueprint:feature`   | Create a new feature                 |
+| `/blueprint:status`    | Show current flow state              |
+| `/blueprint:advance`   | Advance to next step                 |
+| `/blueprint:artifacts` | List artifacts for current feature   |
+| `/blueprint:memory`    | Search project memory                |
+| `/blueprint:interview` | Start/resume interview               |
+| `/blueprint:research`  | Run repository research              |
+| `/blueprint:review`    | Run review gate                      |
+| `/blueprint:reset`     | Reset feature to a previous step     |
 
 ## REST API
 
 ### Read Endpoints
+
 ```
 GET  /api/projects
 GET  /api/projects/:id
@@ -120,6 +162,7 @@ GET  /api/import-reports/:id
 ```
 
 ### Write Endpoints
+
 ```
 POST   /api/projects
 PATCH  /api/projects/:id
@@ -189,6 +232,7 @@ pi install /path/to/pi-blueprint-flow
 ## Security
 
 The import and repo scan features include:
+
 - Path traversal prevention (realpath validation)
 - Blocked patterns: `.env`, `.pem`, `.key`, `node_modules`, `.git`, `dist`, `coverage`, `.next`
 - File size limits (50KB per file)

@@ -1,7 +1,7 @@
 import fastifyStatic from "@fastify/static";
 import fastifyWebsocket from "@fastify/websocket";
 import Fastify, { type FastifyInstance } from "fastify";
-import { BLUEPRINT_PORT } from "./config.js";
+import { BLUEPRINT_PORT, resolveDataDir, resolveDbPath } from "./config.js";
 import { getDb } from "./db.js";
 import { bus } from "./events.js";
 import { registerActionRunRoutes } from "./routes/action-runs.js";
@@ -77,18 +77,38 @@ export async function startServer(
 
 	server.get("/api/status", async () => {
 		let dbInitialized = false;
+		let projectCount = 0;
+		let featureCount = 0;
 		try {
-			getDb();
+			const database = getDb();
 			dbInitialized = true;
+			projectCount = (
+				database
+					.prepare("SELECT COUNT(*) as count FROM projects WHERE archived = 0")
+					.get() as { count: number }
+			).count;
+			featureCount = (
+				database.prepare("SELECT COUNT(*) as count FROM features").get() as {
+					count: number;
+				}
+			).count;
 		} catch {}
 
 		return {
 			ok: true,
 			port: BLUEPRINT_PORT,
 			dbInitialized,
-			webUiFound,
+			dataDir: resolveDataDir(),
+			dbPath: resolveDbPath(),
 			webDistPath,
+			webUiFound,
+			projectCount,
+			featureCount,
 			version: "0.1.0",
+			env: {
+				BLUEPRINT_DATA_DIR: process.env.BLUEPRINT_DATA_DIR ?? null,
+				BLUEPRINT_WEB_DIST: process.env.BLUEPRINT_WEB_DIST ?? null,
+			},
 		};
 	});
 
