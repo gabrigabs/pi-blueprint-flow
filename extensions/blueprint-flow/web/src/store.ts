@@ -144,6 +144,12 @@ interface BlueprintStore {
 	// Content versioning (for real-time updates)
 	artifactContentVersion: number;
 
+	// Live activity (streaming from Pi agent)
+	liveActionRunId: string | null;
+	liveToolName: string | null;
+	liveMessagePreview: string | null;
+	liveToolHistory: { name: string; startedAt: number; endedAt?: number }[];
+
 	setProjects: (projects: Project[]) => void;
 	setFeatures: (features: Feature[]) => void;
 	setSteps: (steps: Step[]) => void;
@@ -167,6 +173,15 @@ interface BlueprintStore {
 	incrementArtifactVersion: () => void;
 	openModal: (modal: ModalType) => void;
 	closeModal: () => void;
+
+	// Live activity setters
+	setLiveActivity: (
+		actionRunId: string | null,
+		toolName: string | null,
+	) => void;
+	appendLiveMessage: (text: string) => void;
+	clearLiveActivity: () => void;
+	pushLiveToolEnd: () => void;
 }
 
 export const useStore = create<BlueprintStore>((set) => ({
@@ -191,6 +206,11 @@ export const useStore = create<BlueprintStore>((set) => ({
 	sidebarCollapsed: false,
 	footerCollapsed: false,
 	artifactContentVersion: 0,
+
+	liveActionRunId: null,
+	liveToolName: null,
+	liveMessagePreview: null,
+	liveToolHistory: [],
 
 	setProjects: (projects) => set({ projects }),
 	setFeatures: (features) => set({ features }),
@@ -236,4 +256,31 @@ export const useStore = create<BlueprintStore>((set) => ({
 		})),
 	openModal: (modal) => set({ activeModal: modal }),
 	closeModal: () => set({ activeModal: null }),
+
+	setLiveActivity: (actionRunId, toolName) =>
+		set((state) => ({
+			liveActionRunId: actionRunId,
+			liveToolName: toolName,
+			liveToolHistory: toolName
+				? [...state.liveToolHistory, { name: toolName, startedAt: Date.now() }]
+				: state.liveToolHistory,
+		})),
+	appendLiveMessage: (text) =>
+		set((state) => ({
+			liveMessagePreview: (state.liveMessagePreview ?? "") + text,
+		})),
+	clearLiveActivity: () =>
+		set({
+			liveActionRunId: null,
+			liveToolName: null,
+			liveMessagePreview: null,
+			liveToolHistory: [],
+		}),
+	pushLiveToolEnd: () =>
+		set((state) => {
+			const history = [...state.liveToolHistory];
+			const last = history[history.length - 1];
+			if (last && !last.endedAt) last.endedAt = Date.now();
+			return { liveToolHistory: history, liveToolName: null };
+		}),
 }));

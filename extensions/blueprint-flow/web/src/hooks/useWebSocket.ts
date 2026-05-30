@@ -214,6 +214,19 @@ export function useWebSocket() {
 							},
 						}),
 					);
+
+					// Extract live activity for streaming indicators
+					const evType = msg.data.type as string;
+					if (evType === "pi.tool.start") {
+						store.setLiveActivity(
+							msg.data.actionRunId,
+							msg.data.message ?? "tool",
+						);
+					} else if (evType === "pi.tool.end") {
+						store.pushLiveToolEnd();
+					} else if (evType === "pi.message.delta") {
+						store.appendLiveMessage(msg.data.message ?? "");
+					}
 				}
 				break;
 
@@ -224,6 +237,7 @@ export function useWebSocket() {
 						completed_at: new Date().toISOString(),
 						updated_at: new Date().toISOString(),
 					});
+					store.clearLiveActivity();
 					addToast({ type: "success", message: "Action completed" });
 					debouncedRefresh("featureData", refreshFeatureData);
 				}
@@ -237,6 +251,7 @@ export function useWebSocket() {
 						completed_at: new Date().toISOString(),
 						updated_at: new Date().toISOString(),
 					});
+					store.clearLiveActivity();
 					addToast({
 						type: "error",
 						message: `Action failed: ${msg.data.error ?? "Unknown error"}`,
