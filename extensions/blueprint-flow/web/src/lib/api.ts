@@ -238,6 +238,18 @@ export const api = {
 	interviews: {
 		list: (featureId: string) =>
 			request<Interview[]>(`/api/features/${featureId}/interviews`),
+		pending: (featureId: string) =>
+			request<Interview[]>(`/api/features/${featureId}/interviews/pending`),
+		answer: (id: string, answer: string) =>
+			request<Interview>(`/api/interviews/${id}/answer`, {
+				method: "POST",
+				body: JSON.stringify({ answer }),
+			}),
+		skip: (id: string, reason?: string) =>
+			request<Interview>(`/api/interviews/${id}/skip`, {
+				method: "POST",
+				body: JSON.stringify({ reason }),
+			}),
 	},
 
 	memories: {

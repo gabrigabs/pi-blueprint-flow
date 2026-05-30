@@ -10,6 +10,7 @@ import { registerArtifactRoutes } from "./routes/artifacts.js";
 import { registerConfigRoutes } from "./routes/config.js";
 import { registerFeatureRoutes } from "./routes/features.js";
 import { registerImportRoutes } from "./routes/import.js";
+import { registerInterviewRoutes } from "./routes/interviews.js";
 import { registerProjectRoutes } from "./routes/projects.js";
 import { registerWorkflowRoutes } from "./routes/workflows.js";
 
@@ -315,6 +316,7 @@ export async function startServer(
 	registerActionRunRoutes(server);
 	registerArtifactRoutes(server);
 	registerImportRoutes(server);
+	registerInterviewRoutes(server);
 	registerConfigRoutes(server);
 	registerWorkflowRoutes(server);
 
