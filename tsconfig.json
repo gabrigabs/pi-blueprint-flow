@@ -11,8 +11,9 @@
     "declaration": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": true
   },
-  "include": ["extensions/**/*.ts"],
+  "include": ["extensions/**/*.ts", "types/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "extensions/blueprint-flow/web"]
 }
