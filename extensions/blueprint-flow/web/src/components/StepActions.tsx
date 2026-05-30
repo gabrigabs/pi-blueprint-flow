@@ -112,7 +112,7 @@ export function StepActions({
 					onClick={handleBack}
 					disabled={loading !== null}
 					title="Back to previous step"
-					className="rounded p-1 text-gray-500 hover:bg-gray-800 hover:text-gray-300 disabled:opacity-30"
+					className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-secondary)] disabled:opacity-30"
 				>
 					<ChevronLeft size={14} />
 				</button>
@@ -121,7 +121,7 @@ export function StepActions({
 					onClick={() => setShowRunPanel(!showRunPanel)}
 					disabled={loading !== null}
 					title="Run this step"
-					className="flex items-center gap-1 rounded bg-blue-600/20 px-2 py-1 text-xs text-blue-300 hover:bg-blue-600/30 disabled:opacity-30"
+					className="flex items-center gap-1 rounded bg-[var(--cyan-glow)] px-2 py-1 text-xs text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/20 disabled:opacity-30"
 				>
 					<Play size={10} />
 					Run
@@ -131,7 +131,7 @@ export function StepActions({
 					onClick={handleAdvance}
 					disabled={loading !== null}
 					title="Advance to next step"
-					className="flex items-center gap-1 rounded bg-emerald-600/20 px-2 py-1 text-xs text-emerald-300 hover:bg-emerald-600/30 disabled:opacity-30"
+					className="flex items-center gap-1 rounded bg-[var(--emerald-glow)] px-2 py-1 text-xs text-[var(--accent-success)] hover:bg-[var(--accent-success)]/20 disabled:opacity-30"
 				>
 					Done
 					<ChevronRight size={10} />
@@ -141,7 +141,7 @@ export function StepActions({
 					onClick={() => handleStatusChange("blocked")}
 					disabled={loading !== null}
 					title="Mark as blocked"
-					className="rounded p-1 text-gray-500 hover:bg-red-900/30 hover:text-red-400 disabled:opacity-30"
+					className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--rose-glow)] hover:text-[var(--rose-400)] disabled:opacity-30"
 				>
 					<Ban size={12} />
 				</button>
@@ -150,14 +150,14 @@ export function StepActions({
 					onClick={() => handleStatusChange("done")}
 					disabled={loading !== null}
 					title="Mark as done"
-					className="rounded p-1 text-gray-500 hover:bg-emerald-900/30 hover:text-emerald-400 disabled:opacity-30"
+					className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--emerald-glow)] hover:text-[var(--accent-success)] disabled:opacity-30"
 				>
 					<CheckCircle size={12} />
 				</button>
 			</div>
 
 			{showRunPanel && (
-				<div className="rounded border border-gray-700 bg-gray-900 p-2">
+				<div className="rounded border border-[var(--border-default)] bg-[var(--bg-inset)] p-2">
 					<AgentRunSettingsPanel
 						value={settings}
 						onChange={setSettings}
@@ -166,7 +166,7 @@ export function StepActions({
 					<button
 						onClick={handleRunStep}
 						disabled={loading !== null}
-						className="mt-2 w-full rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+						className="mt-2 w-full rounded bg-[var(--accent-primary)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--cyan-500)] disabled:opacity-50"
 					>
 						{loading === "run" ? "Running..." : `Run ${stepName}`}
 					</button>

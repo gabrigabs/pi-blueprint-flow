@@ -119,23 +119,23 @@ function RunCard({
 		<div
 			className={`rounded-lg border transition-all duration-200 ${
 				isActive
-					? "border-fuchsia-500/20 bg-fuchsia-950/10"
+					? "border-[var(--accent-primary)]/20 bg-[var(--cyan-glow)]"
 					: isTerminal
-						? "border-white/[0.03] bg-zinc-900/30"
-						: "border-white/[0.04] bg-zinc-900/50"
+						? "border-[var(--border-subtle)] bg-[var(--bg-inset)]"
+						: "border-[var(--border-default)] bg-[var(--bg-surface)]"
 			}`}
 		>
 			<div className="flex items-center justify-between px-3 py-2">
 				<div className="flex items-center gap-2 min-w-0">
 					<ActionStatusBadge status={run.status} />
-					<span className="text-xs text-zinc-300 truncate">
+					<span className="text-xs text-[var(--text-secondary)] truncate">
 						{run.action_type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
 					</span>
 				</div>
 
 				<div className="flex items-center gap-1 shrink-0">
 					{run.error && (
-						<span className="max-w-[100px] truncate text-[10px] text-red-400/80" title={run.error}>
+						<span className="max-w-[100px] truncate text-[10px] text-[var(--rose-400)]/80" title={run.error}>
 							{run.error}
 						</span>
 					)}
@@ -143,7 +143,7 @@ function RunCard({
 						<button
 							type="button"
 							onClick={(e) => { e.stopPropagation(); onCancel(); }}
-							className="p-1 rounded text-zinc-600 hover:text-red-400 hover:bg-red-950/30 transition-colors"
+							className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--rose-400)] hover:bg-[var(--rose-glow)] transition-colors"
 							title="Cancel"
 						>
 							<XCircle size={12} />
@@ -152,7 +152,7 @@ function RunCard({
 					<button
 						type="button"
 						onClick={onToggle}
-						className="p-1 rounded text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors"
+						className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] transition-colors"
 					>
 						{expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
 					</button>
@@ -166,9 +166,9 @@ function RunCard({
 			)}
 
 			{expanded && (
-				<div className="border-t border-white/[0.04] px-3 py-2 max-h-36 overflow-y-auto">
+				<div className="border-t border-[var(--border-subtle)] px-3 py-2 max-h-36 overflow-y-auto">
 					{liveEvents.length === 0 ? (
-						<p className="text-[11px] text-zinc-600 italic">No events yet</p>
+						<p className="text-[11px] text-[var(--text-muted)] italic">No events yet</p>
 					) : (
 						<div className="space-y-0.5">
 							{liveEvents.map((evt, i) => (
@@ -185,22 +185,22 @@ function RunCard({
 
 function EventLine({ event }: { event: LiveEvent }) {
 	const typeColors: Record<string, string> = {
-		"pi.agent.start": "text-fuchsia-500",
-		"pi.agent.end": "text-emerald-500",
-		"pi.tool.start": "text-cyan-500",
-		"pi.tool.end": "text-cyan-600",
-		"pi.prompt.injected": "text-violet-500",
-		"blueprint.error": "text-red-500",
+		"pi.agent.start": "text-[var(--accent-primary)]",
+		"pi.agent.end": "text-[var(--accent-success)]",
+		"pi.tool.start": "text-[var(--cyan-300)]",
+		"pi.tool.end": "text-[var(--cyan-500)]",
+		"pi.prompt.injected": "text-[var(--amber-400)]",
+		"blueprint.error": "text-[var(--rose-400)]",
 	};
 
-	const color = typeColors[event.type] ?? "text-zinc-600";
+	const color = typeColors[event.type] ?? "text-[var(--text-muted)]";
 	const shortType = event.type.split(".").pop() ?? event.type;
 
 	return (
 		<div className="flex items-baseline gap-2 text-[11px] leading-relaxed">
 			<span className={`font-mono shrink-0 ${color}`}>{shortType}</span>
 			{event.message && (
-				<span className="text-zinc-500 truncate">{event.message}</span>
+				<span className="text-[var(--text-tertiary)] truncate">{event.message}</span>
 			)}
 		</div>
 	);
@@ -223,7 +223,7 @@ function ElapsedTime({ startedAt }: { startedAt: string }) {
 	}, [startedAt]);
 
 	return (
-		<div className="flex items-center gap-1 text-[10px] text-zinc-600">
+		<div className="flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
 			<Clock size={9} />
 			<span>{elapsed}</span>
 		</div>
