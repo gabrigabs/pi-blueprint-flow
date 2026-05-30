@@ -29,7 +29,6 @@ export function App() {
 		s.features.find((f) => f.id === s.selectedFeatureId),
 	);
 
-	// Determine if any action is actively running
 	const activeRun = actionRuns.find((r) =>
 		["agent_running", "tool_running", "injected", "waiting_for_pi"].includes(
 			r.status,
@@ -71,80 +70,172 @@ export function App() {
 	}, [selectedFeatureId]);
 
 	return (
-		<div className="flex h-screen flex-col bg-gray-950">
-			{/* Header */}
-			<header className="flex items-center justify-between border-b border-gray-800 px-4 py-2">
-				<div className="flex items-center gap-3">
-					<h1 className="text-lg font-semibold text-gray-100">
-						Blueprint Flow
-					</h1>
+		<div className="flex h-screen flex-col overflow-hidden">
+			{/* ═══ Header — Mission Control Bar ═══ */}
+			<header
+				className="relative z-10 flex items-center justify-between border-b px-5 py-2.5"
+				style={{
+					borderColor: "var(--border-subtle)",
+					background: "var(--bg-elevated)",
+				}}
+			>
+				{/* Left: Brand + context */}
+				<div className="flex items-center gap-4">
+					<div className="flex items-center gap-2.5">
+						<div className="h-5 w-5 rounded-sm bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+							<span className="text-[9px] font-bold text-black font-mono">
+								BF
+							</span>
+						</div>
+						<h1
+							className="font-display text-lg tracking-tight"
+							style={{ color: "var(--text-primary)" }}
+						>
+							Blueprint Flow
+						</h1>
+					</div>
 					{currentFeature && (
-						<span className="text-sm text-gray-500 truncate max-w-[200px]">
-							/ {currentFeature.title}
-						</span>
+						<div className="flex items-center gap-2">
+							<span className="text-[var(--text-muted)]">/</span>
+							<span
+								className="font-mono text-xs tracking-wide"
+								style={{ color: "var(--text-secondary)" }}
+							>
+								{currentFeature.title}
+							</span>
+						</div>
 					)}
 				</div>
-				<div className="flex items-center gap-3 text-sm">
-					{/* Active run indicator */}
+
+				{/* Right: Status indicators */}
+				<div className="flex items-center gap-4">
+					{/* Active run telemetry */}
 					{activeRun && (
-						<span className="flex items-center gap-1.5 text-fuchsia-400">
-							<Loader2 size={12} className="animate-spin" />
-							<span className="text-xs">Pi running</span>
-						</span>
+						<div
+							className="flex items-center gap-2 rounded-md px-2.5 py-1"
+							style={{
+								background: "var(--amber-glow)",
+								border: "1px solid rgba(245, 158, 11, 0.15)",
+							}}
+						>
+							<Loader2 size={11} className="animate-spin text-amber-400" />
+							<span className="font-mono text-[10px] font-medium text-amber-300 uppercase tracking-wider">
+								Agent Active
+							</span>
+						</div>
 					)}
+
 					{/* Bridge status */}
 					{bridgeStatus === "not_connected" && !activeRun && (
-						<span className="flex items-center gap-1 text-xs text-red-400/70">
-							<Radio size={11} />
-							Pi offline
-						</span>
+						<div className="flex items-center gap-1.5">
+							<Radio size={10} className="text-rose-400" />
+							<span className="font-mono text-[10px] text-rose-400/80">
+								Pi Offline
+							</span>
+						</div>
 					)}
-					{/* WebSocket connection */}
-					{connected ? (
-						<span className="flex items-center gap-1 text-emerald-400">
-							<Wifi size={14} />
-						</span>
-					) : (
-						<span className="flex items-center gap-1 text-red-400">
-							<WifiOff size={14} /> Disconnected
-						</span>
-					)}
+
+					{/* Connection indicator */}
+					<div className="flex items-center gap-1.5">
+						{connected ? (
+							<>
+								<div className="status-dot bg-emerald-400" />
+								<Wifi size={12} className="text-emerald-400/60" />
+							</>
+						) : (
+							<>
+								<div className="status-dot bg-rose-400" />
+								<WifiOff size={12} className="text-rose-400/60" />
+								<span className="font-mono text-[10px] text-rose-400/60">
+									DISCONNECTED
+								</span>
+							</>
+						)}
+					</div>
 				</div>
 			</header>
 
-			{/* Main layout */}
+			{/* ═══ Main Layout ═══ */}
 			<div className="flex flex-1 overflow-hidden">
-				{/* Left sidebar */}
-				<aside className="w-64 shrink-0 overflow-y-auto border-r border-gray-800">
+				{/* Left sidebar — Navigation */}
+				<aside
+					className="w-64 shrink-0 overflow-y-auto scrollbar-thin border-r"
+					style={{
+						borderColor: "var(--border-subtle)",
+						background: "var(--bg-elevated)",
+					}}
+				>
 					<ProjectSidebar />
 				</aside>
 
-				{/* Center content */}
-				<main className="flex flex-1 flex-col overflow-hidden">
+				{/* Center — Flow Canvas */}
+				<main
+					className="flex flex-1 flex-col overflow-hidden"
+					style={{ background: "var(--bg-base)" }}
+				>
 					{selectedFeatureId ? (
 						<div className="flex flex-1 overflow-hidden">
 							<div className="flex flex-1 flex-col overflow-hidden">
 								<VerticalKanban />
 							</div>
 
-							{/* Right panel */}
-							<aside className="w-96 shrink-0 overflow-y-auto border-l border-gray-800">
+							{/* Right panel — Instruments */}
+							<aside
+								className="w-96 shrink-0 overflow-y-auto scrollbar-thin border-l"
+								style={{
+									borderColor: "var(--border-subtle)",
+									background: "var(--bg-elevated)",
+								}}
+							>
 								<ActionRunPanel />
 								<ArtifactInspector />
 								<InterviewPanel />
 							</aside>
 						</div>
 					) : (
-						<div className="flex flex-1 items-center justify-center text-gray-500">
-							<p>Select a feature to view its flow</p>
+						<div className="flex flex-1 items-center justify-center">
+							<div className="text-center animate-fade-in">
+								<div
+									className="mx-auto mb-4 h-16 w-16 rounded-xl flex items-center justify-center"
+									style={{
+										background: "var(--bg-surface)",
+										border: "1px solid var(--border-default)",
+									}}
+								>
+									<span
+										className="font-display text-2xl"
+										style={{ color: "var(--text-muted)" }}
+									>
+										◇
+									</span>
+								</div>
+								<p
+									className="font-display text-lg"
+									style={{ color: "var(--text-tertiary)" }}
+								>
+									Select a feature to view its flow
+								</p>
+								<p
+									className="mt-1 font-mono text-[10px] uppercase tracking-widest"
+									style={{ color: "var(--text-muted)" }}
+								>
+									or create one from the sidebar
+								</p>
+							</div>
 						</div>
 					)}
 				</main>
 			</div>
 
-			{/* Bottom panel — Memory */}
+			{/* ═══ Bottom Panel — Knowledge Base ═══ */}
 			{selectedProjectId && (
-				<footer className="h-48 shrink-0 overflow-y-auto border-t border-gray-800">
+				<footer
+					className="h-48 shrink-0 overflow-y-auto scrollbar-thin border-t"
+					style={{
+						borderColor: "var(--border-subtle)",
+						background: "var(--bg-elevated)",
+					}}
+				>
 					<MemoryPanel />
 				</footer>
 			)}

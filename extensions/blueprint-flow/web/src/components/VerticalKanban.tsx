@@ -49,37 +49,39 @@ const FALLBACK_LABELS: Record<string, string> = {
 
 const STATUS_STYLES: Record<
 	string,
-	{ bg: string; text: string; border: string }
+	{ bg: string; text: string; border: string; glow?: string }
 > = {
 	pending: {
-		bg: "bg-gray-900",
-		text: "text-gray-500",
-		border: "border-gray-700",
+		bg: "bg-[var(--bg-surface)]",
+		text: "text-[var(--text-tertiary)]",
+		border: "border-[var(--border-subtle)]",
 	},
 	running: {
-		bg: "bg-blue-950/50",
-		text: "text-blue-300",
-		border: "border-blue-600",
+		bg: "bg-[rgba(34,211,238,0.04)]",
+		text: "text-cyan-300",
+		border: "border-cyan-500/20",
+		glow: "instrument-glow-cyan",
 	},
 	needs_user: {
-		bg: "bg-amber-950/50",
+		bg: "bg-[rgba(245,158,11,0.04)]",
 		text: "text-amber-300",
-		border: "border-amber-600",
+		border: "border-amber-500/20",
+		glow: "instrument-glow-amber",
 	},
 	blocked: {
-		bg: "bg-red-950/50",
-		text: "text-red-300",
-		border: "border-red-600",
+		bg: "bg-[rgba(244,63,94,0.04)]",
+		text: "text-rose-300",
+		border: "border-rose-500/20",
 	},
 	done: {
-		bg: "bg-emerald-950/30",
+		bg: "bg-[rgba(52,211,153,0.03)]",
 		text: "text-emerald-400",
-		border: "border-emerald-700",
+		border: "border-emerald-500/15",
 	},
 	rejected: {
-		bg: "bg-red-950/30",
-		text: "text-red-400",
-		border: "border-red-700",
+		bg: "bg-[rgba(244,63,94,0.03)]",
+		text: "text-rose-400",
+		border: "border-rose-500/15",
 	},
 };
 
@@ -126,20 +128,30 @@ export function VerticalKanban() {
 
 	if (steps.length === 0) {
 		return (
-			<div className="flex flex-1 items-center justify-center text-gray-500">
-				<p>No flow steps loaded</p>
+			<div className="flex flex-1 items-center justify-center">
+				<p
+					className="font-mono text-xs uppercase tracking-widest"
+					style={{ color: "var(--text-muted)" }}
+				>
+					No flow steps loaded
+				</p>
 			</div>
 		);
 	}
 
 	return (
-		<div className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-			<div className="mb-2 flex items-center justify-between">
-				<h2 className="text-xs font-medium uppercase tracking-wider text-gray-400">
-					Development Flow
-				</h2>
+		<div className="flex flex-1 flex-col gap-1.5 overflow-y-auto scrollbar-thin p-4">
+			<div className="mb-3 flex items-center justify-between">
+				<h2 className="section-label">Development Flow</h2>
 				{activeWorkflow && !activeWorkflow.is_default && (
-					<span className="rounded-md bg-fuchsia-950/30 border border-fuchsia-500/20 px-2 py-0.5 text-[10px] text-fuchsia-400">
+					<span
+						className="rounded-md px-2 py-0.5 font-mono text-[10px]"
+						style={{
+							background: "rgba(245, 158, 11, 0.08)",
+							border: "1px solid rgba(245, 158, 11, 0.15)",
+							color: "var(--amber-300)",
+						}}
+					>
 						{activeWorkflow.name}
 					</span>
 				)}
@@ -165,8 +177,8 @@ export function VerticalKanban() {
 				return (
 					<div
 						key={step.id}
-						className={`rounded-lg border px-3 py-2 transition-all ${style.bg} ${style.border} ${
-							isActive ? "ring-1 ring-blue-500/30" : ""
+						className={`rounded-lg border px-3.5 py-2.5 transition-all ${style.bg} ${style.border} ${
+							isActive ? (style.glow ?? "") : ""
 						}`}
 					>
 						{/* Step header */}
@@ -371,7 +383,7 @@ function StepStatusBadge({ status }: { status: string }) {
 
 	return (
 		<span
-			className={`rounded px-1.5 py-0.5 text-xs font-medium ${style.text} ${style.bg}`}
+			className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-medium ${style.text} ${style.bg}`}
 		>
 			{labels[status] || status}
 		</span>
