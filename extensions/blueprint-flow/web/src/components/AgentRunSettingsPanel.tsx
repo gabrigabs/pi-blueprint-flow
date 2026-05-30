@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Cpu, Zap, Scale, Brain, Flame } from "lucide-react";
-import type { AgentRunSettingsPayload } from "../lib/api";
+import { useEffect, useState } from "react";
+import { Cpu, Zap, Scale, Brain, Flame, Loader2 } from "lucide-react";
+import { api } from "../lib/api";
+import type { AgentConfigResponse, AgentModelInfo, AgentRunSettingsPayload, ThinkingLevel } from "../lib/api";
 
 interface Props {
   value: AgentRunSettingsPayload;
@@ -23,26 +24,84 @@ const MODE_OPTIONS = [
 
 export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [agentConfig, setAgentConfig] = useState<AgentConfigResponse | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [configError, setConfigError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setConfigLoading(true);
+    api.config
+      .agent()
+      .then((config) => {
+        if (!cancelled) {
+          setAgentConfig(config);
+          setConfigError(null);
+        }
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setConfigError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setConfigLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   function update(partial: Partial<AgentRunSettingsPayload>) {
     onChange({ ...value, ...partial });
   }
 
+  const models = agentConfig?.models ?? [];
+  const hasModels = models.length > 0;
+  const defaultModel = agentConfig?.defaultModel;
+
   return (
     <div className="space-y-3">
-      {/* Model */}
+      {/* Model Selector */}
       <div>
         <label className="mb-1 block text-xs font-medium text-gray-400">
           <Cpu size={10} className="mr-1 inline" />
           Model
         </label>
-        <input
-          type="text"
-          value={value.modelId ?? ""}
-          onChange={(e) => update({ modelId: e.target.value || undefined })}
-          placeholder="default"
-          className="w-full rounded border border-gray-700 bg-gray-900 px-2 py-1.5 text-sm text-gray-200 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
-        />
+        {configLoading ? (
+          <div className="flex items-center gap-1.5 rounded border border-gray-700 bg-gray-900 px-2 py-1.5 text-xs text-gray-500">
+            <Loader2 size={10} className="animate-spin" />
+            Loading models...
+          </div>
+        ) : hasModels ? (
+          <select
+            value={value.modelId ?? ""}
+            onChange={(e) => update({ modelId: e.target.value || undefined })}
+            className="w-full rounded border border-gray-700 bg-gray-900 px-2 py-1.5 text-sm text-gray-200 focus:border-blue-500 focus:outline-none"
+          >
+            <option value="">
+              {defaultModel ? `default (${defaultModel})` : "default"}
+            </option>
+            {groupModelsByProvider(models).map(([provider, providerModels]) => (
+              <optgroup key={provider} label={provider}>
+                {providerModels.map((m) => (
+                  <option key={`${m.provider}/${m.id}`} value={m.id}>
+                    {m.name}{m.reasoning ? " (reasoning)" : ""}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        ) : (
+          <input
+            type="text"
+            value={value.modelId ?? ""}
+            onChange={(e) => update({ modelId: e.target.value || undefined })}
+            placeholder={defaultModel ?? "default"}
+            className="w-full rounded border border-gray-700 bg-gray-900 px-2 py-1.5 text-sm text-gray-200 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
+          />
+        )}
+        {configError && (
+          <p className="mt-0.5 text-xs text-amber-500/70">
+            Could not load models from Pi agent
+          </p>
+        )}
       </div>
 
       {/* Effort Level */}
@@ -87,6 +146,14 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
           ))}
         </div>
       </div>
+
+      {/* Thinking Level (only if Pi agent connected) */}
+      {agentConfig && agentConfig.thinkingLevels.length > 0 && !compact && (
+        <ThinkingLevelSelector
+          levels={agentConfig.thinkingLevels}
+          current={agentConfig.currentThinkingLevel}
+        />
+      )}
 
       {/* Options */}
       {!compact && (
@@ -167,6 +234,55 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
   );
 }
 
+function ThinkingLevelSelector({
+  levels,
+  current,
+}: {
+  levels: ThinkingLevel[];
+  current: ThinkingLevel | null;
+}) {
+  const [active, setActive] = useState<ThinkingLevel | null>(current);
+  const [updating, setUpdating] = useState(false);
+
+  function handleChange(level: ThinkingLevel) {
+    setActive(level);
+    setUpdating(true);
+    api.config
+      .setThinkingLevel(level)
+      .then(() => setActive(level))
+      .catch(() => setActive(current))
+      .finally(() => setUpdating(false));
+  }
+
+  const displayLevels = levels.filter((l) => l !== "off");
+
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-medium text-gray-400">
+        Thinking Level
+        {updating && <Loader2 size={9} className="ml-1 inline animate-spin" />}
+      </label>
+      <div className="grid grid-cols-5 gap-1">
+        {displayLevels.map((level) => (
+          <button
+            key={level}
+            type="button"
+            disabled={updating}
+            onClick={() => handleChange(level)}
+            className={`rounded px-1.5 py-1 text-xs capitalize transition-colors ${
+              active === level
+                ? "bg-violet-600/30 text-violet-300 ring-1 ring-violet-500/50"
+                : "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
+            } disabled:opacity-50`}
+          >
+            {level === "xhigh" ? "max" : level}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ToggleOption({
   label,
   checked,
@@ -187,4 +303,17 @@ function ToggleOption({
       <span className="text-xs text-gray-400">{label}</span>
     </label>
   );
+}
+
+function groupModelsByProvider(models: AgentModelInfo[]): [string, AgentModelInfo[]][] {
+  const grouped = new Map<string, AgentModelInfo[]>();
+  for (const model of models) {
+    const existing = grouped.get(model.provider);
+    if (existing) {
+      existing.push(model);
+    } else {
+      grouped.set(model.provider, [model]);
+    }
+  }
+  return Array.from(grouped.entries());
 }

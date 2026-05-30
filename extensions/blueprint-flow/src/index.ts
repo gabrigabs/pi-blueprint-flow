@@ -11,6 +11,7 @@ import type { Feature } from "./db.js";
 import { closeDb, getDb, initDb } from "./db.js";
 import { bus } from "./events.js";
 import { startServer, stopServer } from "./server.js";
+import { setPiRef } from "./services/pi-config-reader.js";
 import { readArtifactTool, saveArtifactTool } from "./tools/artifacts.js";
 import { createFeatureTool, listFeaturesTool } from "./tools/feature.js";
 import {
@@ -31,6 +32,9 @@ import { reviewGateTool } from "./tools/review-gate.js";
 
 export default function (pi: ExtensionAPI) {
 	const cwd = process.cwd();
+
+	// Store Pi reference for config/model access
+	setPiRef(pi);
 
 	// Initialize database on session start
 	pi.on("session_start", async () => {

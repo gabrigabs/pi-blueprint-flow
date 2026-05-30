@@ -6,6 +6,7 @@ import { getDb } from "./db.js";
 import { bus } from "./events.js";
 import { registerActionRoutes } from "./routes/actions.js";
 import { registerArtifactRoutes } from "./routes/artifacts.js";
+import { registerConfigRoutes } from "./routes/config.js";
 import { registerFeatureRoutes } from "./routes/features.js";
 import { registerImportRoutes } from "./routes/import.js";
 import { registerProjectRoutes } from "./routes/projects.js";
@@ -285,6 +286,7 @@ export async function startServer(
 	registerActionRoutes(server);
 	registerArtifactRoutes(server);
 	registerImportRoutes(server);
+	registerConfigRoutes(server);
 
 	// --- SPA Fallback / Not Found Handler ---
 
