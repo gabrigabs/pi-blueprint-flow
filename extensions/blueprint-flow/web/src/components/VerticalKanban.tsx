@@ -12,6 +12,7 @@ import {
 	Inbox,
 	Loader2,
 	MessageSquare,
+	Palette,
 	Search,
 	ShieldCheck,
 	Sparkles,
@@ -26,6 +27,7 @@ import { InlineArtifactViewer } from "./InlineArtifactViewer";
 import { InlineInterviewSection } from "./InlineInterviewSection";
 import { InlineStepTabs, type StepTab } from "./InlineStepTabs";
 import { StepActions } from "./StepActions";
+import { DesignCanvas } from "./design/DesignCanvas";
 
 const STEP_ICONS: Record<string, React.ReactNode> = {
 	intake: <Inbox size={13} />,
@@ -33,6 +35,7 @@ const STEP_ICONS: Record<string, React.ReactNode> = {
 	interview: <MessageSquare size={13} />,
 	spec: <FileText size={13} />,
 	ddd: <Boxes size={13} />,
+	design: <Palette size={13} />,
 	behavior: <Workflow size={13} />,
 	implementation_plan: <ClipboardList size={13} />,
 	implementation: <Code size={13} />,
@@ -46,6 +49,7 @@ const FALLBACK_LABELS: Record<string, string> = {
 	interview: "Interview",
 	spec: "Specification",
 	ddd: "Domain Modeling",
+	design: "Design",
 	behavior: "Behavior Scenarios",
 	implementation_plan: "Implementation Plan",
 	implementation: "Implementation",
@@ -465,6 +469,7 @@ function ExpandedStepContent({
 	const [activeTab, setActiveTab] = useState<StepTab>("actions");
 	const { interviews } = useStore();
 	const showInterview = step.name === "interview";
+	const showDesign = step.name === "design";
 	const interviewCount = showInterview ? interviews.filter((i) => i.answer === null).length : 0;
 
 	return (
@@ -491,6 +496,13 @@ function ExpandedStepContent({
 					<InlineInterviewSection featureId={selectedFeatureId} />
 				)}
 			</div>
+
+			{/* Design canvas for design step */}
+			{showDesign && selectedFeatureId && (
+				<div className="rounded-lg border border-[var(--border-subtle)] overflow-hidden h-[400px]">
+					<DesignCanvas featureId={selectedFeatureId} />
+				</div>
+			)}
 
 			{/* Step actions */}
 			{selectedFeatureId && (isActive || isCurrentStep) && (

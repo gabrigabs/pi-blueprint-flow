@@ -389,6 +389,29 @@ const MIGRATIONS = [
 	`ALTER TABLE interviews ADD COLUMN response_type TEXT DEFAULT 'free_text'`,
 	`ALTER TABLE interviews ADD COLUMN options TEXT`,
 	`ALTER TABLE projects ADD COLUMN scope TEXT DEFAULT 'app'`,
+	// v0.5.0: Design variants and tokens
+	`CREATE TABLE IF NOT EXISTS design_variants (
+		id TEXT PRIMARY KEY,
+		feature_id TEXT NOT NULL REFERENCES features(id),
+		label TEXT NOT NULL,
+		html_content TEXT NOT NULL,
+		css_content TEXT NOT NULL,
+		js_content TEXT,
+		tokens_json TEXT,
+		feedback TEXT,
+		selected INTEGER DEFAULT 0,
+		created_at TEXT DEFAULT (datetime('now'))
+	)`,
+	`CREATE TABLE IF NOT EXISTS design_tokens (
+		id TEXT PRIMARY KEY,
+		project_id TEXT REFERENCES projects(id),
+		feature_id TEXT REFERENCES features(id),
+		tokens_json TEXT NOT NULL,
+		source_step TEXT NOT NULL,
+		created_at TEXT DEFAULT (datetime('now'))
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_design_variants_feature ON design_variants(feature_id)`,
+	`CREATE INDEX IF NOT EXISTS idx_design_tokens_project ON design_tokens(project_id)`,
 ];
 
 let db: Database.Database | null = null;

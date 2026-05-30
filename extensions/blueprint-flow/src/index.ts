@@ -18,6 +18,7 @@ import { setPiRef } from "./services/pi-config-reader.js";
 import { registerPiEventListeners } from "./services/pi-event-listener.js";
 import { readArtifactTool, saveArtifactTool } from "./tools/artifacts.js";
 import { createFeatureTool, listFeaturesTool } from "./tools/feature.js";
+import { designMockupTool, designSaveTokensTool } from "./tools/design.js";
 import {
 	advanceStepTool,
 	getFlowStateTool,
@@ -93,6 +94,8 @@ export default function (pi: ExtensionAPI) {
 	pi.registerTool(researchRepoTool);
 	pi.registerTool(researchWebTool);
 	pi.registerTool(reviewGateTool);
+	pi.registerTool(designMockupTool);
+	pi.registerTool(designSaveTokensTool);
 	pi.registerTool(wikiUpsertPageTool);
 	pi.registerTool(wikiSearchTool);
 	pi.registerTool(memoryAddFactTool);

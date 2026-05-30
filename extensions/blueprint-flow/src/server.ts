@@ -8,6 +8,7 @@ import { registerActionRunRoutes } from "./routes/action-runs.js";
 import { registerActionRoutes } from "./routes/actions.js";
 import { registerArtifactRoutes } from "./routes/artifacts.js";
 import { registerConfigRoutes } from "./routes/config.js";
+import { registerDesignRoutes } from "./routes/design.js";
 import { registerFeatureRoutes } from "./routes/features.js";
 import { registerImportRoutes } from "./routes/import.js";
 import { registerInterviewRoutes } from "./routes/interviews.js";
@@ -342,6 +343,7 @@ export async function startServer(
 	registerActionRoutes(server);
 	registerActionRunRoutes(server);
 	registerArtifactRoutes(server);
+	registerDesignRoutes(server);
 	registerImportRoutes(server);
 	registerInterviewRoutes(server);
 	registerConfigRoutes(server);
