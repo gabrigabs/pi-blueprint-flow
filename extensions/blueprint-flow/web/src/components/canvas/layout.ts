@@ -75,7 +75,7 @@ export async function autoLayout(
 
 	return {
 		nodes: nodes.map((n) => {
-			const child = layout.children?.find((c) => c.id === n.id);
+			const child = layout.children?.find((c: { id: string }) => c.id === n.id);
 			if (child?.x != null && child?.y != null) {
 				return { ...n, position: { x: child.x, y: child.y } };
 			}

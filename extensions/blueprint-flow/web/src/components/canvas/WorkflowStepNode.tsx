@@ -1,4 +1,4 @@
-import { Handle, Position } from "@xyflow/react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { memo } from "react";
 import type { StepNodeData } from "./layout";
 
@@ -41,7 +41,7 @@ const statusStyles: Record<string, { bg: string; border: string; text: string; d
 	},
 };
 
-function WorkflowStepNodeComponent({ data }: { data: StepNodeData }) {
+function WorkflowStepNodeComponent({ data }: NodeProps & { data: StepNodeData }) {
 	const { label, status, artifactCount, isCurrentStep } = data;
 	const style = statusStyles[status] || statusStyles.pending;
 

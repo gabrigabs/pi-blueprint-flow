@@ -6,12 +6,16 @@ import {
 	ReactFlow,
 	useEdgesState,
 	useNodesState,
+	type Edge,
+	type Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useEffect, useMemo, useRef } from "react";
 import { useStore } from "../../store";
-import { autoLayout, stepsToEdges, stepsToNodes } from "./layout";
+import { autoLayout, stepsToEdges, stepsToNodes, type StepNodeData } from "./layout";
 import { WorkflowStepNode } from "./WorkflowStepNode";
+
+type StepNode = Node<StepNodeData>;
 
 const nodeTypes = { workflowStep: WorkflowStepNode };
 
@@ -19,8 +23,10 @@ export function WorkflowCanvas() {
 	const steps = useStore((s) => s.steps);
 	const artifacts = useStore((s) => s.artifacts);
 
-	const [nodes, setNodes, onNodesChange] = useNodesState([]);
-	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+	const initialNodes: StepNode[] = [];
+	const initialEdges: Edge[] = [];
+	const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+	const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
 	const structureKey = useMemo(
 		() => steps.map((s) => s.id).join(","),
@@ -50,7 +56,7 @@ export function WorkflowCanvas() {
 				hasNodesRef.current = true;
 			});
 		} else {
-			setNodes((prev) =>
+			setNodes((prev: StepNode[]) =>
 				prev.map((node) => {
 					const updated = n.find((nn) => nn.id === node.id);
 					if (updated) {
