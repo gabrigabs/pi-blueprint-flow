@@ -1,172 +1,227 @@
+import { basename } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { nanoid } from "nanoid";
 import { getDb } from "../db.js";
 import { bus } from "../events.js";
-import { validateRepoPath } from "../services/path-validator.js";
-import { detectStack, detectScripts } from "../services/stack-detector.js";
+import { getPiBridge } from "../pi-bridge.js";
 import { detectAgenticFiles } from "../services/agentic-detector.js";
-import { scanRepoStructure, generateProjectProfile } from "../services/import-scanner.js";
-import { IMPORT_MODES, buildRunSettings } from "../types.js";
+import {
+	generateProjectProfile,
+	scanRepoStructure,
+} from "../services/import-scanner.js";
+import { validateRepoPath } from "../services/path-validator.js";
+import { detectScripts, detectStack } from "../services/stack-detector.js";
 import type { ImportProjectInput } from "../types.js";
-import { basename } from "node:path";
+import { buildRunSettings, IMPORT_MODES } from "../types.js";
 
 export function registerImportRoutes(app: FastifyInstance): void {
-  app.post<{ Body: ImportProjectInput }>("/api/projects/import", async (req, reply) => {
-    const { repoPath, name, mode, agentRunSettings } = req.body;
+	app.post<{ Body: ImportProjectInput }>(
+		"/api/projects/import",
+		async (req, reply) => {
+			const { repoPath, name, mode, agentRunSettings } = req.body;
 
-    if (!repoPath || typeof repoPath !== "string") {
-      return reply.code(400).send({ error: "validation", message: "repoPath is required" });
-    }
+			if (!repoPath || typeof repoPath !== "string") {
+				return reply
+					.code(400)
+					.send({ error: "validation", message: "repoPath is required" });
+			}
 
-    if (!mode || !IMPORT_MODES.includes(mode)) {
-      return reply.code(400).send({
-        error: "validation",
-        message: `mode must be one of: ${IMPORT_MODES.join(", ")}`,
-      });
-    }
+			if (!mode || !IMPORT_MODES.includes(mode)) {
+				return reply.code(400).send({
+					error: "validation",
+					message: `mode must be one of: ${IMPORT_MODES.join(", ")}`,
+				});
+			}
 
-    const validation = validateRepoPath(repoPath);
-    if (!validation.valid) {
-      return reply.code(400).send({ error: "validation", message: validation.error });
-    }
+			const validation = validateRepoPath(repoPath);
+			if (!validation.valid) {
+				return reply
+					.code(400)
+					.send({ error: "validation", message: validation.error });
+			}
 
-    const resolvedPath = validation.resolvedPath;
-    const projectName = name?.trim() || basename(resolvedPath);
+			const resolvedPath = validation.resolvedPath;
+			const projectName = name?.trim() || basename(resolvedPath);
 
-    const reportId = nanoid(12);
-    bus.emit("import:started", { id: reportId, repoPath: resolvedPath });
+			const reportId = nanoid(12);
+			bus.emit("import:started", { id: reportId, repoPath: resolvedPath });
 
-    const stack = detectStack(resolvedPath);
-    const scripts = detectScripts(resolvedPath);
-    const structure = scanRepoStructure(resolvedPath);
-    const agenticFiles = detectAgenticFiles(resolvedPath);
+			const stack = detectStack(resolvedPath);
+			const scripts = detectScripts(resolvedPath);
+			const structure = scanRepoStructure(resolvedPath);
+			const agenticFiles = detectAgenticFiles(resolvedPath);
 
-    const projectProfile = generateProjectProfile({
-      name: projectName,
-      repoPath: resolvedPath,
-      stack,
-      scripts,
-      structure,
-      agenticFiles,
-    });
+			const projectProfile = generateProjectProfile({
+				name: projectName,
+				repoPath: resolvedPath,
+				stack,
+				scripts,
+				structure,
+				agenticFiles,
+			});
 
-    const db = getDb();
-    let projectId: string | null = null;
+			const db = getDb();
+			let projectId: string | null = null;
 
-    if (mode === "analyze_only") {
-      db.prepare(
-        `INSERT INTO import_reports
+			if (mode === "analyze_only") {
+				db.prepare(
+					`INSERT INTO import_reports
          (id, project_id, repo_path, mode, status, detected_stack, detected_scripts, detected_agentic_files, project_profile)
-         VALUES (?, ?, ?, ?, 'completed', ?, ?, ?, ?)`
-      ).run(
-        reportId,
-        null,
-        resolvedPath,
-        mode,
-        JSON.stringify(stack),
-        JSON.stringify(scripts),
-        JSON.stringify(agenticFiles.map((f) => ({
-          relativePath: f.relativePath,
-          type: f.type,
-          size: f.size,
-          rulesCount: f.extractedRules.length,
-        }))),
-        projectProfile
-      );
-    } else {
-      projectId = nanoid(12);
-      const stackArray = [...stack.languages, ...stack.frameworks];
+         VALUES (?, ?, ?, ?, 'completed', ?, ?, ?, ?)`,
+				).run(
+					reportId,
+					null,
+					resolvedPath,
+					mode,
+					JSON.stringify(stack),
+					JSON.stringify(scripts),
+					JSON.stringify(
+						agenticFiles.map((f) => ({
+							relativePath: f.relativePath,
+							type: f.type,
+							size: f.size,
+							rulesCount: f.extractedRules.length,
+						})),
+					),
+					projectProfile,
+				);
+			} else {
+				projectId = nanoid(12);
+				const stackArray = [...stack.languages, ...stack.frameworks];
 
-      db.prepare(
-        "INSERT INTO projects (id, name, description, repo_path, stack) VALUES (?, ?, ?, ?, ?)"
-      ).run(
-        projectId,
-        projectName,
-        `Imported from ${resolvedPath}`,
-        resolvedPath,
-        JSON.stringify(stackArray)
-      );
+				db.prepare(
+					"INSERT INTO projects (id, name, description, repo_path, stack) VALUES (?, ?, ?, ?, ?)",
+				).run(
+					projectId,
+					projectName,
+					`Imported from ${resolvedPath}`,
+					resolvedPath,
+					JSON.stringify(stackArray),
+				);
 
-      db.prepare(
-        `INSERT INTO import_reports
+				db.prepare(
+					`INSERT INTO import_reports
          (id, project_id, repo_path, mode, status, detected_stack, detected_scripts, detected_agentic_files, project_profile)
-         VALUES (?, ?, ?, ?, 'completed', ?, ?, ?, ?)`
-      ).run(
-        reportId,
-        projectId,
-        resolvedPath,
-        mode,
-        JSON.stringify(stack),
-        JSON.stringify(scripts),
-        JSON.stringify(agenticFiles.map((f) => ({
-          relativePath: f.relativePath,
-          type: f.type,
-          size: f.size,
-          rulesCount: f.extractedRules.length,
-        }))),
-        projectProfile
-      );
+         VALUES (?, ?, ?, ?, 'completed', ?, ?, ?, ?)`,
+				).run(
+					reportId,
+					projectId,
+					resolvedPath,
+					mode,
+					JSON.stringify(stack),
+					JSON.stringify(scripts),
+					JSON.stringify(
+						agenticFiles.map((f) => ({
+							relativePath: f.relativePath,
+							type: f.type,
+							size: f.size,
+							rulesCount: f.extractedRules.length,
+						})),
+					),
+					projectProfile,
+				);
 
-      if (agentRunSettings) {
-        const settings = buildRunSettings(agentRunSettings);
-        const settingsId = nanoid(12);
-        db.prepare(
-          `INSERT INTO agent_run_settings
+				if (agentRunSettings) {
+					const settings = buildRunSettings(agentRunSettings);
+					const settingsId = nanoid(12);
+					db.prepare(
+						`INSERT INTO agent_run_settings
            (id, feature_id, effort_level, execution_mode, model_id, agent_profile,
             allow_web_research, allow_repo_scan, allow_memory_search,
             max_research_results, max_interview_questions, review_strictness)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(
-          settingsId,
-          null,
-          settings.effortLevel,
-          settings.executionMode,
-          settings.modelId ?? null,
-          settings.agentProfile ?? null,
-          settings.allowWebResearch ? 1 : 0,
-          settings.allowRepoScan ? 1 : 0,
-          settings.allowMemorySearch ? 1 : 0,
-          settings.maxResearchResults ?? null,
-          settings.maxInterviewQuestions ?? null,
-          settings.reviewStrictness
-        );
-      }
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					).run(
+						settingsId,
+						null,
+						settings.effortLevel,
+						settings.executionMode,
+						settings.modelId ?? null,
+						settings.agentProfile ?? null,
+						settings.allowWebResearch ? 1 : 0,
+						settings.allowRepoScan ? 1 : 0,
+						settings.allowMemorySearch ? 1 : 0,
+						settings.maxResearchResults ?? null,
+						settings.maxInterviewQuestions ?? null,
+						settings.reviewStrictness,
+					);
+				}
 
-      bus.emit("project:created", { id: projectId, name: projectName });
-    }
+				bus.emit("project:created", { id: projectId, name: projectName });
+			}
 
-    bus.emit("import:completed", { id: reportId, projectId });
+			bus.emit("import:completed", { id: reportId, projectId });
 
-    return reply.code(201).send({
-      reportId,
-      projectId,
-      projectName,
-      mode,
-      repoPath: resolvedPath,
-      stack,
-      scripts: Object.keys(scripts).slice(0, 20),
-      structure: {
-        totalFiles: structure.totalFiles,
-        directories: structure.directories.length,
-        truncated: structure.truncated,
-      },
-      agenticFiles: agenticFiles.map((f) => ({
-        relativePath: f.relativePath,
-        type: f.type,
-        size: f.size,
-        rulesCount: f.extractedRules.length,
-        rules: f.extractedRules.slice(0, 5),
-      })),
-      projectProfile,
-    });
-  });
+			// Trigger Pi agent analysis for migrate_with_review mode
+			let actionRunId: string | null = null;
+			let actionStatus: string | null = null;
 
-  app.get<{ Params: { id: string } }>("/api/import-reports/:id", async (req, reply) => {
-    const db = getDb();
-    const report = db.prepare("SELECT * FROM import_reports WHERE id = ?").get(req.params.id);
-    if (!report) {
-      return reply.code(404).send({ error: "not_found", message: "Import report not found" });
-    }
-    return reply.send(report);
-  });
+			if (mode === "migrate_with_review" && projectId) {
+				const bridge = getPiBridge();
+				const settings = agentRunSettings
+					? buildRunSettings(agentRunSettings)
+					: buildRunSettings({});
+				const result = bridge.enqueue({
+					projectId,
+					actionType: "import_project_agent_analysis",
+					modelId: settings.modelId,
+					effortLevel: settings.effortLevel,
+					executionMode: settings.executionMode,
+					extraContext: {
+						reportId,
+						repoPath: resolvedPath,
+						projectProfile,
+						stack,
+					},
+				});
+				actionRunId = result.actionRunId;
+				actionStatus = result.status;
+
+				bus.emit("import:pi_analysis_requested", {
+					reportId,
+					actionRunId: result.actionRunId,
+				});
+			}
+
+			return reply.code(201).send({
+				reportId,
+				projectId,
+				projectName,
+				mode,
+				repoPath: resolvedPath,
+				stack,
+				scripts: Object.keys(scripts).slice(0, 20),
+				structure: {
+					totalFiles: structure.totalFiles,
+					directories: structure.directories.length,
+					truncated: structure.truncated,
+				},
+				agenticFiles: agenticFiles.map((f) => ({
+					relativePath: f.relativePath,
+					type: f.type,
+					size: f.size,
+					rulesCount: f.extractedRules.length,
+					rules: f.extractedRules.slice(0, 5),
+				})),
+				projectProfile,
+				actionRunId,
+				actionStatus,
+			});
+		},
+	);
+
+	app.get<{ Params: { id: string } }>(
+		"/api/import-reports/:id",
+		async (req, reply) => {
+			const db = getDb();
+			const report = db
+				.prepare("SELECT * FROM import_reports WHERE id = ?")
+				.get(req.params.id);
+			if (!report) {
+				return reply
+					.code(404)
+					.send({ error: "not_found", message: "Import report not found" });
+			}
+			return reply.send(report);
+		},
+	);
 }

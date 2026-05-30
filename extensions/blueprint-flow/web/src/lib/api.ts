@@ -185,6 +185,20 @@ export const api = {
 				method: "POST",
 				body: JSON.stringify({ agentRunSettings }),
 			}),
+		runAction: (
+			id: string,
+			actionType: string,
+			agentRunSettings?: AgentRunSettingsPayload,
+		) =>
+			request<{
+				featureId: string;
+				actionType: string;
+				actionRunId: string;
+				actionStatus: string;
+			}>(`/api/features/${id}/run-action`, {
+				method: "POST",
+				body: JSON.stringify({ actionType, agentRunSettings }),
+			}),
 	},
 
 	steps: {
