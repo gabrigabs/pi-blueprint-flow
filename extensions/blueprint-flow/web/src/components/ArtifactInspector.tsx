@@ -14,7 +14,7 @@ import { useStore } from "../store";
 import { addToast } from "./Toasts";
 
 export function ArtifactInspector() {
-	const { artifacts, selectedArtifactId, selectArtifact } = useStore();
+	const { artifacts, selectedArtifactId, selectArtifact, artifactContentVersion } = useStore();
 	const [artifactContent, setArtifactContent] = useState<string>("");
 	const [viewMode, setViewMode] = useState<"preview" | "raw">("preview");
 	const [searchQuery, setSearchQuery] = useState("");
@@ -29,7 +29,7 @@ export function ArtifactInspector() {
 				})
 				.catch(() => {});
 		}
-	}, [selectedArtifactId]);
+	}, [selectedArtifactId, artifactContentVersion]);
 
 	if (artifacts.length === 0) {
 		return (

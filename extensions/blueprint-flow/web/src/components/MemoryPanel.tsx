@@ -1,6 +1,7 @@
-import { BookOpen, Brain, Filter } from "lucide-react";
+import { BookOpen, Brain, ChevronDown, ChevronRight, Filter } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useStore } from "../store";
+import { MarkdownContent } from "./MarkdownContent";
 
 const CATEGORIES = [
 	"all",
@@ -35,7 +36,7 @@ export function MemoryPanel() {
 				.then(setWikiPages)
 				.catch(() => setWikiPages([]));
 		}
-	}, [selectedProjectId, memories]); // refresh when memories change (wiki might update)
+	}, [selectedProjectId, memories]);
 
 	const filtered =
 		filter === "all" ? memories : memories.filter((m) => m.category === filter);
@@ -92,7 +93,7 @@ export function MemoryPanel() {
 			{tab === "memories" ? (
 				<MemoriesView memories={filtered} />
 			) : (
-				<WikiView pages={wikiPages} />
+				<WikiView pages={wikiPages} projectId={selectedProjectId} />
 			)}
 		</div>
 	);
@@ -108,31 +109,74 @@ function MemoriesView({
 		created_at: string;
 	}>;
 }) {
+	const [expandedId, setExpandedId] = useState<string | null>(null);
+
 	if (memories.length === 0) {
 		return <p className="text-xs text-gray-500">No memories recorded yet</p>;
 	}
 
 	return (
-		<div className="flex flex-1 gap-2 overflow-x-auto">
-			{memories.map((m) => (
-				<div
-					key={m.id}
-					className="shrink-0 w-72 rounded border border-gray-800 bg-gray-900/50 p-2"
-				>
-					<div className="mb-1 flex items-center justify-between">
-						<CategoryBadge category={m.category} />
-						<span className="text-xs text-gray-600">
-							{new Date(m.created_at).toLocaleDateString()}
-						</span>
+		<div className="flex-1 overflow-y-auto scrollbar-thin space-y-1.5">
+			{memories.map((m) => {
+				const isExpanded = expandedId === m.id;
+				const firstLine = m.content.split("\n")[0].slice(0, 120);
+
+				return (
+					<div
+						key={m.id}
+						className={`rounded-lg border transition-all duration-200 ${
+							isExpanded
+								? "border-[var(--border-default)] bg-[var(--bg-surface)]"
+								: "border-[var(--border-subtle)] hover:border-[var(--border-default)]"
+						}`}
+					>
+						{/* Card header */}
+						<button
+							onClick={() => setExpandedId(isExpanded ? null : m.id)}
+							className="flex w-full items-center gap-2 px-3 py-2 text-left"
+						>
+							{isExpanded ? (
+								<ChevronDown size={11} className="text-[var(--text-muted)] shrink-0" />
+							) : (
+								<ChevronRight size={11} className="text-[var(--text-muted)] shrink-0" />
+							)}
+							<CategoryBadge category={m.category} />
+							<span className="flex-1 truncate text-xs text-gray-300">
+								{firstLine}
+							</span>
+							<span className="text-[10px] text-gray-600 shrink-0">
+								{new Date(m.created_at).toLocaleDateString()}
+							</span>
+						</button>
+
+						{/* Expanded content */}
+						{isExpanded && (
+							<div className="border-t border-[var(--border-subtle)] px-4 py-3 max-h-[300px] overflow-y-auto scrollbar-thin animate-fade-up">
+								<MarkdownContent content={m.content} />
+							</div>
+						)}
 					</div>
-					<p className="text-sm text-gray-300 line-clamp-3">{m.content}</p>
-				</div>
-			))}
+				);
+			})}
 		</div>
 	);
 }
 
-function WikiView({ pages }: { pages: WikiPageSummary[] }) {
+function WikiView({ pages, projectId }: { pages: WikiPageSummary[]; projectId: string | null }) {
+	const [expandedId, setExpandedId] = useState<string | null>(null);
+	const [wikiContent, setWikiContent] = useState<string>("");
+
+	useEffect(() => {
+		if (expandedId && projectId) {
+			fetch(`/api/projects/${projectId}/wiki/${expandedId}`)
+				.then((r) => r.json())
+				.then((data) => {
+					if (data.content) setWikiContent(data.content);
+				})
+				.catch(() => setWikiContent(""));
+		}
+	}, [expandedId, projectId]);
+
 	if (pages.length === 0) {
 		return (
 			<div className="flex flex-1 items-center justify-center">
@@ -147,40 +191,54 @@ function WikiView({ pages }: { pages: WikiPageSummary[] }) {
 		);
 	}
 
-	// Group by category
-	const grouped = pages.reduce<Record<string, WikiPageSummary[]>>(
-		(acc, page) => {
-			if (!acc[page.category]) acc[page.category] = [];
-			acc[page.category].push(page);
-			return acc;
-		},
-		{},
-	);
-
 	return (
-		<div className="flex flex-1 gap-2 overflow-x-auto">
-			{Object.entries(grouped).map(([category, categoryPages]) => (
-				<div
-					key={category}
-					className="shrink-0 w-64 rounded border border-gray-800 bg-gray-900/50 p-2"
-				>
-					<WikiCategoryBadge category={category} />
-					<div className="mt-1.5 space-y-1">
-						{categoryPages.map((page) => (
-							<div key={page.id} className="rounded bg-gray-800/50 px-2 py-1.5">
-								<p className="text-xs font-medium text-gray-200">
-									{page.title}
-								</p>
-								{page.summary && (
-									<p className="text-[10px] text-gray-500 mt-0.5 line-clamp-2">
-										{page.summary}
-									</p>
+		<div className="flex-1 overflow-y-auto scrollbar-thin space-y-1.5">
+			{pages.map((page) => {
+				const isExpanded = expandedId === page.id;
+
+				return (
+					<div
+						key={page.id}
+						className={`rounded-lg border transition-all duration-200 ${
+							isExpanded
+								? "border-[var(--border-default)] bg-[var(--bg-surface)]"
+								: "border-[var(--border-subtle)] hover:border-[var(--border-default)]"
+						}`}
+					>
+						<button
+							onClick={() => {
+								setExpandedId(isExpanded ? null : page.id);
+								if (!isExpanded) setWikiContent("");
+							}}
+							className="flex w-full items-center gap-2 px-3 py-2 text-left"
+						>
+							{isExpanded ? (
+								<ChevronDown size={11} className="text-[var(--text-muted)] shrink-0" />
+							) : (
+								<ChevronRight size={11} className="text-[var(--text-muted)] shrink-0" />
+							)}
+							<BookOpen size={11} className="text-gray-500 shrink-0" />
+							<span className="flex-1 truncate text-xs font-medium text-gray-200">
+								{page.title}
+							</span>
+							<WikiCategoryBadge category={page.category} />
+						</button>
+
+						{isExpanded && (
+							<div className="border-t border-[var(--border-subtle)] px-4 py-3 max-h-[300px] overflow-y-auto scrollbar-thin animate-fade-up">
+								{wikiContent ? (
+									<MarkdownContent content={wikiContent} />
+								) : (
+									<div className="flex items-center gap-2 text-xs text-gray-500">
+										<div className="h-3 w-3 rounded-full border-2 border-gray-600 border-t-gray-400 animate-spin" />
+										Loading...
+									</div>
 								)}
 							</div>
-						))}
+						)}
 					</div>
-				</div>
-			))}
+				);
+			})}
 		</div>
 	);
 }
@@ -199,7 +257,7 @@ function CategoryBadge({ category }: { category: string }) {
 	const style = colors[category] || "text-gray-400 bg-gray-800";
 
 	return (
-		<span className={`rounded px-1.5 py-0.5 text-xs font-medium ${style}`}>
+		<span className={`rounded px-1.5 py-0.5 text-[10px] font-medium shrink-0 ${style}`}>
 			{category}
 		</span>
 	);
@@ -220,8 +278,7 @@ function WikiCategoryBadge({ category }: { category: string }) {
 	};
 
 	return (
-		<span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-gray-400">
-			<BookOpen size={10} />
+		<span className="rounded bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-500 shrink-0">
 			{labels[category] || category}
 		</span>
 	);

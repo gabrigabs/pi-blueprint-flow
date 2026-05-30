@@ -137,6 +137,9 @@ interface BlueprintStore {
 	rightPanelCollapsed: boolean;
 	footerCollapsed: boolean;
 
+	// Content versioning (for real-time updates)
+	artifactContentVersion: number;
+
 	setProjects: (projects: Project[]) => void;
 	setFeatures: (features: Feature[]) => void;
 	setSteps: (steps: Step[]) => void;
@@ -157,6 +160,7 @@ interface BlueprintStore {
 	toggleSidebar: () => void;
 	toggleRightPanel: () => void;
 	toggleFooter: () => void;
+	incrementArtifactVersion: () => void;
 	openModal: (modal: ModalType) => void;
 	closeModal: () => void;
 }
@@ -182,6 +186,7 @@ export const useStore = create<BlueprintStore>((set) => ({
 	sidebarCollapsed: false,
 	rightPanelCollapsed: false,
 	footerCollapsed: false,
+	artifactContentVersion: 0,
 
 	setProjects: (projects) => set({ projects }),
 	setFeatures: (features) => set({ features }),
@@ -218,6 +223,8 @@ export const useStore = create<BlueprintStore>((set) => ({
 		set((state) => ({ rightPanelCollapsed: !state.rightPanelCollapsed })),
 	toggleFooter: () =>
 		set((state) => ({ footerCollapsed: !state.footerCollapsed })),
+	incrementArtifactVersion: () =>
+		set((state) => ({ artifactContentVersion: state.artifactContentVersion + 1 })),
 	openModal: (modal) => set({ activeModal: modal }),
 	closeModal: () => set({ activeModal: null }),
 }));

@@ -1,11 +1,8 @@
-import { Loader2, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Radio, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { Loader2, PanelLeftClose, PanelLeftOpen, Radio, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useEffect } from "react";
-import { ActionRunPanel } from "./components/ActionRunPanel";
-import { ArtifactInspector } from "./components/ArtifactInspector";
 import { CreateFeatureModal } from "./components/CreateFeatureModal";
 import { CreateProjectModal } from "./components/CreateProjectModal";
 import { ImportProjectModal } from "./components/ImportProjectModal";
-import { InterviewPanel } from "./components/InterviewPanel";
 import { MemoryPanel } from "./components/MemoryPanel";
 import { ProjectSidebar } from "./components/ProjectSidebar";
 import { Toasts } from "./components/Toasts";
@@ -27,10 +24,8 @@ export function App() {
 		bridgeStatus,
 		actionRuns,
 		sidebarCollapsed,
-		rightPanelCollapsed,
 		footerCollapsed,
 		toggleSidebar,
-		toggleRightPanel,
 		toggleFooter,
 	} = useStore();
 
@@ -145,14 +140,6 @@ export function App() {
 						>
 							{sidebarCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
 						</button>
-						<button
-							onClick={toggleRightPanel}
-							title={`${rightPanelCollapsed ? "Show" : "Hide"} panel [\u005D]`}
-							className="rounded p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
-							style={{ color: rightPanelCollapsed ? "var(--text-muted)" : "var(--text-tertiary)" }}
-						>
-							{rightPanelCollapsed ? <PanelRightOpen size={14} /> : <PanelRightClose size={14} />}
-						</button>
 					</div>
 
 					{/* Separator */}
@@ -217,7 +204,7 @@ export function App() {
 				{/* Left sidebar — Navigation */}
 				{!sidebarCollapsed && (
 					<aside
-						className="w-64 shrink-0 overflow-y-auto scrollbar-thin border-r transition-all duration-200"
+						className="w-64 shrink-0 overflow-y-auto scrollbar-thin border-r sidebar-transition"
 						style={{
 							borderColor: "var(--border-subtle)",
 							background: "var(--bg-elevated)",
@@ -237,21 +224,6 @@ export function App() {
 							<div className="flex flex-1 flex-col overflow-hidden">
 								<VerticalKanban />
 							</div>
-
-							{/* Right panel — Instruments */}
-							{!rightPanelCollapsed && (
-								<aside
-									className="w-96 shrink-0 overflow-y-auto scrollbar-thin border-l transition-all duration-200"
-									style={{
-										borderColor: "var(--border-subtle)",
-										background: "var(--bg-elevated)",
-									}}
-								>
-									<ActionRunPanel />
-									<ArtifactInspector />
-									<InterviewPanel />
-								</aside>
-							)}
 						</div>
 					) : (
 						<div className="flex flex-1 items-center justify-center">
@@ -291,7 +263,7 @@ export function App() {
 			{/* ═══ Bottom Panel — Knowledge Base ═══ */}
 			{selectedProjectId && !footerCollapsed && (
 				<footer
-					className="h-48 shrink-0 overflow-y-auto scrollbar-thin border-t transition-all duration-200"
+					className="h-64 shrink-0 overflow-hidden border-t transition-all duration-200"
 					style={{
 						borderColor: "var(--border-subtle)",
 						background: "var(--bg-elevated)",

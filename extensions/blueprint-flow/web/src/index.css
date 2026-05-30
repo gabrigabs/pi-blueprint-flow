@@ -383,6 +383,16 @@ body::after {
   box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
 }
 
+.timeline-node-queued {
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.05);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.08);
+}
+
+.timeline-connector-queued {
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.3) 0%, rgba(56, 189, 248, 0.08) 100%);
+}
+
 .timeline-node-focused {
   border-color: rgba(245, 158, 11, 0.7);
   transform: scale(1.1);
@@ -467,4 +477,43 @@ body::after {
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite, skeletonPulse 2s ease-in-out infinite;
   border-radius: var(--radius-sm);
+}
+
+/* ─── Expand/collapse animation ─── */
+@keyframes expandDown {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: 500px;
+    opacity: 1;
+  }
+}
+
+.animate-expand-down {
+  animation: expandDown 0.25s ease-out both;
+  overflow: hidden;
+}
+
+/* ─── Sidebar transition ─── */
+.sidebar-transition {
+  transition: width 0.2s ease-out, opacity 0.15s ease-out;
+}
+
+/* ─── Step card accent borders ─── */
+.step-accent-done {
+  border-left: 2px solid rgba(52, 211, 153, 0.4);
+}
+
+.step-accent-running {
+  border-left: 2px solid rgba(34, 211, 238, 0.5);
+}
+
+.step-accent-queued {
+  border-left: 2px solid rgba(56, 189, 248, 0.3);
+}
+
+.step-accent-needs_user {
+  border-left: 2px solid rgba(245, 158, 11, 0.5);
 }

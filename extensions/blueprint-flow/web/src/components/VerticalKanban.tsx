@@ -21,6 +21,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import type { ActionRun } from "../store";
 import { useStore } from "../store";
+import { InlineActionRuns } from "./InlineActionRuns";
+import { InlineArtifactViewer } from "./InlineArtifactViewer";
+import { InlineInterviewSection } from "./InlineInterviewSection";
+import { InlineStepTabs, type StepTab } from "./InlineStepTabs";
 import { StepActions } from "./StepActions";
 
 const STEP_ICONS: Record<string, React.ReactNode> = {
@@ -216,13 +220,22 @@ export function VerticalKanban() {
 					);
 					const latestRun = stepRuns[0];
 
+					// Detect "queued" state: pending step with an action run enqueued
+					const isQueued =
+						step.status === "pending" &&
+						stepRuns.some((r) =>
+							["created", "queued", "waiting_for_pi", "injected"].includes(r.status),
+						);
+
 					// Connector class
 					const connectorClass =
 						step.status === "done"
 							? "timeline-connector-done"
 							: isActive
 								? "timeline-connector-active"
-								: "";
+								: isQueued
+									? "timeline-connector-queued"
+									: "";
 
 					// Node class
 					const nodeClass =
@@ -232,7 +245,9 @@ export function VerticalKanban() {
 								? "timeline-node-running"
 								: step.status === "needs_user"
 									? "timeline-node-needs_user"
-									: "";
+									: isQueued
+										? "timeline-node-queued"
+										: "";
 
 					return (
 						<div
@@ -267,6 +282,12 @@ export function VerticalKanban() {
 											size={12}
 											className="text-cyan-400 animate-spin"
 										/>
+									) : isQueued ? (
+										<Loader2
+											size={12}
+											className="text-sky-400 animate-spin"
+											style={{ animationDuration: "2s" }}
+										/>
 									) : (
 										<span
 											className={
@@ -298,7 +319,19 @@ export function VerticalKanban() {
 										isExpanded || isActive
 											? "bg-[var(--bg-surface)]"
 											: "hover:bg-[var(--bg-surface-hover)]"
-									} ${isFocused ? "ring-1 ring-amber-400/40" : ""}`}
+									} ${isFocused ? "ring-1 ring-amber-400/40" : ""} ${
+										isExpanded
+											? step.status === "done"
+												? "step-accent-done"
+												: step.status === "running"
+													? "step-accent-running"
+													: isQueued
+														? "step-accent-queued"
+														: step.status === "needs_user"
+															? "step-accent-needs_user"
+															: ""
+											: ""
+									}`}
 									onClick={() =>
 										setExpandedStep(
 											isExpanded ? null : step.name,
@@ -330,7 +363,7 @@ export function VerticalKanban() {
 													startedAt={step.started_at}
 												/>
 											)}
-										<StepStatusPill status={step.status} />
+										<StepStatusPill status={step.status} isQueued={isQueued} />
 										<span className="text-[var(--text-muted)] transition-transform group-hover:text-[var(--text-tertiary)]">
 											{isExpanded ? (
 												<ChevronDown size={12} />
@@ -429,28 +462,35 @@ function ExpandedStepContent({
 	isCurrentStep: boolean;
 	selectedFeatureId: string | null;
 }) {
-	return (
-		<div className="mt-2 ml-3 space-y-2 animate-fade-up">
-			{/* Action timeline for this step */}
-			{stepRuns.length > 0 && <StepRunTimeline runs={stepRuns} />}
+	const [activeTab, setActiveTab] = useState<StepTab>("actions");
+	const { interviews } = useStore();
+	const showInterview = step.name === "interview";
+	const interviewCount = showInterview ? interviews.filter((i) => i.answer === null).length : 0;
 
-			{/* Step artifacts */}
-			{stepArtifacts.length > 0 && (
-				<div className="flex flex-wrap gap-1">
-					{stepArtifacts.map((a) => (
-						<button
-							key={a.id}
-							onClick={(e) => {
-								e.stopPropagation();
-								useStore.getState().selectArtifact(a.id);
-							}}
-							className="rounded-md bg-[var(--bg-surface)] border border-[var(--border-subtle)] px-2 py-1 text-[10px] text-[var(--text-tertiary)] hover:border-[var(--border-default)] hover:text-[var(--text-secondary)] transition-all duration-150"
-						>
-							{a.filename}
-						</button>
-					))}
-				</div>
-			)}
+	return (
+		<div className="mt-2 ml-3 space-y-3 animate-fade-up">
+			{/* Tabs */}
+			<InlineStepTabs
+				activeTab={activeTab}
+				onTabChange={setActiveTab}
+				actionCount={stepRuns.length}
+				artifactCount={stepArtifacts.length}
+				interviewCount={interviewCount}
+				showInterview={showInterview}
+			/>
+
+			{/* Tab content */}
+			<div className="min-h-[60px]">
+				{activeTab === "actions" && selectedFeatureId && (
+					<InlineActionRuns stepName={step.name} featureId={selectedFeatureId} />
+				)}
+				{activeTab === "artifacts" && selectedFeatureId && (
+					<InlineArtifactViewer stepName={step.name} featureId={selectedFeatureId} />
+				)}
+				{activeTab === "interview" && selectedFeatureId && showInterview && (
+					<InlineInterviewSection featureId={selectedFeatureId} />
+				)}
+			</div>
 
 			{/* Step actions */}
 			{selectedFeatureId && (isActive || isCurrentStep) && (
@@ -536,8 +576,12 @@ function ElapsedBadge({ startedAt }: { startedAt: string }) {
 	);
 }
 
-function StepStatusPill({ status }: { status: string }) {
+function StepStatusPill({ status, isQueued }: { status: string; isQueued?: boolean }) {
 	const config: Record<string, { text: string; className: string }> = {
+		queued: {
+			text: "queued",
+			className: "text-sky-300 bg-sky-950/30 border-sky-500/15",
+		},
 		pending: {
 			text: "pending",
 			className: "text-[var(--text-muted)] bg-[var(--bg-surface)]",
@@ -564,7 +608,8 @@ function StepStatusPill({ status }: { status: string }) {
 		},
 	};
 
-	const { text, className } = config[status] || config.pending;
+	const effectiveStatus = isQueued ? "queued" : status;
+	const { text, className } = config[effectiveStatus] || config.pending;
 
 	return (
 		<span

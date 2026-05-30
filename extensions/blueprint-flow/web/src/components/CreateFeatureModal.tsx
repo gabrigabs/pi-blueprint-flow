@@ -1,4 +1,4 @@
-import { GitBranch } from "lucide-react";
+import { CheckCircle, GitBranch, Loader2 } from "lucide-react";
 import { useState } from "react";
 import type { AgentRunSettingsPayload } from "../lib/api";
 import { api } from "../lib/api";
@@ -28,8 +28,11 @@ const RISK_OPTIONS = [
 	{ value: "high", label: "High" },
 ] as const;
 
+type ModalState = "form" | "creating" | "success";
+
 export function CreateFeatureModal() {
-	const { closeModal, selectedProjectId, setFeatures } = useStore();
+	const { closeModal, selectedProjectId, setFeatures, selectFeature } = useStore();
+	const [modalState, setModalState] = useState<ModalState>("form");
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
 	const [type, setType] = useState("feature");
@@ -41,6 +44,7 @@ export function CreateFeatureModal() {
 	});
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [createdTitle, setCreatedTitle] = useState("");
 
 	async function handleSubmit(e?: React.FormEvent) {
 		e?.preventDefault();
@@ -48,9 +52,10 @@ export function CreateFeatureModal() {
 
 		setLoading(true);
 		setError(null);
+		setModalState("creating");
 
 		try {
-			await api.features.create(selectedProjectId, {
+			const feature = await api.features.create(selectedProjectId, {
 				title: title.trim(),
 				description: description.trim() || undefined,
 				type,
@@ -61,9 +66,15 @@ export function CreateFeatureModal() {
 
 			const features = await api.features.list(selectedProjectId);
 			setFeatures(features);
-			closeModal();
+			selectFeature(feature.id);
+			setCreatedTitle(feature.title);
+			setModalState("success");
+
+			// Auto-close after brief success display
+			setTimeout(() => closeModal(), 1500);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create feature");
+			setModalState("form");
 		} finally {
 			setLoading(false);
 		}
@@ -73,124 +84,159 @@ export function CreateFeatureModal() {
 		<BlueprintModal
 			open
 			onClose={closeModal}
-			title="New Feature / Task"
+			title={
+				modalState === "creating"
+					? "Creating Feature..."
+					: modalState === "success"
+						? "Feature Created"
+						: "New Feature / Task"
+			}
 			icon={<GitBranch size={16} className="text-emerald-400" />}
 			width="lg"
+			preventOutsideClose={modalState === "creating"}
 			footer={
-				<div className="flex justify-end gap-2">
-					<button
-						type="button"
-						onClick={closeModal}
-						className="rounded px-3 py-1.5 text-sm text-gray-400 hover:bg-gray-800 hover:text-gray-300"
-					>
-						Cancel
-					</button>
-					<button
-						onClick={() => handleSubmit()}
-						disabled={!title.trim() || loading}
-						className="rounded bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
-					>
-						{loading ? "Creating..." : "Create"}
-					</button>
-				</div>
+				modalState === "form" ? (
+					<div className="flex justify-end gap-2">
+						<button
+							type="button"
+							onClick={closeModal}
+							className="rounded px-3 py-1.5 text-sm text-gray-400 hover:bg-gray-800 hover:text-gray-300"
+						>
+							Cancel
+						</button>
+						<button
+							onClick={() => handleSubmit()}
+							disabled={!title.trim() || loading}
+							className="rounded bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							Create
+						</button>
+					</div>
+				) : null
 			}
 		>
-			<form onSubmit={handleSubmit} className="space-y-4">
-				{/* Title */}
-				<div>
-					<label className="mb-1 block text-xs font-medium text-gray-400">
-						Title <span className="text-red-400">*</span>
-					</label>
-					<input
-						type="text"
-						value={title}
-						onChange={(e) => setTitle(e.target.value)}
-						placeholder="Add user authentication with OAuth2"
-						autoFocus
-						className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
-					/>
-				</div>
-
-				{/* Description */}
-				<div>
-					<label className="mb-1 block text-xs font-medium text-gray-400">
-						Description
-					</label>
-					<textarea
-						value={description}
-						onChange={(e) => setDescription(e.target.value)}
-						placeholder="Detailed description of what this should accomplish..."
-						rows={3}
-						className="w-full resize-none rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
-					/>
-				</div>
-
-				{/* Type + Priority + Risk */}
-				<div className="grid grid-cols-3 gap-3">
+			{modalState === "form" && (
+				<form onSubmit={handleSubmit} className="space-y-4">
+					{/* Title */}
 					<div>
 						<label className="mb-1 block text-xs font-medium text-gray-400">
-							Type
+							Title <span className="text-red-400">*</span>
 						</label>
-						<select
-							value={type}
-							onChange={(e) => setType(e.target.value)}
-							className="w-full rounded border border-gray-700 bg-gray-800 px-2 py-1.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none"
-						>
-							{FEATURE_TYPES.map((t) => (
-								<option key={t.value} value={t.value}>
-									{t.label}
-								</option>
-							))}
-						</select>
+						<input
+							type="text"
+							value={title}
+							onChange={(e) => setTitle(e.target.value)}
+							placeholder="Add user authentication with OAuth2"
+							autoFocus
+							className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
+						/>
 					</div>
+
+					{/* Description */}
 					<div>
 						<label className="mb-1 block text-xs font-medium text-gray-400">
-							Priority
+							Description
 						</label>
-						<select
-							value={priority}
-							onChange={(e) => setPriority(e.target.value)}
-							className="w-full rounded border border-gray-700 bg-gray-800 px-2 py-1.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none"
-						>
-							{PRIORITY_OPTIONS.map((p) => (
-								<option key={p.value} value={p.value}>
-									{p.label}
-								</option>
-							))}
-						</select>
+						<textarea
+							value={description}
+							onChange={(e) => setDescription(e.target.value)}
+							placeholder="Detailed description of what this should accomplish..."
+							rows={3}
+							className="w-full resize-none rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
+						/>
 					</div>
-					<div>
-						<label className="mb-1 block text-xs font-medium text-gray-400">
-							Risk
-						</label>
-						<select
-							value={riskLevel}
-							onChange={(e) => setRiskLevel(e.target.value)}
-							className="w-full rounded border border-gray-700 bg-gray-800 px-2 py-1.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none"
-						>
-							{RISK_OPTIONS.map((r) => (
-								<option key={r.value} value={r.value}>
-									{r.label}
-								</option>
-							))}
-						</select>
+
+					{/* Type + Priority + Risk */}
+					<div className="grid grid-cols-3 gap-3">
+						<div>
+							<label className="mb-1 block text-xs font-medium text-gray-400">
+								Type
+							</label>
+							<select
+								value={type}
+								onChange={(e) => setType(e.target.value)}
+								className="w-full rounded border border-gray-700 bg-gray-800 px-2 py-1.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none"
+							>
+								{FEATURE_TYPES.map((t) => (
+									<option key={t.value} value={t.value}>
+										{t.label}
+									</option>
+								))}
+							</select>
+						</div>
+						<div>
+							<label className="mb-1 block text-xs font-medium text-gray-400">
+								Priority
+							</label>
+							<select
+								value={priority}
+								onChange={(e) => setPriority(e.target.value)}
+								className="w-full rounded border border-gray-700 bg-gray-800 px-2 py-1.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none"
+							>
+								{PRIORITY_OPTIONS.map((p) => (
+									<option key={p.value} value={p.value}>
+										{p.label}
+									</option>
+								))}
+							</select>
+						</div>
+						<div>
+							<label className="mb-1 block text-xs font-medium text-gray-400">
+								Risk
+							</label>
+							<select
+								value={riskLevel}
+								onChange={(e) => setRiskLevel(e.target.value)}
+								className="w-full rounded border border-gray-700 bg-gray-800 px-2 py-1.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none"
+							>
+								{RISK_OPTIONS.map((r) => (
+									<option key={r.value} value={r.value}>
+										{r.label}
+									</option>
+								))}
+							</select>
+						</div>
 					</div>
-				</div>
 
-				{/* Agent Run Settings */}
-				<div className="rounded border border-gray-800 bg-gray-950/50 p-3">
-					<h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">
-						Agent Settings
-					</h3>
-					<AgentRunSettingsPanel value={settings} onChange={setSettings} />
-				</div>
+					{/* Agent Run Settings */}
+					<div className="rounded border border-gray-800 bg-gray-950/50 p-3">
+						<h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+							Agent Settings
+						</h3>
+						<AgentRunSettingsPanel value={settings} onChange={setSettings} />
+					</div>
 
-				{error && (
-					<p className="rounded bg-red-900/30 px-3 py-2 text-xs text-red-400">
-						{error}
+					{error && (
+						<p className="rounded bg-red-900/30 px-3 py-2 text-xs text-red-400">
+							{error}
+						</p>
+					)}
+				</form>
+			)}
+
+			{modalState === "creating" && (
+				<div className="flex flex-col items-center justify-center py-10">
+					<Loader2 size={32} className="animate-spin text-emerald-400 mb-3" />
+					<p className="text-sm text-gray-300">Creating feature and initializing flow steps...</p>
+					<p className="text-xs text-gray-500 mt-1">
+						Setting up workflow pipeline
 					</p>
-				)}
-			</form>
+				</div>
+			)}
+
+			{modalState === "success" && (
+				<div className="flex flex-col items-center justify-center py-10">
+					<div className="rounded-full bg-emerald-950/30 border border-emerald-800/50 p-3 mb-3">
+						<CheckCircle size={24} className="text-emerald-400" />
+					</div>
+					<p className="text-sm font-medium text-emerald-300">
+						"{createdTitle}" created
+					</p>
+					<p className="text-xs text-gray-500 mt-1">
+						Opening flow view...
+					</p>
+				</div>
+			)}
 		</BlueprintModal>
 	);
 }

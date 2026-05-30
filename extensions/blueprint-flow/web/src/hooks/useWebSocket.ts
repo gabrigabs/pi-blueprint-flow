@@ -266,6 +266,7 @@ export function useWebSocket() {
 			// --- Artifact events ---
 			case "artifact:saved":
 			case "artifact:updated":
+				store.incrementArtifactVersion();
 				debouncedRefresh("artifacts", refreshArtifacts);
 				break;
 
