@@ -1,11 +1,15 @@
 import type { FastifyInstance } from "fastify";
+import { nanoid } from "nanoid";
 import {
+	createActionRunEvent,
 	getActionRun,
 	getActiveActionRun,
 	listActionRunEvents,
 	listActionRuns,
 } from "../db.js";
+import { bus } from "../events.js";
 import { getCurrentRunId, getPiBridge } from "../pi-bridge.js";
+import { getPiRef } from "../services/pi-config-reader.js";
 import type {
 	ActionRunStatus,
 	ActionType,
@@ -107,6 +111,98 @@ export function registerActionRunRoutes(app: FastifyInstance): void {
 			return reply.send({ success: true, status: "cancelled" });
 		},
 	);
+
+	// Inject context into a running action
+	app.post<{ Params: { id: string }; Body: { message: string } }>(
+		"/api/action-runs/:id/inject",
+		async (req, reply) => {
+			const { id } = req.params;
+			const { message } = req.body;
+
+			if (!message?.trim()) {
+				return reply
+					.code(400)
+					.send({ error: "validation", message: "message is required" });
+			}
+
+			const currentId = getCurrentRunId();
+			if (currentId !== id) {
+				return reply.code(409).send({
+					error: "not_active",
+					message: "Action run is not currently active",
+				});
+			}
+
+			const pi = getPiRef();
+			if (!pi) {
+				return reply
+					.code(503)
+					.send({ error: "unavailable", message: "Pi agent not connected" });
+			}
+
+			try {
+				pi.sendUserMessage(message, { deliverAs: "followUp" });
+
+				createActionRunEvent({
+					id: nanoid(),
+					actionRunId: id,
+					type: "ui.context.injected",
+					message: `Context injected: ${message.slice(0, 100)}`,
+				});
+
+				bus.emit("action:event", {
+					actionRunId: id,
+					type: "ui.context.injected",
+					message: `Context injected: ${message.slice(0, 100)}`,
+					dataJson: null,
+				});
+
+				return reply.send({ success: true });
+			} catch (err: unknown) {
+				const msg =
+					err instanceof Error ? err.message : "Failed to inject context";
+				return reply.code(500).send({ error: "internal", message: msg });
+			}
+		},
+	);
+
+	// Retry a failed action with optional feedback
+	app.post<{
+		Params: { id: string };
+		Body: { feedback?: string };
+	}>("/api/action-runs/:id/retry", async (req, reply) => {
+		const { id } = req.params;
+		const { feedback } = req.body;
+
+		const run = getActionRun(id);
+		if (!run) {
+			return reply
+				.code(404)
+				.send({ error: "not_found", message: "Action run not found" });
+		}
+
+		if (!["failed", "cancelled", "completed"].includes(run.status)) {
+			return reply.code(409).send({
+				error: "invalid_state",
+				message: "Can only retry failed, cancelled, or completed actions",
+			});
+		}
+
+		const bridge = getPiBridge();
+		const input: RunBlueprintActionInput = {
+			projectId: run.project_id ?? "",
+			featureId: run.feature_id ?? "",
+			actionType: run.action_type as ActionType,
+			stepName: run.step_name ?? undefined,
+			modelId: run.model_id ?? undefined,
+			effortLevel: (run.effort_level as any) ?? undefined,
+			executionMode: (run.execution_mode as any) ?? undefined,
+			extraContext: feedback ? { retryFeedback: feedback } : undefined,
+		};
+
+		const result = bridge.enqueue(input);
+		return reply.send(result);
+	});
 
 	// Get bridge status
 	app.get("/api/bridge/status", async (_req, reply) => {

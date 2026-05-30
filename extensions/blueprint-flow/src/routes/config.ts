@@ -1,11 +1,14 @@
 import type { FastifyInstance } from "fastify";
-import { getAgentConfig, getPiRef, THINKING_LEVELS } from "../services/pi-config-reader.js";
 import type { ThinkingLevel } from "@earendil-works/pi-coding-agent";
+import {
+  findAvailablePiModel,
+  getAgentConfig,
+  getPiRef,
+  THINKING_LEVELS,
+} from "../services/pi-config-reader.js";
 
 export function registerConfigRoutes(app: FastifyInstance): void {
-  app.get("/api/config/agent", async () => {
-    return getAgentConfig();
-  });
+  app.get("/api/config/agent", async () => getAgentConfig());
 
   app.post<{ Body: { level: ThinkingLevel } }>(
     "/api/config/thinking-level",
@@ -58,10 +61,7 @@ export function registerConfigRoutes(app: FastifyInstance): void {
       }
 
       try {
-        const models = pi.getAvailableModels();
-        const model = models.find((m) =>
-          m.id === modelId && (!provider || m.provider === provider)
-        );
+        const model = await findAvailablePiModel(modelId, provider);
 
         if (!model) {
           return reply.code(404).send({

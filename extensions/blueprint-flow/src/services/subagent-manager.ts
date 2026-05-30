@@ -45,6 +45,7 @@ export async function spawnSubagent(config: SubagentConfig): Promise<SubagentRes
 		actionRunId: config.id,
 		type: "subagent_spawned",
 		message: `Spawning ${config.actionType} sub-agent for step "${config.stepName}"`,
+		dataJson: null,
 	});
 
 	try {

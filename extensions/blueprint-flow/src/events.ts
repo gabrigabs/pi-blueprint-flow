@@ -13,10 +13,26 @@ export interface BlueprintEvents {
 		stepName: string;
 		status: string;
 	};
-	"artifact:saved": { id: string; featureId: string; type: string };
-	"artifact:updated": { id: string; featureId: string };
+	"artifact:saved": {
+		id: string;
+		featureId: string;
+		stepName?: string | null;
+		type: string;
+		filename?: string;
+	};
+	"artifact:updated": {
+		id: string;
+		featureId: string;
+		type?: string;
+	};
 	"memory:saved": { id: string; projectId: string; category: string };
-	"interview:asked": { id: string; featureId: string; question: string };
+	"interview:asked": {
+		id: string;
+		featureId: string;
+		question: string;
+		responseType?: string;
+		options?: string[];
+	};
 	"interview:answered": { id: string; answer: string };
 	"import:started": { id: string; repoPath: string };
 	"import:completed": { id: string; projectId: string | null };

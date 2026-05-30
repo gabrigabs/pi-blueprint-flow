@@ -130,7 +130,7 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 					setConfigError(null);
 					setConfigLoading(false);
 				})
-				.catch(() => {});
+				.catch(() => { });
 		}
 		window.addEventListener("blueprint:config-updated", handleConfigUpdate);
 		return () =>
@@ -214,11 +214,10 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 								type="button"
 								onClick={() => update({ effortLevel: v })}
 								title={description}
-								className={`flex flex-col items-center gap-0.5 rounded px-2 py-1.5 text-xs transition-colors ${
-									value.effortLevel === v
-										? "bg-blue-600/30 text-blue-300 ring-1 ring-blue-500/50"
-										: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
-								}`}
+								className={`flex flex-col items-center gap-0.5 rounded px-2 py-1.5 text-xs transition-colors ${value.effortLevel === v
+									? "bg-blue-600/30 text-blue-300 ring-1 ring-blue-500/50"
+									: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
+									}`}
 							>
 								<Icon size={12} />
 								<span>{label}</span>
@@ -240,11 +239,10 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 							type="button"
 							onClick={() => update({ executionMode: v })}
 							title={description}
-							className={`flex flex-col items-center gap-0.5 rounded px-2 py-1.5 text-xs transition-colors ${
-								value.executionMode === v
-									? "bg-emerald-600/30 text-emerald-300 ring-1 ring-emerald-500/50"
-									: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
-							}`}
+							className={`flex flex-col items-center gap-0.5 rounded px-2 py-1.5 text-xs transition-colors ${value.executionMode === v
+								? "bg-emerald-600/30 text-emerald-300 ring-1 ring-emerald-500/50"
+								: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
+								}`}
 						>
 							{v === "subagent" && <Bot size={11} />}
 							<span>{label}</span>
@@ -395,11 +393,10 @@ function ThinkingLevelSelector({
 						type="button"
 						disabled={updating}
 						onClick={() => handleChange(level)}
-						className={`rounded px-1.5 py-1 text-xs capitalize transition-colors ${
-							active === level
-								? "bg-violet-600/30 text-violet-300 ring-1 ring-violet-500/50"
-								: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
-						} disabled:opacity-50`}
+						className={`rounded px-1.5 py-1 text-xs capitalize transition-colors ${active === level
+							? "bg-violet-600/30 text-violet-300 ring-1 ring-violet-500/50"
+							: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
+							} disabled:opacity-50`}
 					>
 						{level === "xhigh" ? "max" : level}
 					</button>

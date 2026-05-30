@@ -10,7 +10,7 @@ import {
 	Square,
 	X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { STEP_LABELS } from "../../constants/steps";
 import type { AgentRunSettingsPayload } from "../../lib/api";
 import { api } from "../../lib/api";
@@ -63,6 +63,8 @@ export function StepDetailDrawer() {
 
 	const [showSettings, setShowSettings] = useState(false);
 	const [runSettings, setRunSettings] = useState<AgentRunSettingsPayload>({});
+	const [injectText, setInjectText] = useState("");
+	const [injecting, setInjecting] = useState(false);
 
 	const liveActionRunId = useStore((s) => s.liveActionRunId);
 	const liveMessagePreview = useStore((s) => s.liveMessagePreview);
@@ -124,6 +126,23 @@ export function StepDetailDrawer() {
 		try {
 			await api.actionRuns.cancel(activeRun.id);
 		} catch {}
+	}
+
+	async function handleInject() {
+		if (!injectText.trim()) return;
+		const activeRun = actionRuns.find(
+			(r) =>
+				r.feature_id === selectedFeatureId &&
+				r.step_name === step?.name &&
+				!["completed", "failed", "cancelled"].includes(r.status),
+		);
+		if (!activeRun) return;
+		setInjecting(true);
+		try {
+			await api.actionRuns.inject(activeRun.id, injectText.trim());
+			setInjectText("");
+		} catch {}
+		setInjecting(false);
 	}
 
 	return (
@@ -290,7 +309,7 @@ export function StepDetailDrawer() {
 						</>
 					)}
 
-					{/* Running: Cancel + Back */}
+					{/* Running: Cancel + Back + Inject */}
 					{step.status === "running" && (
 						<>
 							<button
@@ -312,6 +331,42 @@ export function StepDetailDrawer() {
 								<ArrowLeft size={10} /> Back
 							</button>
 						</>
+					)}
+
+					{/* Inject context (running only) */}
+					{step.status === "running" && (
+						<div className="w-full mt-2 flex gap-1.5">
+							<input
+								type="text"
+								value={injectText}
+								onChange={(e) => setInjectText(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" && !e.shiftKey) {
+										e.preventDefault();
+										handleInject();
+									}
+								}}
+								placeholder="Send context to agent..."
+								className="flex-1 rounded-lg border px-3 py-1.5 text-xs focus:outline-none"
+								style={{
+									background: "var(--bg-inset)",
+									borderColor: "var(--border-subtle)",
+									color: "var(--text-primary)",
+								}}
+							/>
+							<button
+								onClick={handleInject}
+								disabled={injecting || !injectText.trim()}
+								className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-40"
+								style={{
+									color: "var(--accent-primary)",
+									background: "var(--cyan-glow)",
+									border: "1px solid rgba(91, 155, 213, 0.2)",
+								}}
+							>
+								{injecting ? "..." : "Send"}
+							</button>
+						</div>
 					)}
 
 					{/* Done: Re-run + Back */}

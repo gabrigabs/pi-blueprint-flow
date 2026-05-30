@@ -45,18 +45,25 @@ export const designMockupTool = {
 			params.design_tokens ? JSON.stringify(params.design_tokens) : null,
 		);
 
-		const slug = params.variant_label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-		db.prepare(
-			`INSERT INTO artifacts (id, feature_id, step_name, type, filename, content)
-			 VALUES (?, ?, 'design', 'mockup', ?, ?)`,
-		).run(nanoid(12), params.feature_id, `design-${slug}.html`, params.html_content);
+			const slug = params.variant_label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+			const artifactId = nanoid(12);
+			db.prepare(
+				`INSERT INTO artifacts (id, feature_id, step_name, type, filename, content)
+				 VALUES (?, ?, 'design', 'mockup', ?, ?)`,
+			).run(
+				artifactId,
+				params.feature_id,
+				`design-${slug}.html`,
+				params.html_content,
+			);
 
-		bus.emit("artifact:saved", {
-			featureId: params.feature_id,
-			stepName: "design",
-			type: "mockup",
-			filename: `design-${slug}.html`,
-		});
+			bus.emit("artifact:saved", {
+				id: artifactId,
+				featureId: params.feature_id,
+				stepName: "design",
+				type: "mockup",
+				filename: `design-${slug}.html`,
+			});
 
 		return {
 			content: [

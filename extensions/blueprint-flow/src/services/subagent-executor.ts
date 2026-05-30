@@ -59,11 +59,20 @@ export async function executeViaSubagent(actionRun: ActionRunRow): Promise<void>
 	const result = await spawnSubagent(config);
 
 	if (result.success) {
+		if (!actionRun.feature_id || !actionRun.step_name) {
+			notifyAgentError(
+				actionRun.id,
+				"Sub-agent returned artifacts for an action without a feature/step context",
+			);
+			return;
+		}
+
 		for (const artifact of result.artifacts) {
+			const artifactId = nanoid(12);
 			db.prepare(
 				"INSERT INTO artifacts (id, feature_id, step_name, type, filename, content) VALUES (?, ?, ?, ?, ?, ?)",
 			).run(
-				nanoid(12),
+				artifactId,
 				actionRun.feature_id,
 				actionRun.step_name,
 				artifact.type,
@@ -72,6 +81,7 @@ export async function executeViaSubagent(actionRun: ActionRunRow): Promise<void>
 			);
 
 			bus.emit("artifact:saved", {
+				id: artifactId,
 				featureId: actionRun.feature_id,
 				stepName: actionRun.step_name,
 				type: artifact.type,

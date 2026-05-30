@@ -318,6 +318,19 @@ export const api = {
 					method: "POST",
 				},
 			),
+		inject: (id: string, message: string) =>
+			request<{ success: boolean }>(`/api/action-runs/${id}/inject`, {
+				method: "POST",
+				body: JSON.stringify({ message }),
+			}),
+		retry: (id: string, feedback?: string) =>
+			request<{ actionRunId: string; status: string }>(
+				`/api/action-runs/${id}/retry`,
+				{
+					method: "POST",
+					body: JSON.stringify({ feedback }),
+				},
+			),
 	},
 
 	bridge: {

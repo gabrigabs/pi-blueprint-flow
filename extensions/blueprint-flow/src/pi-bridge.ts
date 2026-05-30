@@ -10,7 +10,7 @@ import {
 	updateActionRunStatus,
 } from "./db.js";
 import { bus } from "./events.js";
-import { getPiRef } from "./services/pi-config-reader.js";
+import { findAvailablePiModel, getPiRef } from "./services/pi-config-reader.js";
 import { buildPrompt, gatherPromptContext } from "./services/prompt-builder.js";
 import type {
 	ActionRunStatus,
@@ -38,11 +38,27 @@ let retryHandle: ReturnType<typeof setTimeout> | null = null;
 /** Track whether Pi agent is currently processing (user or blueprint action) */
 let piAgentBusy = false;
 
-const ACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
-const RETRY_DELAY_MS = 3_000; // 3 seconds between retries when Pi is busy
+const ACTION_TIMEOUTS_MS: Record<string, number> = {
+	research: 3 * 60 * 1000,
+	interview: 3 * 60 * 1000,
+	spec: 5 * 60 * 1000,
+	ddd: 5 * 60 * 1000,
+	behavior: 5 * 60 * 1000,
+	implementation_plan: 8 * 60 * 1000,
+	implementation: 15 * 60 * 1000,
+	review: 5 * 60 * 1000,
+	memory_update: 2 * 60 * 1000,
+	run_step: 10 * 60 * 1000,
+};
+const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000;
+const HEARTBEAT_WINDOW_MS = 30_000;
+
+const RETRY_DELAY_MS = 3_000;
 const MAX_RETRIES = 10;
 
 let retryCount = 0;
+// biome-ignore lint/style/useLet: reassigned in heartbeat()
+let lastEventAt = 0;
 
 function getPi(): ExtensionAPI | null {
 	return getPiRef();
@@ -174,10 +190,10 @@ function processNext(): void {
 	updateActionRunStatus(nextId, "waiting_for_pi");
 	bus.emit("action:updated", { id: nextId, status: "waiting_for_pi" });
 
-	attemptInjection(nextId);
+	void attemptInjection(nextId);
 }
 
-function attemptInjection(runId: string): void {
+async function attemptInjection(runId: string): Promise<void> {
 	const pi = getPi();
 	if (!pi || currentRunId !== runId) return;
 
@@ -235,7 +251,7 @@ function attemptInjection(runId: string): void {
 			dataJson: null,
 		});
 
-		retryHandle = setTimeout(() => attemptInjection(runId), RETRY_DELAY_MS);
+		retryHandle = setTimeout(() => void attemptInjection(runId), RETRY_DELAY_MS);
 		return;
 	}
 
@@ -273,9 +289,8 @@ function attemptInjection(runId: string): void {
 			null;
 
 		if (targetModelId) {
-			const models = pi.getAvailableModels();
-			const model = models.find((m) => m.id === targetModelId);
-			if (model) pi.setModel(model);
+			const model = await findAvailablePiModel(targetModelId);
+			if (model) await pi.setModel(model);
 		}
 		if (targetThinking) {
 			pi.setThinkingLevel(targetThinking as any);
@@ -307,7 +322,7 @@ function attemptInjection(runId: string): void {
 		// If injection fails, retry once with followUp
 		if (retryCount === 0) {
 			retryCount++;
-			retryHandle = setTimeout(() => attemptInjection(runId), RETRY_DELAY_MS);
+			retryHandle = setTimeout(() => void attemptInjection(runId), RETRY_DELAY_MS);
 			return;
 		}
 		currentRunId = null;
@@ -321,23 +336,45 @@ function attemptInjection(runId: string): void {
 	startActionTimeout(runId);
 }
 
+function getTimeoutForAction(actionRunId: string): number {
+	const run = getActionRun(actionRunId);
+	if (!run) return DEFAULT_TIMEOUT_MS;
+	return ACTION_TIMEOUTS_MS[run.action_type] ?? DEFAULT_TIMEOUT_MS;
+}
+
 function startActionTimeout(actionRunId: string): void {
 	clearActionTimeout();
-	timeoutHandle = setTimeout(() => {
-		if (currentRunId === actionRunId) {
-			currentRunId = null;
-			updateActionRunStatus(
-				actionRunId,
-				"failed",
-				"Action timed out after 5 minutes",
-			);
-			bus.emit("action:failed", {
-				id: actionRunId,
-				error: "Action timed out after 5 minutes",
-			});
-			processNext();
+	lastEventAt = Date.now();
+	const timeoutMs = getTimeoutForAction(actionRunId);
+
+	timeoutHandle = setTimeout(function check() {
+		if (currentRunId !== actionRunId) return;
+
+		const elapsed = Date.now() - lastEventAt;
+		if (elapsed < HEARTBEAT_WINDOW_MS) {
+			// Still receiving events — reschedule
+			timeoutHandle = setTimeout(check, HEARTBEAT_WINDOW_MS);
+			return;
 		}
-	}, ACTION_TIMEOUT_MS);
+
+		currentRunId = null;
+		const mins = Math.round(timeoutMs / 60000);
+		updateActionRunStatus(
+			actionRunId,
+			"failed",
+			`Action timed out after ${mins} minutes`,
+		);
+		bus.emit("action:failed", {
+			id: actionRunId,
+			error: `Action timed out after ${mins} minutes`,
+		});
+		processNext();
+	}, timeoutMs);
+}
+
+/** Call on every event from Pi to keep the heartbeat alive */
+export function heartbeat(): void {
+	lastEventAt = Date.now();
 }
 
 function clearActionTimeout(): void {

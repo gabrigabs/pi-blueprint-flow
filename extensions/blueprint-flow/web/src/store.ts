@@ -150,6 +150,9 @@ interface BlueprintStore {
 	liveMessagePreview: string | null;
 	liveToolHistory: { name: string; startedAt: number; endedAt?: number }[];
 
+	// Auto-advance mode
+	autoAdvance: boolean;
+
 	setProjects: (projects: Project[]) => void;
 	setFeatures: (features: Feature[]) => void;
 	setSteps: (steps: Step[]) => void;
@@ -173,6 +176,9 @@ interface BlueprintStore {
 	incrementArtifactVersion: () => void;
 	openModal: (modal: ModalType) => void;
 	closeModal: () => void;
+
+	// Auto-advance
+	toggleAutoAdvance: () => void;
 
 	// Live activity setters
 	setLiveActivity: (
@@ -211,6 +217,8 @@ export const useStore = create<BlueprintStore>((set) => ({
 	liveToolName: null,
 	liveMessagePreview: null,
 	liveToolHistory: [],
+
+	autoAdvance: false,
 
 	setProjects: (projects) => set({ projects }),
 	setFeatures: (features) => set({ features }),
@@ -256,6 +264,9 @@ export const useStore = create<BlueprintStore>((set) => ({
 		})),
 	openModal: (modal) => set({ activeModal: modal }),
 	closeModal: () => set({ activeModal: null }),
+
+	toggleAutoAdvance: () =>
+		set((state) => ({ autoAdvance: !state.autoAdvance })),
 
 	setLiveActivity: (actionRunId, toolName) =>
 		set((state) => ({

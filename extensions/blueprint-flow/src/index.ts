@@ -14,7 +14,7 @@ import type { Feature } from "./db.js";
 import { closeDb, getDb, initDb, migrateFromLegacyDb } from "./db.js";
 import { bus } from "./events.js";
 import { startServer, stopServer } from "./server.js";
-import { setPiRef } from "./services/pi-config-reader.js";
+import { setModelRegistry, setPiRef } from "./services/pi-config-reader.js";
 import { registerPiEventListeners } from "./services/pi-event-listener.js";
 import { readArtifactTool, saveArtifactTool } from "./tools/artifacts.js";
 import { createFeatureTool, listFeaturesTool } from "./tools/feature.js";
@@ -121,6 +121,8 @@ export default function (pi: ExtensionAPI) {
 		description: "Start the Blueprint web cockpit",
 		handler: async (_args, ctx) => {
 			try {
+				setModelRegistry(ctx.modelRegistry);
+
 				const dbPath = resolveDbPath();
 				initDb(dbPath);
 

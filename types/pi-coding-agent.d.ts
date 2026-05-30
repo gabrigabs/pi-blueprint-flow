@@ -122,7 +122,19 @@ declare module "@earendil-works/pi-coding-agent" {
 
 	interface ModelRegistry {
 		find(provider: string, modelId: string): Model | undefined;
+		getAvailable(): Promise<Model[]>;
 	}
+
+	interface AuthStorage {}
+
+	const AuthStorage: {
+		create(path?: string): AuthStorage;
+	};
+
+	const ModelRegistry: {
+		create(authStorage: AuthStorage, modelsPath?: string): ModelRegistry;
+		inMemory(authStorage: AuthStorage): ModelRegistry;
+	};
 
 	// --- Model & Thinking ---
 	type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh";

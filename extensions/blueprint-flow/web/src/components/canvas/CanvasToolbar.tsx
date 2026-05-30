@@ -1,9 +1,16 @@
-import { ArrowDownUp, ArrowRightLeft, Brain, Maximize2, Play } from "lucide-react";
+import { useReactFlow } from "@xyflow/react";
+import {
+	ArrowDownUp,
+	ArrowRightLeft,
+	Brain,
+	Maximize2,
+	Play,
+	Zap,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import { useStore } from "../../store";
 import type { LayoutDirection } from "./layout";
-import { useReactFlow } from "@xyflow/react";
-import { useEffect, useState } from "react";
 
 interface Props {
 	direction: LayoutDirection;
@@ -13,10 +20,18 @@ interface Props {
 	onToggleKnowledge: () => void;
 }
 
-export function CanvasToolbar({ direction, onDirectionChange, onFitView, showKnowledge, onToggleKnowledge }: Props) {
+export function CanvasToolbar({
+	direction,
+	onDirectionChange,
+	onFitView,
+	showKnowledge,
+	onToggleKnowledge,
+}: Props) {
 	const selectedFeatureId = useStore((s) => s.selectedFeatureId);
 	const steps = useStore((s) => s.steps);
 	const memories = useStore((s) => s.memories);
+	const autoAdvance = useStore((s) => s.autoAdvance);
+	const toggleAutoAdvance = useStore((s) => s.toggleAutoAdvance);
 	const { getViewport } = useReactFlow();
 	const [zoom, setZoom] = useState(100);
 
@@ -30,7 +45,12 @@ export function CanvasToolbar({ direction, onDirectionChange, onFitView, showKno
 
 	const doneSteps = steps.filter((s) => s.status === "done").length;
 	const runningStep = steps.find((s) => s.status === "running");
-	const currentStep = steps.find((s) => s.status === "running" || s.status === "needs_user" || s.status === "pending");
+	const currentStep = steps.find(
+		(s) =>
+			s.status === "running" ||
+			s.status === "needs_user" ||
+			s.status === "pending",
+	);
 
 	async function handleRunCurrent() {
 		if (!selectedFeatureId) return;
@@ -49,26 +69,36 @@ export function CanvasToolbar({ direction, onDirectionChange, onFitView, showKno
 			}}
 		>
 			{/* Progress dots */}
-			<div className="flex items-center gap-2 pr-3 border-r" style={{ borderColor: "var(--border-subtle)" }}>
+			<div
+				className="flex items-center gap-2 pr-3 border-r"
+				style={{ borderColor: "var(--border-subtle)" }}
+			>
 				<div className="flex items-center gap-1">
 					{steps.map((s) => (
 						<div
 							key={s.id}
 							className="h-2 w-2 rounded-full transition-all duration-300"
 							style={{
-								background: s.status === "done"
-									? "var(--accent-success)"
-									: s.status === "running"
-										? "var(--accent-primary)"
-										: s.status === "needs_user"
-											? "var(--amber-400)"
-											: "var(--border-default)",
-								boxShadow: s.status === "running" ? "0 0 6px var(--accent-primary)" : "none",
+								background:
+									s.status === "done"
+										? "var(--accent-success)"
+										: s.status === "running"
+											? "var(--accent-primary)"
+											: s.status === "needs_user"
+												? "var(--amber-400)"
+												: "var(--border-default)",
+								boxShadow:
+									s.status === "running"
+										? "0 0 6px var(--accent-primary)"
+										: "none",
 							}}
 						/>
 					))}
 				</div>
-				<span className="font-mono text-[10px]" style={{ color: "var(--text-muted)" }}>
+				<span
+					className="font-mono text-[10px]"
+					style={{ color: "var(--text-muted)" }}
+				>
 					{doneSteps}/{steps.length}
 				</span>
 			</div>
@@ -84,12 +114,34 @@ export function CanvasToolbar({ direction, onDirectionChange, onFitView, showKno
 				</button>
 			)}
 
+			{/* Auto-advance toggle */}
+			<button
+				onClick={toggleAutoAdvance}
+				title={
+					autoAdvance
+						? "Auto-advance ON — will run all steps"
+						: "Auto-advance OFF"
+				}
+				className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+					autoAdvance
+						? "bg-[var(--cyan-glow)] text-[var(--accent-primary)]"
+						: "text-[var(--text-tertiary)] hover:bg-[var(--bg-surface-hover)]"
+				}`}
+			>
+				<Zap size={11} />
+				Auto
+			</button>
+
 			{/* Knowledge toggle */}
 			<button
 				onClick={onToggleKnowledge}
 				title="Toggle knowledge panel"
 				className="relative rounded-lg p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
-				style={{ color: showKnowledge ? "var(--accent-primary)" : "var(--text-tertiary)" }}
+				style={{
+					color: showKnowledge
+						? "var(--accent-primary)"
+						: "var(--text-tertiary)",
+				}}
 			>
 				<Brain size={14} />
 				{memories.length > 0 && (
@@ -102,12 +154,20 @@ export function CanvasToolbar({ direction, onDirectionChange, onFitView, showKno
 
 			{/* Layout toggle */}
 			<button
-				onClick={() => onDirectionChange(direction === "vertical" ? "horizontal" : "vertical")}
+				onClick={() =>
+					onDirectionChange(
+						direction === "vertical" ? "horizontal" : "vertical",
+					)
+				}
 				title={`Switch to ${direction === "vertical" ? "horizontal" : "vertical"} layout`}
 				className="rounded-lg p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
 				style={{ color: "var(--text-tertiary)" }}
 			>
-				{direction === "vertical" ? <ArrowRightLeft size={14} /> : <ArrowDownUp size={14} />}
+				{direction === "vertical" ? (
+					<ArrowRightLeft size={14} />
+				) : (
+					<ArrowDownUp size={14} />
+				)}
 			</button>
 
 			{/* Fit view */}
@@ -121,15 +181,27 @@ export function CanvasToolbar({ direction, onDirectionChange, onFitView, showKno
 			</button>
 
 			{/* Zoom indicator */}
-			<span className="font-mono text-[10px] pl-1 tabular-nums" style={{ color: "var(--text-muted)" }}>
+			<span
+				className="font-mono text-[10px] pl-1 tabular-nums"
+				style={{ color: "var(--text-muted)" }}
+			>
 				{zoom}%
 			</span>
 
 			{/* Running step breadcrumb */}
 			{runningStep && (
-				<div className="flex items-center gap-1.5 pl-2 border-l" style={{ borderColor: "var(--border-subtle)" }}>
-					<div className="h-1.5 w-1.5 rounded-full animate-pulse-glow" style={{ background: "var(--accent-primary)" }} />
-					<span className="text-[10px] font-mono truncate max-w-[100px]" style={{ color: "var(--accent-primary)" }}>
+				<div
+					className="flex items-center gap-1.5 pl-2 border-l"
+					style={{ borderColor: "var(--border-subtle)" }}
+				>
+					<div
+						className="h-1.5 w-1.5 rounded-full animate-pulse-glow"
+						style={{ background: "var(--accent-primary)" }}
+					/>
+					<span
+						className="text-[10px] font-mono truncate max-w-[100px]"
+						style={{ color: "var(--accent-primary)" }}
+					>
 						{runningStep.name}
 					</span>
 				</div>

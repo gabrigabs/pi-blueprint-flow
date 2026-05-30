@@ -240,6 +240,32 @@ export function useWebSocket() {
 					store.clearLiveActivity();
 					addToast({ type: "success", message: "Action completed" });
 					debouncedRefresh("featureData", refreshFeatureData);
+
+					// Auto-advance: advance + run next step
+					if (store.autoAdvance && store.selectedFeatureId) {
+						const featureId = store.selectedFeatureId;
+						const currentStep = store.steps.find(
+							(s) => s.feature_id === featureId && s.status === "running",
+						);
+						// Don't auto-advance past interview steps
+						if (!currentStep || currentStep.name !== "interview") {
+							fetch(`/api/features/${featureId}/advance`, {
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: "{}",
+							})
+								.then((r) => r.json())
+								.then((data) => {
+									if (data.completed) return;
+									fetch(`/api/features/${featureId}/run-step`, {
+										method: "POST",
+										headers: { "Content-Type": "application/json" },
+										body: JSON.stringify({}),
+									}).catch(() => {});
+								})
+								.catch(() => {});
+						}
+					}
 				}
 				break;
 

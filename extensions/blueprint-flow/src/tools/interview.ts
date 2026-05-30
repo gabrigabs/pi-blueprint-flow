@@ -115,25 +115,26 @@ export const waitForInterviewTool = {
 
     // Wait for answers via event bus instead of polling
     const answered = await new Promise<boolean>((resolve) => {
+      let unsubscribe = () => {};
       const timer = setTimeout(() => {
-        bus.off("interview:answered", handler);
+        unsubscribe();
         resolve(false);
       }, timeout);
 
       function handler() {
         if (check()) {
           clearTimeout(timer);
-          bus.off("interview:answered", handler);
+          unsubscribe();
           resolve(true);
         }
       }
 
-      bus.on("interview:answered", handler);
+      unsubscribe = bus.on("interview:answered", handler);
 
       if (signal) {
         signal.addEventListener("abort", () => {
           clearTimeout(timer);
-          bus.off("interview:answered", handler);
+          unsubscribe();
           resolve(false);
         }, { once: true });
       }

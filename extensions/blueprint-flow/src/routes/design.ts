@@ -46,7 +46,11 @@ export function registerDesignRoutes(app: FastifyInstance): void {
 				db.prepare("UPDATE design_variants SET feedback = ? WHERE id = ?").run(feedback, id);
 			}
 
-			bus.emit("artifact:updated", { featureId: variant.feature_id, type: "design_variant" });
+			bus.emit("artifact:updated", {
+				id,
+				featureId: variant.feature_id,
+				type: "design_variant",
+			});
 
 			const updated = db.prepare("SELECT * FROM design_variants WHERE id = ?").get(id);
 			return reply.send(updated);

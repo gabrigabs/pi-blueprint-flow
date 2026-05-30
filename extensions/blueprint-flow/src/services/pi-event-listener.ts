@@ -4,6 +4,7 @@ import { createActionRunEvent } from "../db.js";
 import { bus } from "../events.js";
 import {
 	getCurrentRunId,
+	heartbeat,
 	isPiAgentBusy,
 	notifyAgentEnd,
 	notifyAgentError,
@@ -81,6 +82,7 @@ export function registerPiEventListeners(pi: ExtensionAPI): void {
 
 	// Tool execution started
 	pi.on("tool_execution_start", async (...args: unknown[]) => {
+		heartbeat();
 		const runId = getCurrentRunId();
 		if (!runId) return;
 
@@ -109,6 +111,7 @@ export function registerPiEventListeners(pi: ExtensionAPI): void {
 
 	// Tool execution update (partial results)
 	pi.on("tool_execution_update", async (...args: unknown[]) => {
+		heartbeat();
 		const runId = getCurrentRunId();
 		if (!runId) return;
 
@@ -128,6 +131,7 @@ export function registerPiEventListeners(pi: ExtensionAPI): void {
 
 	// Tool execution ended
 	pi.on("tool_execution_end", async (...args: unknown[]) => {
+		heartbeat();
 		const runId = getCurrentRunId();
 		if (!runId) return;
 
@@ -158,6 +162,7 @@ export function registerPiEventListeners(pi: ExtensionAPI): void {
 
 	// Message update (text streaming from agent)
 	pi.on("message_update", async (...args: unknown[]) => {
+		heartbeat();
 		const runId = getCurrentRunId();
 		if (!runId) return;
 
