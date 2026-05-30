@@ -61,6 +61,8 @@ export interface Interview {
 	answer: string | null;
 	type: string;
 	required: number;
+	response_type: string;
+	options: string[] | null;
 	why: string | null;
 	created_at: string;
 }

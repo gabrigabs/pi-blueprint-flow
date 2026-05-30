@@ -8,7 +8,7 @@ export const askInterviewTool = {
   name: "blueprint_ask_interview",
   label: "Blueprint: Ask Interview Question",
   description:
-    "Ask an interview question to gather requirements for a feature. Questions should be adaptive — build on previous answers. Types: clarification, constraint, edge_case, priority, acceptance_criteria, technical.",
+    "Ask an interview question to gather requirements for a feature. Non-blocking — the answer arrives via the web UI. Supports free_text, single_choice, and multi_choice response types.",
   parameters: Type.Object({
     feature_id: Type.String({ description: "Feature ID" }),
     question: Type.String({ description: "The question to ask the user" }),
@@ -21,6 +21,12 @@ export const askInterviewTool = {
     required: Type.Optional(
       Type.Boolean({ description: "Whether an answer is required to proceed (default: false)" })
     ),
+    response_type: Type.Optional(
+      Type.String({ description: "free_text | single_choice | multi_choice (default: free_text)" })
+    ),
+    options: Type.Optional(
+      Type.Array(Type.String(), { description: "Predefined options for single_choice or multi_choice" })
+    ),
   }),
   execute: async (
     _toolCallId: string,
@@ -30,55 +36,126 @@ export const askInterviewTool = {
       type: string;
       why?: string;
       required?: boolean;
+      response_type?: string;
+      options?: string[];
     },
-    _signal: AbortSignal,
-    _onUpdate: unknown,
-    ctx: any
   ) => {
     const db = getDb();
     const id = nanoid(12);
+    const responseType = params.response_type || "free_text";
+    const optionsJson = params.options ? JSON.stringify(params.options) : null;
 
-    // Store the question
     db.prepare(
-      "INSERT INTO interviews (id, feature_id, question, type, required, why) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run(id, params.feature_id, params.question, params.type, params.required ? 1 : 0, params.why ?? null);
+      "INSERT INTO interviews (id, feature_id, question, type, required, why, response_type, options) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    ).run(
+      id,
+      params.feature_id,
+      params.question,
+      params.type,
+      params.required ? 1 : 0,
+      params.why ?? null,
+      responseType,
+      optionsJson,
+    );
 
-    bus.emit("interview:asked", { id, featureId: params.feature_id, question: params.question });
-
-    // Format the question for the user
-    const whyLine = params.why ? `\n_Why: ${params.why}_` : "";
-    const typeBadge = `[${params.type}]`;
-
-    // Use ctx.ui.input to get the answer interactively
-    const answer = await ctx.ui.input(`${typeBadge} ${params.question}${whyLine}`);
-
-    if (answer) {
-      // Store the answer
-      db.prepare("UPDATE interviews SET answer = ? WHERE id = ?").run(answer, id);
-      bus.emit("interview:answered", { id, answer });
-
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `**Q:** ${params.question}\n**A:** ${answer}`,
-          },
-        ],
-        details: { interviewId: id, question: params.question, answer, type: params.type },
-      };
-    }
+    bus.emit("interview:asked", {
+      id,
+      featureId: params.feature_id,
+      question: params.question,
+      responseType,
+      options: params.options,
+    });
 
     return {
       content: [
         {
           type: "text" as const,
-          text: `Question asked: "${params.question}" — awaiting answer.`,
+          text: `Question asked: "${params.question}" (${responseType}) — awaiting answer via Blueprint UI.`,
         },
       ],
-      details: { interviewId: id, question: params.question, answer: null, type: params.type },
+      details: {
+        interviewId: id,
+        question: params.question,
+        responseType,
+        options: params.options,
+        type: params.type,
+      },
     };
   },
 };
+
+export const waitForInterviewTool = {
+  name: "blueprint_wait_for_interview",
+  label: "Blueprint: Wait for Interview Answers",
+  description:
+    "Poll until all required interview questions for a feature are answered via the Blueprint UI. Call this after asking all questions with blueprint_ask_interview.",
+  parameters: Type.Object({
+    feature_id: Type.String({ description: "Feature ID" }),
+    timeout_ms: Type.Optional(
+      Type.Number({ description: "Max wait time in ms (default: 120000)", default: 120000 })
+    ),
+  }),
+  execute: async (
+    _toolCallId: string,
+    params: { feature_id: string; timeout_ms?: number },
+    signal: AbortSignal,
+  ) => {
+    const db = getDb();
+    const timeout = params.timeout_ms ?? 120000;
+    const start = Date.now();
+
+    while (Date.now() - start < timeout) {
+      const pending = db
+        .prepare(
+          "SELECT COUNT(*) as count FROM interviews WHERE feature_id = ? AND required = 1 AND answer IS NULL"
+        )
+        .get(params.feature_id) as { count: number };
+
+      if (pending.count === 0) {
+        const all = db
+          .prepare("SELECT * FROM interviews WHERE feature_id = ? ORDER BY created_at ASC")
+          .all(params.feature_id) as Interview[];
+
+        return {
+          content: [{ type: "text" as const, text: formatInterviewSummary(all) }],
+          details: { interviews: all, timedOut: false },
+        };
+      }
+
+      if (signal?.aborted) break;
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+
+    const current = db
+      .prepare("SELECT * FROM interviews WHERE feature_id = ? ORDER BY created_at ASC")
+      .all(params.feature_id) as Interview[];
+
+    const unanswered = current.filter((i) => !i.answer && i.required);
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Timeout after ${Math.round(timeout / 1000)}s. ${unanswered.length} required question(s) still unanswered.\n\n${formatInterviewSummary(current)}`,
+        },
+      ],
+      details: { interviews: current, timedOut: true },
+    };
+  },
+};
+
+function formatInterviewSummary(interviews: Interview[]): string {
+  if (interviews.length === 0) return "No interview questions.";
+
+  const lines = interviews.map((i) => {
+    const status = i.answer ? "✓" : "○";
+    const answer = i.answer ? `\n  A: ${i.answer}` : "\n  _(unanswered)_";
+    return `${status} [${i.type}] ${i.question}${answer}`;
+  });
+
+  const answered = interviews.filter((i) => i.answer).length;
+  return `Interview Summary (${answered}/${interviews.length} answered):\n\n${lines.join("\n\n")}`;
+}
 
 export const getInterviewHistoryTool = {
   name: "blueprint_get_interview_history",
@@ -111,14 +188,8 @@ export const getInterviewHistoryTool = {
       };
     }
 
-    const lines = interviews.map((i) => {
-      const status = i.answer ? "✓" : "○";
-      const answerLine = i.answer ? `\n  A: ${i.answer}` : "\n  _(unanswered)_";
-      return `${status} [${i.type}] ${i.question}${answerLine}`;
-    });
-
     return {
-      content: [{ type: "text" as const, text: `Interview (${interviews.length} questions):\n\n${lines.join("\n\n")}` }],
+      content: [{ type: "text" as const, text: formatInterviewSummary(interviews) }],
       details: { interviews },
     };
   },

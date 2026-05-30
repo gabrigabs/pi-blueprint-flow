@@ -74,6 +74,8 @@ export interface Interview {
 	answer: string | null;
 	type: string;
 	required: number;
+	response_type: string;
+	options: string | null;
 	why: string | null;
 	created_at: string;
 }
@@ -383,6 +385,10 @@ const MIGRATIONS = [
 	// v0.3.0: Workflow support
 	`ALTER TABLE features ADD COLUMN workflow_id TEXT`,
 	`ALTER TABLE projects ADD COLUMN workflow_id TEXT`,
+	// v0.4.0: Interview response types + project scope
+	`ALTER TABLE interviews ADD COLUMN response_type TEXT DEFAULT 'free_text'`,
+	`ALTER TABLE interviews ADD COLUMN options TEXT`,
+	`ALTER TABLE projects ADD COLUMN scope TEXT DEFAULT 'app'`,
 ];
 
 let db: Database.Database | null = null;

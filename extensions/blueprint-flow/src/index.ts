@@ -26,6 +26,7 @@ import {
 import {
 	askInterviewTool,
 	getInterviewHistoryTool,
+	waitForInterviewTool,
 } from "./tools/interview.js";
 import { saveMemoryTool, searchMemoryTool } from "./tools/memory.js";
 // Tools
@@ -85,6 +86,7 @@ export default function (pi: ExtensionAPI) {
 	pi.registerTool(saveArtifactTool);
 	pi.registerTool(readArtifactTool);
 	pi.registerTool(askInterviewTool);
+	pi.registerTool(waitForInterviewTool);
 	pi.registerTool(getInterviewHistoryTool);
 	pi.registerTool(saveMemoryTool);
 	pi.registerTool(searchMemoryTool);
