@@ -1,13 +1,11 @@
-import type {
-	ExtensionAPI,
-	SendMessageOptions,
-} from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { nanoid } from "nanoid";
 import {
 	createActionRun,
 	createActionRunEvent,
 	getActionRun,
 	getActiveActionRun,
+	getDb,
 	updateActionRunStatus,
 } from "./db.js";
 import { bus } from "./events.js";
@@ -34,8 +32,16 @@ export interface PiBridgeInterface {
 const queue: string[] = [];
 let currentRunId: string | null = null;
 let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+let retryHandle: ReturnType<typeof setTimeout> | null = null;
+
+/** Track whether Pi agent is currently processing (user or blueprint action) */
+let piAgentBusy = false;
 
 const ACTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const RETRY_DELAY_MS = 3_000; // 3 seconds between retries when Pi is busy
+const MAX_RETRIES = 10;
+
+let retryCount = 0;
 
 function getPi(): ExtensionAPI | null {
 	return getPiRef();
@@ -47,6 +53,20 @@ function getStatus(): BridgeStatus {
 	return "idle";
 }
 
+/** Called externally to track Pi's busy state */
+export function setPiAgentBusy(busy: boolean): void {
+	piAgentBusy = busy;
+
+	// If Pi just became idle and we have queued items, try processing
+	if (!busy && !currentRunId && queue.length > 0) {
+		processNext();
+	}
+}
+
+export function isPiAgentBusy(): boolean {
+	return piAgentBusy;
+}
+
 function enqueue(input: RunBlueprintActionInput): {
 	actionRunId: string;
 	status: ActionRunStatus;
@@ -56,7 +76,7 @@ function enqueue(input: RunBlueprintActionInput): {
 
 	if (!pi) {
 		// Create the run in DB with terminal not_connected status
-		const run = createActionRun({
+		createActionRun({
 			id,
 			projectId: input.projectId,
 			featureId: input.featureId,
@@ -128,6 +148,7 @@ function cancel(actionRunId: string): boolean {
 	// If it's the current run, mark as cancelled
 	if (currentRunId === actionRunId) {
 		clearActionTimeout();
+		clearRetry();
 		currentRunId = null;
 		updateActionRunStatus(actionRunId, "cancelled");
 		bus.emit("action:updated", { id: actionRunId, status: "cancelled" });
@@ -147,12 +168,56 @@ function processNext(): void {
 
 	const nextId = queue.shift()!;
 	currentRunId = nextId;
+	retryCount = 0;
 
 	updateActionRunStatus(nextId, "waiting_for_pi");
 	bus.emit("action:updated", { id: nextId, status: "waiting_for_pi" });
 
+	attemptInjection(nextId);
+}
+
+function attemptInjection(runId: string): void {
+	const pi = getPi();
+	if (!pi || currentRunId !== runId) return;
+
+	// If Pi is busy with a user conversation, wait and retry
+	if (piAgentBusy) {
+		retryCount++;
+		if (retryCount > MAX_RETRIES) {
+			currentRunId = null;
+			updateActionRunStatus(
+				runId,
+				"failed",
+				"Pi agent busy — max retries exceeded",
+			);
+			bus.emit("action:failed", {
+				id: runId,
+				error: "Pi agent busy — max retries exceeded",
+			});
+			processNext();
+			return;
+		}
+
+		createActionRunEvent({
+			id: nanoid(),
+			actionRunId: runId,
+			type: "ui.action.queued",
+			message: `Pi busy, retry ${retryCount}/${MAX_RETRIES} in ${RETRY_DELAY_MS / 1000}s`,
+		});
+
+		bus.emit("action:event", {
+			actionRunId: runId,
+			type: "ui.action.queued",
+			message: `Pi busy, retrying in ${RETRY_DELAY_MS / 1000}s (${retryCount}/${MAX_RETRIES})`,
+			dataJson: null,
+		});
+
+		retryHandle = setTimeout(() => attemptInjection(runId), RETRY_DELAY_MS);
+		return;
+	}
+
 	// Build the prompt from DB context
-	const actionRun = getActionRun(nextId);
+	const actionRun = getActionRun(runId);
 	if (!actionRun) {
 		currentRunId = null;
 		processNext();
@@ -163,33 +228,51 @@ function processNext(): void {
 	const prompt = buildPrompt(ctx);
 
 	// Store the prompt in the DB
-	updateActionRunStatus(nextId, "injected");
-	bus.emit("action:updated", { id: nextId, status: "injected" });
+	try {
+		getDb()
+			.prepare(
+				"UPDATE action_runs SET prompt = ?, updated_at = datetime('now') WHERE id = ?",
+			)
+			.run(prompt, runId);
+	} catch {
+		// non-critical — prompt storage is best-effort
+	}
+
+	updateActionRunStatus(runId, "injected");
+	bus.emit("action:updated", { id: runId, status: "injected" });
 
 	createActionRunEvent({
 		id: nanoid(),
-		actionRunId: nextId,
+		actionRunId: runId,
 		type: "pi.prompt.injected",
 		message: `Prompt injected (${prompt.length} chars)`,
 		dataJson: JSON.stringify({ promptLength: prompt.length }),
 	});
 
-	// Determine delivery strategy
-	const deliverAs: "steer" | "followUp" = currentRunId ? "followUp" : "steer";
+	// Determine delivery strategy:
+	// "steer" when Pi is idle — starts a new turn
+	// "followUp" when Pi might be finishing up — queues after current turn
+	const deliverAs: "steer" | "followUp" = piAgentBusy ? "followUp" : "steer";
 
 	// Inject into Pi
 	try {
 		pi.sendUserMessage(prompt, { deliverAs });
 	} catch (err: any) {
+		// If injection fails, retry once with followUp
+		if (retryCount === 0) {
+			retryCount++;
+			retryHandle = setTimeout(() => attemptInjection(runId), RETRY_DELAY_MS);
+			return;
+		}
 		currentRunId = null;
 		const errorMsg = err?.message ?? "Failed to inject prompt into Pi";
-		updateActionRunStatus(nextId, "failed", errorMsg);
-		bus.emit("action:failed", { id: nextId, error: errorMsg });
+		updateActionRunStatus(runId, "failed", errorMsg);
+		bus.emit("action:failed", { id: runId, error: errorMsg });
 		processNext();
 		return;
 	}
 
-	startActionTimeout(nextId);
+	startActionTimeout(runId);
 }
 
 function startActionTimeout(actionRunId: string): void {
@@ -218,10 +301,18 @@ function clearActionTimeout(): void {
 	}
 }
 
+function clearRetry(): void {
+	if (retryHandle) {
+		clearTimeout(retryHandle);
+		retryHandle = null;
+	}
+}
+
 /** Called when Pi agent finishes (agent_end event) to complete the current run */
 export function notifyAgentEnd(actionRunId: string): void {
 	if (currentRunId !== actionRunId) return;
 	clearActionTimeout();
+	clearRetry();
 	currentRunId = null;
 	updateActionRunStatus(actionRunId, "completed");
 	bus.emit("action:completed", { id: actionRunId, status: "completed" });
@@ -232,6 +323,7 @@ export function notifyAgentEnd(actionRunId: string): void {
 export function notifyAgentError(actionRunId: string, error: string): void {
 	if (currentRunId !== actionRunId) return;
 	clearActionTimeout();
+	clearRetry();
 	currentRunId = null;
 	updateActionRunStatus(actionRunId, "failed", error);
 	bus.emit("action:failed", { id: actionRunId, error });
