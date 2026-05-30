@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { addToast } from "../components/Toasts";
 import { useStore } from "../store";
 
 export function useWebSocket() {
@@ -115,6 +116,10 @@ export function useWebSocket() {
 						completed_at: new Date().toISOString(),
 						updated_at: new Date().toISOString(),
 					});
+					addToast({
+						type: "success",
+						message: "Action completed successfully",
+					});
 				}
 				break;
 
@@ -125,6 +130,11 @@ export function useWebSocket() {
 						error: msg.data.error,
 						completed_at: new Date().toISOString(),
 						updated_at: new Date().toISOString(),
+					});
+					addToast({
+						type: "error",
+						message: `Action failed: ${msg.data.error ?? "Unknown error"}`,
+						duration: 10000,
 					});
 				}
 				break;
