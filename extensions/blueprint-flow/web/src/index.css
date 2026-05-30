@@ -334,6 +334,46 @@ body::before {
   box-shadow: inset 0 0 60px -20px rgba(107, 207, 127, 0.02);
 }
 
+.canvas-atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.canvas-atmosphere::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 45%, rgba(91, 155, 213, 0.045) 0%, transparent 70%),
+    linear-gradient(rgba(91, 155, 213, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(91, 155, 213, 0.025) 1px, transparent 1px);
+  background-size: 100% 100%, 32px 32px, 32px 32px;
+  animation: atmosphereBreath 30s ease-in-out infinite;
+}
+
+.canvas-atmosphere::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.35) 100%);
+}
+
+@keyframes atmosphereBreath {
+  0%, 100% { background-position: 0 0, 0 0, 0 0; }
+  50% { background-position: 0 0, 4px 4px, 4px 4px; }
+}
+
+.satellite-node {
+  animation: satelliteFadeIn 0.25s ease-out both;
+}
+
+@keyframes satelliteFadeIn {
+  from { opacity: 0; transform: translateX(-8px) scale(0.95); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
 @keyframes skeletonPulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.8; }
