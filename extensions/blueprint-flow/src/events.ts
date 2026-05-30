@@ -23,6 +23,24 @@ export interface BlueprintEvents {
 	"settings:saved": { id: string; featureId: string | null };
 	"server:started": { port: number };
 	"server:stopped": {};
+	// Action Run events
+	"action:created": {
+		id: string;
+		actionType: string;
+		status: string;
+		featureId?: string;
+		projectId?: string;
+	};
+	"action:updated": { id: string; status: string; error?: string };
+	"action:event": {
+		actionRunId: string;
+		type: string;
+		message: string | null;
+		dataJson: unknown;
+	};
+	"action:completed": { id: string; status: string };
+	"action:failed": { id: string; error: string };
+	"import:pi_analysis_requested": { reportId: string; actionRunId: string };
 }
 
 class EventBus {

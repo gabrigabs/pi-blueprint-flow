@@ -3,6 +3,8 @@ import { dirname } from "node:path";
 import Database from "better-sqlite3";
 import type { FeatureStatus, FlowStep, StepStatus } from "./config.js";
 import type {
+	ActionRunStatus,
+	ActionType,
 	EffortLevel,
 	ExecutionMode,
 	FeatureType,
@@ -104,6 +106,33 @@ export interface ImportReport {
 	detected_agentic_files: string | null;
 	project_profile: string | null;
 	migration_plan: string | null;
+	created_at: string;
+}
+
+export interface ActionRunRow {
+	id: string;
+	project_id: string | null;
+	feature_id: string | null;
+	action_type: ActionType;
+	step_name: string | null;
+	status: ActionRunStatus;
+	prompt: string | null;
+	model_id: string | null;
+	effort_level: string | null;
+	execution_mode: string | null;
+	error: string | null;
+	started_at: string | null;
+	completed_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface ActionRunEventRow {
+	id: string;
+	action_run_id: string;
+	type: string;
+	message: string | null;
+	data_json: string | null;
 	created_at: string;
 }
 
@@ -209,6 +238,33 @@ CREATE TABLE IF NOT EXISTS import_reports (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS action_runs (
+  id TEXT PRIMARY KEY,
+  project_id TEXT REFERENCES projects(id),
+  feature_id TEXT REFERENCES features(id),
+  action_type TEXT NOT NULL,
+  step_name TEXT,
+  status TEXT NOT NULL DEFAULT 'created',
+  prompt TEXT,
+  model_id TEXT,
+  effort_level TEXT,
+  execution_mode TEXT,
+  error TEXT,
+  started_at TEXT,
+  completed_at TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS action_run_events (
+  id TEXT PRIMARY KEY,
+  action_run_id TEXT NOT NULL REFERENCES action_runs(id),
+  type TEXT NOT NULL,
+  message TEXT,
+  data_json TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_features_project ON features(project_id);
 CREATE INDEX IF NOT EXISTS idx_steps_feature ON steps(feature_id);
 CREATE INDEX IF NOT EXISTS idx_artifacts_feature ON artifacts(feature_id);
@@ -216,6 +272,10 @@ CREATE INDEX IF NOT EXISTS idx_memories_project ON memories(project_id);
 CREATE INDEX IF NOT EXISTS idx_interviews_feature ON interviews(feature_id);
 CREATE INDEX IF NOT EXISTS idx_agent_run_settings_feature ON agent_run_settings(feature_id);
 CREATE INDEX IF NOT EXISTS idx_import_reports_project ON import_reports(project_id);
+CREATE INDEX IF NOT EXISTS idx_action_runs_feature ON action_runs(feature_id);
+CREATE INDEX IF NOT EXISTS idx_action_runs_project ON action_runs(project_id);
+CREATE INDEX IF NOT EXISTS idx_action_runs_status ON action_runs(status);
+CREATE INDEX IF NOT EXISTS idx_action_run_events_run ON action_run_events(action_run_id);
 `;
 
 /** Incremental migrations for existing databases */
@@ -265,4 +325,175 @@ export function closeDb(): void {
 		db.close();
 		db = null;
 	}
+}
+
+// --- Action Run CRUD ---
+
+export function createActionRun(input: {
+	id: string;
+	projectId?: string | null;
+	featureId?: string | null;
+	actionType: ActionType;
+	stepName?: string | null;
+	prompt?: string | null;
+	modelId?: string | null;
+	effortLevel?: string | null;
+	executionMode?: string | null;
+}): ActionRunRow {
+	const database = getDb();
+	const stmt = database.prepare(`
+		INSERT INTO action_runs (id, project_id, feature_id, action_type, step_name, status, prompt, model_id, effort_level, execution_mode)
+		VALUES (?, ?, ?, ?, ?, 'created', ?, ?, ?, ?)
+	`);
+	stmt.run(
+		input.id,
+		input.projectId ?? null,
+		input.featureId ?? null,
+		input.actionType,
+		input.stepName ?? null,
+		input.prompt ?? null,
+		input.modelId ?? null,
+		input.effortLevel ?? null,
+		input.executionMode ?? null,
+	);
+	return getActionRun(input.id)!;
+}
+
+export function getActionRun(id: string): ActionRunRow | null {
+	const database = getDb();
+	return (
+		(database.prepare("SELECT * FROM action_runs WHERE id = ?").get(id) as
+			| ActionRunRow
+			| undefined) ?? null
+	);
+}
+
+export function listActionRuns(filters?: {
+	featureId?: string;
+	projectId?: string;
+	status?: ActionRunStatus;
+	limit?: number;
+}): ActionRunRow[] {
+	const database = getDb();
+	const conditions: string[] = [];
+	const params: unknown[] = [];
+
+	if (filters?.featureId) {
+		conditions.push("feature_id = ?");
+		params.push(filters.featureId);
+	}
+	if (filters?.projectId) {
+		conditions.push("project_id = ?");
+		params.push(filters.projectId);
+	}
+	if (filters?.status) {
+		conditions.push("status = ?");
+		params.push(filters.status);
+	}
+
+	const where =
+		conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+	const limit = filters?.limit ?? 50;
+
+	return database
+		.prepare(
+			`SELECT * FROM action_runs ${where} ORDER BY created_at DESC LIMIT ?`,
+		)
+		.all(...params, limit) as ActionRunRow[];
+}
+
+export function updateActionRunStatus(
+	id: string,
+	status: ActionRunStatus,
+	error?: string | null,
+): ActionRunRow | null {
+	const database = getDb();
+	const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+	const isTerminal = [
+		"completed",
+		"failed",
+		"cancelled",
+		"not_connected",
+	].includes(status);
+
+	if (isTerminal) {
+		database
+			.prepare(`
+			UPDATE action_runs SET status = ?, error = ?, completed_at = ?, updated_at = ? WHERE id = ?
+		`)
+			.run(status, error ?? null, now, now, id);
+	} else if (status === "injected" || status === "agent_running") {
+		database
+			.prepare(`
+			UPDATE action_runs SET status = ?, started_at = COALESCE(started_at, ?), updated_at = ? WHERE id = ?
+		`)
+			.run(status, now, now, id);
+	} else {
+		database
+			.prepare(`
+			UPDATE action_runs SET status = ?, updated_at = ? WHERE id = ?
+		`)
+			.run(status, now, id);
+	}
+
+	return getActionRun(id);
+}
+
+export function createActionRunEvent(input: {
+	id: string;
+	actionRunId: string;
+	type: string;
+	message?: string | null;
+	dataJson?: string | null;
+}): ActionRunEventRow {
+	const database = getDb();
+	database
+		.prepare(`
+		INSERT INTO action_run_events (id, action_run_id, type, message, data_json)
+		VALUES (?, ?, ?, ?, ?)
+	`)
+		.run(
+			input.id,
+			input.actionRunId,
+			input.type,
+			input.message ?? null,
+			input.dataJson ?? null,
+		);
+
+	return database
+		.prepare("SELECT * FROM action_run_events WHERE id = ?")
+		.get(input.id) as ActionRunEventRow;
+}
+
+export function listActionRunEvents(
+	actionRunId: string,
+	limit = 100,
+): ActionRunEventRow[] {
+	const database = getDb();
+	return database
+		.prepare(
+			"SELECT * FROM action_run_events WHERE action_run_id = ? ORDER BY created_at ASC LIMIT ?",
+		)
+		.all(actionRunId, limit) as ActionRunEventRow[];
+}
+
+export function getActiveActionRun(): ActionRunRow | null {
+	const database = getDb();
+	const activeStatuses = [
+		"queued",
+		"waiting_for_pi",
+		"injected",
+		"agent_running",
+		"tool_running",
+		"needs_user",
+		"saving_artifacts",
+	];
+	const placeholders = activeStatuses.map(() => "?").join(",");
+	return (
+		(database
+			.prepare(
+				`SELECT * FROM action_runs WHERE status IN (${placeholders}) ORDER BY created_at ASC LIMIT 1`,
+			)
+			.get(...activeStatuses) as ActionRunRow | undefined) ?? null
+	);
 }

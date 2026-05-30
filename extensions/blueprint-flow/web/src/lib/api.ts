@@ -1,5 +1,7 @@
 import type {
+	ActionRun,
 	Artifact,
+	BridgeStatus,
 	Feature,
 	Interview,
 	Memory,
@@ -49,6 +51,23 @@ export interface ImportProjectPayload {
 	name?: string;
 	mode: "analyze_only" | "migrate_with_review";
 	agentRunSettings?: AgentRunSettingsPayload;
+}
+
+export interface RunActionPayload {
+	projectId?: string;
+	featureId?: string;
+	actionType: string;
+	stepName?: string;
+	modelId?: string;
+	effortLevel?: string;
+	executionMode?: string;
+	allowRepoScan?: boolean;
+	allowMemorySearch?: boolean;
+	allowWebResearch?: boolean;
+	maxResearchResults?: number;
+	maxInterviewQuestions?: number;
+	reviewStrictness?: string;
+	extraContext?: Record<string, unknown>;
 }
 
 export interface AgentModelInfo {
@@ -228,5 +247,50 @@ export const api = {
 				method: "POST",
 				body: JSON.stringify({ modelId, provider }),
 			}),
+	},
+
+	actionRuns: {
+		list: (filters?: {
+			featureId?: string;
+			projectId?: string;
+			status?: string;
+			limit?: number;
+		}) => {
+			const params = new URLSearchParams();
+			if (filters?.featureId) params.set("featureId", filters.featureId);
+			if (filters?.projectId) params.set("projectId", filters.projectId);
+			if (filters?.status) params.set("status", filters.status);
+			if (filters?.limit) params.set("limit", String(filters.limit));
+			const qs = params.toString();
+			return request<ActionRun[]>(`/api/action-runs${qs ? `?${qs}` : ""}`);
+		},
+		get: (id: string) => request<ActionRun>(`/api/action-runs/${id}`),
+		getEvents: (id: string) =>
+			request<
+				Array<{
+					id: string;
+					action_run_id: string;
+					type: string;
+					message: string | null;
+					data_json: string | null;
+					created_at: string;
+				}>
+			>(`/api/action-runs/${id}/events`),
+		create: (data: RunActionPayload) =>
+			request<{ actionRunId: string; status: string }>("/api/action-runs", {
+				method: "POST",
+				body: JSON.stringify(data),
+			}),
+		cancel: (id: string) =>
+			request<{ success: boolean; status: string }>(
+				`/api/action-runs/${id}/cancel`,
+				{
+					method: "POST",
+				},
+			),
+	},
+
+	bridge: {
+		status: () => request<{ status: BridgeStatus }>("/api/bridge/status"),
 	},
 };

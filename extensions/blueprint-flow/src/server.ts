@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { BLUEPRINT_PORT } from "./config.js";
 import { getDb } from "./db.js";
 import { bus } from "./events.js";
+import { registerActionRunRoutes } from "./routes/action-runs.js";
 import { registerActionRoutes } from "./routes/actions.js";
 import { registerArtifactRoutes } from "./routes/artifacts.js";
 import { registerConfigRoutes } from "./routes/config.js";
@@ -137,6 +138,12 @@ export async function startServer(
 		"import:started",
 		"import:completed",
 		"settings:saved",
+		"action:created",
+		"action:updated",
+		"action:event",
+		"action:completed",
+		"action:failed",
+		"import:pi_analysis_requested",
 	] as const;
 
 	for (const event of broadcastedEvents) {
@@ -284,6 +291,7 @@ export async function startServer(
 	registerProjectRoutes(server);
 	registerFeatureRoutes(server);
 	registerActionRoutes(server);
+	registerActionRunRoutes(server);
 	registerArtifactRoutes(server);
 	registerImportRoutes(server);
 	registerConfigRoutes(server);
