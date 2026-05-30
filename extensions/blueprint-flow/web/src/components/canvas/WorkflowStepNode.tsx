@@ -1,5 +1,6 @@
 import { Handle, type NodeProps, Position } from "@xyflow/react";
 import {
+	ArrowLeft,
 	BookOpen,
 	Brain,
 	CheckCircle,
@@ -12,17 +13,23 @@ import {
 	MessageCircle,
 	Microscope,
 	PenTool,
+	Play,
+	RefreshCw,
 	Shield,
 	Sparkles,
+	Square,
+	SkipForward,
 	Zap,
+	type LucideIcon,
 } from "lucide-react";
-import { memo } from "react";
+import { memo, type MouseEvent } from "react";
+import { api } from "../../lib/api";
 import { useStore } from "../../store";
 import { ArtifactChip } from "./ArtifactChip";
 import type { StepNodeData } from "./layout";
 import { NODE_HEIGHT, NODE_HEIGHT_EXPANDED, NODE_WIDTH } from "./layout";
 
-const STEP_ICONS: Record<string, typeof Zap> = {
+const STEP_ICONS: Record<string, LucideIcon> = {
 	intake: Zap,
 	research: Microscope,
 	interview: MessageCircle,
@@ -104,14 +111,77 @@ function WorkflowStepNodeComponent({
 	const stepColor = STEP_COLORS[stepName] ?? "var(--accent-primary)";
 
 	const selectArtifact = useStore((s) => s.selectArtifact);
+	const selectedFeatureId = useStore((s) => s.selectedFeatureId);
+	const actionRuns = useStore((s) => s.actionRuns);
 	const liveToolName = useStore((s) => s.liveToolName);
 	const liveActionRunId = useStore((s) => s.liveActionRunId);
 	const liveMessagePreview = useStore((s) => s.liveMessagePreview);
 
 	const isLive = status === "running" && liveActionRunId != null;
+	const isCurrentStep = Boolean(data.isCurrentStep);
+	const activeRun = actionRuns.find(
+		(r) =>
+			r.feature_id === selectedFeatureId &&
+			r.step_name === stepName &&
+			!["completed", "failed", "cancelled", "not_connected"].includes(
+				r.status,
+			),
+	);
+	const canRunCurrent =
+		Boolean(selectedFeatureId) &&
+		isCurrentStep &&
+		!activeRun &&
+		(status === "running" || status === "needs_user" || status === "pending");
+	const canStop = Boolean(activeRun);
+	const canNavigateCurrent = Boolean(selectedFeatureId) && isCurrentStep;
+	const canReturnToStep = Boolean(selectedFeatureId) && status === "done";
 
 	function handleArtifactClick(id: string) {
 		selectArtifact(id);
+	}
+
+	function stopNodeClick(event: MouseEvent) {
+		event.stopPropagation();
+	}
+
+	async function handleRun(event: MouseEvent) {
+		stopNodeClick(event);
+		if (!selectedFeatureId) return;
+		try {
+			await api.features.runStep(selectedFeatureId);
+		} catch {}
+	}
+
+	async function handleStop(event: MouseEvent) {
+		stopNodeClick(event);
+		if (!activeRun) return;
+		try {
+			await api.actionRuns.cancel(activeRun.id);
+		} catch {}
+	}
+
+	async function handleSkip(event: MouseEvent) {
+		stopNodeClick(event);
+		if (!selectedFeatureId) return;
+		try {
+			await api.features.advance(selectedFeatureId);
+		} catch {}
+	}
+
+	async function handleBack(event: MouseEvent) {
+		stopNodeClick(event);
+		if (!selectedFeatureId) return;
+		try {
+			await api.features.back(selectedFeatureId);
+		} catch {}
+	}
+
+	async function handleReturn(event: MouseEvent) {
+		stopNodeClick(event);
+		if (!selectedFeatureId) return;
+		try {
+			await api.features.focusStep(selectedFeatureId, stepName);
+		} catch {}
 	}
 
 	return (
@@ -191,7 +261,7 @@ function WorkflowStepNodeComponent({
 									className="text-[10px] font-mono mt-0.5 truncate animate-pulse"
 									style={{ color: "var(--cyan-400)" }}
 								>
-									⚡ {liveToolName}
+									Tool: {liveToolName}
 								</p>
 							) : isLive && liveMessagePreview ? (
 								<p
@@ -268,6 +338,60 @@ function WorkflowStepNodeComponent({
 				</div>
 			</div>
 
+			{/* Expanded action row */}
+			{isSelected && (
+				<div
+					className="flex items-center gap-1.5 border-t px-4 py-2"
+					style={{ borderColor: "var(--border-subtle)" }}
+				>
+					{canRunCurrent && (
+						<NodeActionButton
+							label="Run"
+							icon={Play}
+							tone="primary"
+							onClick={handleRun}
+						/>
+					)}
+					{canStop && (
+						<NodeActionButton
+							label="Stop"
+							icon={Square}
+							tone="danger"
+							onClick={handleStop}
+						/>
+					)}
+					{canNavigateCurrent && !activeRun && (
+						<>
+							<NodeActionButton
+								label="Skip"
+								icon={SkipForward}
+								onClick={handleSkip}
+							/>
+							<NodeActionButton
+								label="Back"
+								icon={ArrowLeft}
+								onClick={handleBack}
+							/>
+						</>
+					)}
+					{canReturnToStep && (
+						<NodeActionButton
+							label="Return"
+							icon={RefreshCw}
+							onClick={handleReturn}
+						/>
+					)}
+					{!canRunCurrent && !canStop && !canNavigateCurrent && !canReturnToStep && (
+						<span
+							className="text-[10px]"
+							style={{ color: "var(--text-muted)" }}
+						>
+							Open for details
+						</span>
+					)}
+				</div>
+			)}
+
 			{/* Expanded artifact row */}
 			{isSelected && artifacts.length > 0 && (
 				<div
@@ -314,6 +438,50 @@ function WorkflowStepNodeComponent({
 				className="!bg-transparent !w-3 !h-3 !border-2 !border-[var(--border-default)] !-bottom-1.5"
 			/>
 		</div>
+	);
+}
+
+function NodeActionButton({
+	label,
+	icon: Icon,
+	tone = "default",
+	onClick,
+}: {
+	label: string;
+	icon: LucideIcon;
+	tone?: "default" | "primary" | "danger";
+	onClick: (event: MouseEvent) => void;
+}) {
+	const color =
+		tone === "primary"
+			? "var(--accent-primary)"
+			: tone === "danger"
+				? "var(--rose-400)"
+				: "var(--text-tertiary)";
+	const background =
+		tone === "primary"
+			? "var(--cyan-glow)"
+			: tone === "danger"
+				? "var(--rose-glow, rgba(231, 76, 60, 0.08))"
+				: "rgba(255,255,255,0.03)";
+	const border =
+		tone === "primary"
+			? "rgba(91, 155, 213, 0.2)"
+			: tone === "danger"
+				? "rgba(231, 76, 60, 0.2)"
+				: "var(--border-subtle)";
+
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[10px] font-medium transition-colors hover:brightness-110"
+			style={{ color, background, border: `1px solid ${border}` }}
+			title={label}
+		>
+			<Icon size={10} />
+			<span>{label}</span>
+		</button>
 	);
 }
 

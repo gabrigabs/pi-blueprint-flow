@@ -134,6 +134,74 @@ export function registerActionRoutes(app: FastifyInstance): void {
 		},
 	);
 
+	app.post<{ Params: { id: string }; Body: { stepName: string } }>(
+		"/api/features/:id/focus-step",
+		async (req, reply) => {
+			const { id } = req.params;
+			const { stepName } = req.body;
+			const db = getDb();
+
+			const feature = db
+				.prepare("SELECT * FROM features WHERE id = ?")
+				.get(id) as Feature | undefined;
+			if (!feature) {
+				return reply
+					.code(404)
+					.send({ error: "not_found", message: "Feature not found" });
+			}
+
+			const workflowSteps = getFeatureWorkflowStepNames(feature);
+			const targetIdx = workflowSteps.indexOf(stepName as FlowStep);
+			if (targetIdx === -1) {
+				return reply
+					.code(400)
+					.send({ error: "invalid_state", message: "Invalid target step" });
+			}
+
+			const markDone = db.prepare(
+				`UPDATE steps
+				 SET status = 'done', completed_at = COALESCE(completed_at, datetime('now'))
+				 WHERE feature_id = ? AND name = ?`,
+			);
+			const markCurrent = db.prepare(
+				`UPDATE steps
+				 SET status = 'running', started_at = COALESCE(started_at, datetime('now')), completed_at = NULL
+				 WHERE feature_id = ? AND name = ?`,
+			);
+			const markPending = db.prepare(
+				`UPDATE steps
+				 SET status = 'pending', started_at = NULL, completed_at = NULL
+				 WHERE feature_id = ? AND name = ?`,
+			);
+
+			for (const [idx, name] of workflowSteps.entries()) {
+				if (idx < targetIdx) {
+					markDone.run(id, name);
+				} else if (idx === targetIdx) {
+					markCurrent.run(id, name);
+				} else {
+					markPending.run(id, name);
+				}
+			}
+
+			db.prepare(
+				"UPDATE features SET current_step = ?, status = 'in_progress', updated_at = datetime('now') WHERE id = ?",
+			).run(stepName, id);
+
+			bus.emit("step:status_changed", {
+				featureId: id,
+				stepName,
+				status: "running",
+			});
+
+			const updated = db.prepare("SELECT * FROM features WHERE id = ?").get(id);
+			const steps = db
+				.prepare("SELECT * FROM steps WHERE feature_id = ? ORDER BY rowid")
+				.all(id);
+			return reply.send({ feature: updated, steps });
+		},
+	);
+
 	app.patch<{ Params: { id: string }; Body: { status: StepStatus } }>(
 		"/api/steps/:id/status",
 		async (req, reply) => {

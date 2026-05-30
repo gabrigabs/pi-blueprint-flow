@@ -7,7 +7,7 @@ const elk = new ELK();
 
 export const NODE_WIDTH = 340;
 export const NODE_HEIGHT = 90;
-export const NODE_HEIGHT_EXPANDED = 160;
+export const NODE_HEIGHT_EXPANDED = 200;
 export const SATELLITE_WIDTH = 180;
 export const SATELLITE_HEIGHT = 50;
 export const SATELLITE_GAP = 12;

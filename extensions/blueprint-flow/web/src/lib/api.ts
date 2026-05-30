@@ -184,6 +184,14 @@ export const api = {
 				method: "POST",
 				body: JSON.stringify({}),
 			}),
+		focusStep: (id: string, stepName: string) =>
+			request<{ feature: Feature; steps: Step[] }>(
+				`/api/features/${id}/focus-step`,
+				{
+					method: "POST",
+					body: JSON.stringify({ stepName }),
+				},
+			),
 		runStep: (id: string, agentRunSettings?: AgentRunSettingsPayload) =>
 			request(`/api/features/${id}/run-step`, {
 				method: "POST",
