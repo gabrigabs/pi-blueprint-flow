@@ -138,6 +138,17 @@ export function gatherPromptContext(actionRun: ActionRunRow): PromptContext {
 	const db = getDb();
 	const ctx: PromptContext = { actionRun };
 
+	if (actionRun.extra_context_json) {
+		try {
+			ctx.extraContext = JSON.parse(actionRun.extra_context_json) as Record<
+				string,
+				unknown
+			>;
+		} catch {
+			ctx.extraContext = { raw: actionRun.extra_context_json };
+		}
+	}
+
 	// Get feature info
 	if (actionRun.feature_id) {
 		const feature = db.prepare("SELECT * FROM features WHERE id = ?").get(actionRun.feature_id) as Feature | undefined;

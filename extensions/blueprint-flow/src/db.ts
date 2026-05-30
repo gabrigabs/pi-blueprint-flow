@@ -123,6 +123,7 @@ export interface ActionRunRow {
 	effort_level: string | null;
 	execution_mode: string | null;
 	thinking_level: string | null;
+	extra_context_json: string | null;
 	error: string | null;
 	started_at: string | null;
 	completed_at: string | null;
@@ -295,6 +296,7 @@ CREATE TABLE IF NOT EXISTS action_runs (
   model_id TEXT,
   effort_level TEXT,
   execution_mode TEXT,
+  extra_context_json TEXT,
   error TEXT,
   started_at TEXT,
   completed_at TEXT,
@@ -415,6 +417,7 @@ const MIGRATIONS = [
 	`CREATE INDEX IF NOT EXISTS idx_design_tokens_project ON design_tokens(project_id)`,
 	// v0.6.0: Thinking level per action run
 	`ALTER TABLE action_runs ADD COLUMN thinking_level TEXT`,
+	`ALTER TABLE action_runs ADD COLUMN extra_context_json TEXT`,
 ];
 
 let db: Database.Database | null = null;
@@ -536,11 +539,12 @@ export function createActionRun(input: {
 	effortLevel?: string | null;
 	executionMode?: string | null;
 	thinkingLevel?: string | null;
+	extraContext?: Record<string, unknown> | null;
 }): ActionRunRow {
 	const database = getDb();
 	const stmt = database.prepare(`
-		INSERT INTO action_runs (id, project_id, feature_id, action_type, step_name, status, prompt, model_id, effort_level, execution_mode, thinking_level)
-		VALUES (?, ?, ?, ?, ?, 'created', ?, ?, ?, ?, ?)
+		INSERT INTO action_runs (id, project_id, feature_id, action_type, step_name, status, prompt, model_id, effort_level, execution_mode, thinking_level, extra_context_json)
+		VALUES (?, ?, ?, ?, ?, 'created', ?, ?, ?, ?, ?, ?)
 	`);
 	stmt.run(
 		input.id,
@@ -553,6 +557,7 @@ export function createActionRun(input: {
 		input.effortLevel ?? null,
 		input.executionMode ?? null,
 		input.thinkingLevel ?? null,
+		input.extraContext ? JSON.stringify(input.extraContext) : null,
 	);
 	return getActionRun(input.id)!;
 }

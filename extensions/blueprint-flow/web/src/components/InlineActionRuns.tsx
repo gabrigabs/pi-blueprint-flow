@@ -1,4 +1,12 @@
-import { ChevronDown, ChevronUp, Clock, Loader2, Radio, XCircle } from "lucide-react";
+import {
+	ChevronDown,
+	ChevronUp,
+	Clock,
+	Loader2,
+	Radio,
+	RefreshCw,
+	XCircle,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import type { ActionRun } from "../store";
@@ -48,6 +56,12 @@ export function InlineActionRuns({ stepName, featureId }: Props) {
 		} catch {}
 	};
 
+	const handleRetry = async (id: string, feedback?: string): Promise<void> => {
+		try {
+			await api.actionRuns.retry(id, feedback);
+		} catch {}
+	};
+
 	const toggleExpand = (id: string) => {
 		if (expandedRunId === id) {
 			setExpandedRunId(null);
@@ -89,6 +103,7 @@ export function InlineActionRuns({ stepName, featureId }: Props) {
 					expanded={expandedRunId === run.id}
 					onToggle={() => toggleExpand(run.id)}
 					onCancel={() => handleCancel(run.id)}
+					onRetry={(feedback) => handleRetry(run.id, feedback)}
 					liveEvents={expandedRunId === run.id ? liveEvents : []}
 					eventsEndRef={expandedRunId === run.id ? eventsEndRef : undefined}
 				/>
@@ -102,6 +117,7 @@ function RunCard({
 	expanded,
 	onToggle,
 	onCancel,
+	onRetry,
 	liveEvents,
 	eventsEndRef,
 }: {
@@ -109,11 +125,25 @@ function RunCard({
 	expanded: boolean;
 	onToggle: () => void;
 	onCancel: () => void;
+	onRetry: (feedback?: string) => Promise<void>;
 	liveEvents: LiveEvent[];
 	eventsEndRef?: React.RefObject<HTMLDivElement | null>;
 }) {
+	const [retryFeedback, setRetryFeedback] = useState("");
+	const [retrying, setRetrying] = useState(false);
 	const isActive = ["created", "queued", "waiting_for_pi", "injected", "agent_running", "tool_running"].includes(run.status);
 	const isTerminal = ["completed", "failed", "cancelled", "not_connected"].includes(run.status);
+	const canRetry = ["completed", "failed", "cancelled"].includes(run.status);
+
+	async function handleRetryClick() {
+		setRetrying(true);
+		try {
+			await onRetry(retryFeedback.trim() || undefined);
+			setRetryFeedback("");
+		} finally {
+			setRetrying(false);
+		}
+	}
 
 	return (
 		<div
@@ -149,6 +179,23 @@ function RunCard({
 							<XCircle size={12} />
 						</button>
 					)}
+					{canRetry && (
+						<button
+							type="button"
+							onClick={(e) => {
+								e.stopPropagation();
+								void handleRetryClick();
+							}}
+							className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--accent-primary)] hover:bg-[var(--cyan-glow)] transition-colors"
+							title="Retry"
+						>
+							{retrying ? (
+								<Loader2 size={12} className="animate-spin" />
+							) : (
+								<RefreshCw size={12} />
+							)}
+						</button>
+					)}
 					<button
 						type="button"
 						onClick={onToggle}
@@ -167,6 +214,25 @@ function RunCard({
 
 			{expanded && (
 				<div className="border-t border-[var(--border-subtle)] px-3 py-2 max-h-36 overflow-y-auto">
+					{canRetry && (
+						<div className="mb-2 flex gap-1.5">
+							<input
+								type="text"
+								value={retryFeedback}
+								onChange={(e) => setRetryFeedback(e.target.value)}
+								placeholder="Retry feedback..."
+								className="min-w-0 flex-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-inset)] px-2 py-1 text-[11px] text-[var(--text-secondary)] outline-none focus:border-[var(--border-strong)]"
+							/>
+							<button
+								type="button"
+								onClick={handleRetryClick}
+								disabled={retrying}
+								className="rounded bg-[var(--cyan-glow)] px-2 py-1 text-[11px] font-medium text-[var(--accent-primary)] disabled:opacity-40"
+							>
+								Retry
+							</button>
+						</div>
+					)}
 					{liveEvents.length === 0 ? (
 						<p className="text-[11px] text-[var(--text-muted)] italic">No events yet</p>
 					) : (

@@ -102,6 +102,7 @@ function enqueue(input: RunBlueprintActionInput): {
 			modelId: input.modelId,
 			effortLevel: input.effortLevel,
 			executionMode: input.executionMode,
+			extraContext: input.extraContext,
 		});
 		updateActionRunStatus(id, "not_connected");
 		bus.emit("action:created", {
@@ -124,6 +125,7 @@ function enqueue(input: RunBlueprintActionInput): {
 		modelId: input.modelId,
 		effortLevel: input.effortLevel,
 		executionMode: input.executionMode,
+		extraContext: input.extraContext,
 	});
 
 	bus.emit("action:created", {

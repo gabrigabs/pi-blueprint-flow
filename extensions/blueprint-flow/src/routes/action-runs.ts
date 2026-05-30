@@ -190,8 +190,8 @@ export function registerActionRunRoutes(app: FastifyInstance): void {
 
 		const bridge = getPiBridge();
 		const input: RunBlueprintActionInput = {
-			projectId: run.project_id ?? "",
-			featureId: run.feature_id ?? "",
+			projectId: run.project_id ?? undefined,
+			featureId: run.feature_id ?? undefined,
 			actionType: run.action_type as ActionType,
 			stepName: run.step_name ?? undefined,
 			modelId: run.model_id ?? undefined,

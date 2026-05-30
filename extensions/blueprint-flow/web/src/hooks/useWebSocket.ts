@@ -232,6 +232,7 @@ export function useWebSocket() {
 
 			case "action:completed":
 				if (msg.data.id) {
+					const completedRun = store.actionRuns.find((r) => r.id === msg.data.id);
 					store.updateActionRun(msg.data.id, {
 						status: msg.data.status ?? "completed",
 						completed_at: new Date().toISOString(),
@@ -244,11 +245,12 @@ export function useWebSocket() {
 					// Auto-advance: advance + run next step
 					if (store.autoAdvance && store.selectedFeatureId) {
 						const featureId = store.selectedFeatureId;
-						const currentStep = store.steps.find(
-							(s) => s.feature_id === featureId && s.status === "running",
-						);
-						// Don't auto-advance past interview steps
-						if (!currentStep || currentStep.name !== "interview") {
+						const completedStepName = completedRun?.step_name;
+						const shouldPause =
+							completedRun?.feature_id !== featureId ||
+							completedStepName === "interview";
+
+						if (!shouldPause) {
 							fetch(`/api/features/${featureId}/advance`, {
 								method: "POST",
 								headers: { "Content-Type": "application/json" },
