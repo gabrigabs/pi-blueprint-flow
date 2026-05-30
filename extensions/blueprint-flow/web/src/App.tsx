@@ -1,13 +1,14 @@
-import { BetweenVerticalEnd, GitGraph, Loader2, PanelLeftClose, PanelLeftOpen, Radio, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { Loader2, PanelLeftClose, PanelLeftOpen, Radio, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useEffect } from "react";
 import { WorkflowCanvas } from "./components/canvas/WorkflowCanvas";
 import { CreateFeatureModal } from "./components/CreateFeatureModal";
 import { CreateProjectModal } from "./components/CreateProjectModal";
 import { ImportProjectModal } from "./components/ImportProjectModal";
 import { MemoryPanel } from "./components/MemoryPanel";
+import { NodeSidebar } from "./components/NodeSidebar";
 import { ProjectSidebar } from "./components/ProjectSidebar";
+import { TimelineSidebar } from "./components/TimelineSidebar";
 import { Toasts } from "./components/Toasts";
-import { VerticalKanban } from "./components/VerticalKanban";
 import { WorkflowEditor } from "./components/WorkflowEditor";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useWebSocket } from "./hooks/useWebSocket";
@@ -21,15 +22,14 @@ export function App() {
 		connectionState,
 		selectedProjectId,
 		selectedFeatureId,
+		selectedNodeId,
 		activeModal,
 		bridgeStatus,
 		actionRuns,
 		sidebarCollapsed,
 		footerCollapsed,
-		viewMode,
 		toggleSidebar,
 		toggleFooter,
-		setViewMode,
 	} = useStore();
 
 	const currentFeature = useStore((s) =>
@@ -82,7 +82,7 @@ export function App() {
 
 	return (
 		<div className="flex h-screen flex-col overflow-hidden">
-			{/* ═══ Header — Mission Control Bar ═══ */}
+			{/* Header */}
 			<header
 				className="relative z-10 flex items-center justify-between border-b px-5 py-2.5"
 				style={{
@@ -90,16 +90,15 @@ export function App() {
 					background: "var(--bg-elevated)",
 				}}
 			>
-				{/* Left: Brand + context */}
 				<div className="flex items-center gap-4">
 					<div className="flex items-center gap-2.5">
-						<div className="h-5 w-5 rounded-sm bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-							<span className="text-[9px] font-bold text-black font-mono">
+						<div className="h-5 w-5 rounded-sm bg-gradient-to-br from-[var(--accent-primary)] to-[var(--cyan-500)] flex items-center justify-center">
+							<span className="text-[9px] font-bold text-white font-mono">
 								BF
 							</span>
 						</div>
 						<h1
-							className="font-display text-lg tracking-tight"
+							className="font-display text-lg font-semibold tracking-tight"
 							style={{ color: "var(--text-primary)" }}
 						>
 							Blueprint Flow
@@ -131,97 +130,61 @@ export function App() {
 					)}
 				</div>
 
-				{/* Right: Panel toggles + Status indicators */}
 				<div className="flex items-center gap-4">
-					{/* Panel toggle buttons */}
-					<div className="flex items-center gap-1">
-						<button
-							onClick={toggleSidebar}
-							title={`${sidebarCollapsed ? "Show" : "Hide"} sidebar [\u005B]`}
-							className="rounded p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
-							style={{ color: sidebarCollapsed ? "var(--text-muted)" : "var(--text-tertiary)" }}
-						>
-							{sidebarCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
-						</button>
-					</div>
+					<button
+						onClick={toggleSidebar}
+						title={`${sidebarCollapsed ? "Show" : "Hide"} sidebar [[]`}
+						className="rounded p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
+						style={{ color: sidebarCollapsed ? "var(--text-muted)" : "var(--text-tertiary)" }}
+					>
+						{sidebarCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+					</button>
 
-					{/* View mode toggle */}
-					{selectedFeatureId && (
-						<div className="flex items-center gap-0.5 rounded-lg p-0.5" style={{ background: "var(--bg-surface)" }}>
-							<button
-								onClick={() => setViewMode("kanban")}
-								className={`rounded-md p-1.5 transition-colors ${
-									viewMode === "kanban"
-										? "bg-[var(--bg-surface-hover)] text-amber-400"
-										: "text-[var(--text-muted)] hover:text-[var(--text-tertiary)]"
-								}`}
-								title="Timeline View [V]"
-							>
-								<BetweenVerticalEnd size={14} />
-							</button>
-							<button
-								onClick={() => setViewMode("canvas")}
-								className={`rounded-md p-1.5 transition-colors ${
-									viewMode === "canvas"
-										? "bg-[var(--bg-surface-hover)] text-amber-400"
-										: "text-[var(--text-muted)] hover:text-[var(--text-tertiary)]"
-								}`}
-								title="Canvas View [V]"
-							>
-								<GitGraph size={14} />
-							</button>
-						</div>
-					)}
-
-					{/* Separator */}
 					<div className="h-4 w-px" style={{ background: "var(--border-subtle)" }} />
 
-					{/* Active run telemetry */}
 					{activeRun && (
 						<div
 							className="flex items-center gap-2 rounded-md px-2.5 py-1"
 							style={{
 								background: "var(--amber-glow)",
-								border: "1px solid rgba(245, 158, 11, 0.15)",
+								border: "1px solid rgba(230, 126, 34, 0.15)",
 							}}
 						>
-							<Loader2 size={11} className="animate-spin text-amber-400" />
-							<span className="font-mono text-[10px] font-medium text-amber-300 uppercase tracking-wider">
+							<Loader2 size={11} className="animate-spin text-[var(--amber-400)]" />
+							<span className="font-mono text-[10px] font-medium text-[var(--amber-300)] uppercase tracking-wider">
 								Agent Active
 							</span>
 						</div>
 					)}
 
-					{/* Bridge status */}
 					{bridgeStatus === "not_connected" && !activeRun && (
 						<div className="flex items-center gap-1.5">
-							<Radio size={10} className="text-rose-400" />
-							<span className="font-mono text-[10px] text-rose-400/80">
+							<Radio size={10} className="text-[var(--rose-400)]" />
+							<span className="font-mono text-[10px] text-[var(--rose-400)]">
 								Pi Offline
 							</span>
 						</div>
 					)}
 
-					{/* Connection indicator */}
 					<div className="flex items-center gap-1.5">
 						{connectionState === "connected" ? (
 							<>
-								<div className="status-dot bg-emerald-400" />
-								<Wifi size={12} className="text-emerald-400/60" />
+								<div className="status-dot bg-[var(--accent-success)]" />
+								<Wifi size={12} style={{ color: "var(--accent-success)", opacity: 0.6 }} />
 							</>
 						) : connectionState === "reconnecting" ? (
 							<>
-								<div className="status-dot bg-amber-400 animate-pulse" />
-								<RefreshCw size={12} className="text-amber-400/70 animate-spin" />
-								<span className="font-mono text-[10px] text-amber-400/70">
+								<div className="status-dot bg-[var(--amber-400)] animate-pulse" />
+								<RefreshCw size={12} className="animate-spin" style={{ color: "var(--amber-400)", opacity: 0.7 }} />
+								<span className="font-mono text-[10px]" style={{ color: "var(--amber-400)", opacity: 0.7 }}>
 									RECONNECTING
 								</span>
 							</>
 						) : (
 							<>
-								<div className="status-dot bg-rose-400" />
-								<WifiOff size={12} className="text-rose-400/60" />
-								<span className="font-mono text-[10px] text-rose-400/60">
+								<div className="status-dot bg-[var(--rose-400)]" />
+								<WifiOff size={12} style={{ color: "var(--rose-400)", opacity: 0.6 }} />
+								<span className="font-mono text-[10px]" style={{ color: "var(--rose-400)", opacity: 0.6 }}>
 									DISCONNECTED
 								</span>
 							</>
@@ -230,36 +193,29 @@ export function App() {
 				</div>
 			</header>
 
-			{/* ═══ Main Layout ═══ */}
+			{/* Main Layout */}
 			<div className="flex flex-1 overflow-hidden">
-				{/* Left sidebar — Navigation */}
+				{/* Left sidebar: Project nav + Timeline */}
 				{!sidebarCollapsed && (
 					<aside
-						className="w-64 shrink-0 overflow-y-auto scrollbar-thin border-r sidebar-transition"
+						className="w-64 shrink-0 flex flex-col overflow-hidden border-r sidebar-transition"
 						style={{
 							borderColor: "var(--border-subtle)",
 							background: "var(--bg-elevated)",
 						}}
 					>
 						<ProjectSidebar />
+						{selectedFeatureId && <TimelineSidebar />}
 					</aside>
 				)}
 
-				{/* Center — Flow Canvas */}
+				{/* Center: Canvas (always visible) */}
 				<main
 					className="flex flex-1 flex-col overflow-hidden"
 					style={{ background: "var(--bg-base)" }}
 				>
 					{selectedFeatureId ? (
-						<div className="flex flex-1 overflow-hidden">
-							<div className="flex flex-1 flex-col overflow-hidden">
-								{viewMode === "kanban" ? (
-									<VerticalKanban />
-								) : (
-									<WorkflowCanvas />
-								)}
-							</div>
-						</div>
+						<WorkflowCanvas />
 					) : (
 						<div className="flex flex-1 items-center justify-center">
 							<div className="text-center animate-fade-in">
@@ -274,7 +230,7 @@ export function App() {
 										className="font-display text-2xl"
 										style={{ color: "var(--text-muted)" }}
 									>
-										◇
+										&#9671;
 									</span>
 								</div>
 								<p
@@ -293,9 +249,12 @@ export function App() {
 						</div>
 					)}
 				</main>
+
+				{/* Right: Node Sidebar (contextual) */}
+				{selectedNodeId && selectedFeatureId && <NodeSidebar />}
 			</div>
 
-			{/* ═══ Bottom Panel — Knowledge Base ═══ */}
+			{/* Footer: Knowledge Base */}
 			{selectedProjectId && !footerCollapsed && (
 				<footer
 					className="h-64 shrink-0 overflow-hidden border-t transition-all duration-200"
@@ -314,7 +273,6 @@ export function App() {
 			{activeModal === "import_project" && <ImportProjectModal />}
 			{activeModal === "workflow_editor" && <WorkflowEditor />}
 
-			{/* Notifications */}
 			<Toasts />
 		</div>
 	);

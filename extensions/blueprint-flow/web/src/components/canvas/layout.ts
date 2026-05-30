@@ -14,10 +14,11 @@ export interface StepNodeData {
 	stepName: string;
 	artifactCount: number;
 	isCurrentStep: boolean;
+	isSelected: boolean;
 	[key: string]: unknown;
 }
 
-export function stepsToNodes(steps: Step[], artifacts: Artifact[]): Node<StepNodeData>[] {
+export function stepsToNodes(steps: Step[], artifacts: Artifact[], selectedNodeId?: string | null): Node<StepNodeData>[] {
 	return steps.map((step, index) => ({
 		id: step.id,
 		type: "workflowStep",
@@ -28,6 +29,7 @@ export function stepsToNodes(steps: Step[], artifacts: Artifact[]): Node<StepNod
 			stepName: step.name,
 			artifactCount: artifacts.filter((a) => a.step_name === step.name).length,
 			isCurrentStep: step.status === "running" || step.status === "needs_user",
+			isSelected: step.id === selectedNodeId,
 		},
 	}));
 }
@@ -40,7 +42,7 @@ export function stepsToEdges(steps: Step[]): Edge[] {
 		type: "smoothstep",
 		animated: step.status === "running",
 		style: {
-			stroke: step.status === "done" ? "#10b981" : "#374151",
+			stroke: step.status === "done" ? "var(--accent-success)" : "var(--border-default)",
 			strokeWidth: 2,
 		},
 	}));
@@ -56,8 +58,9 @@ export async function autoLayout(
 			"elk.algorithm": "layered",
 			"elk.direction": "DOWN",
 			"elk.spacing.nodeNode": "32",
-			"elk.layered.spacing.nodeNodeBetweenLayers": "48",
+			"elk.layered.spacing.nodeNodeBetweenLayers": "64",
 			"elk.layered.nodePlacement.strategy": "SIMPLE",
+			"elk.padding": "[top=24,left=24,bottom=24,right=24]",
 		},
 		children: nodes.map((n) => ({
 			id: n.id,

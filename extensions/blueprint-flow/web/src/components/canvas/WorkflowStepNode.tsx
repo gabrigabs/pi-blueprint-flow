@@ -10,10 +10,10 @@ const statusStyles: Record<string, { bg: string; border: string; text: string; d
 		dot: "bg-emerald-400",
 	},
 	running: {
-		bg: "bg-cyan-950/40",
-		border: "border-cyan-500/50",
-		text: "text-cyan-300",
-		dot: "bg-cyan-400",
+		bg: "bg-sky-950/40",
+		border: "border-sky-500/50",
+		text: "text-sky-300",
+		dot: "bg-sky-400",
 	},
 	needs_user: {
 		bg: "bg-amber-950/40",
@@ -42,13 +42,17 @@ const statusStyles: Record<string, { bg: string; border: string; text: string; d
 };
 
 function WorkflowStepNodeComponent({ data }: NodeProps & { data: StepNodeData }) {
-	const { label, status, artifactCount, isCurrentStep } = data;
+	const { label, status, artifactCount, isCurrentStep, isSelected } = data;
 	const style = statusStyles[status] || statusStyles.pending;
 
 	return (
 		<div
-			className={`rounded-xl border px-4 py-3 min-w-[200px] max-w-[240px] transition-all duration-200 ${style.bg} ${style.border} ${
-				isCurrentStep ? "ring-1 ring-amber-400/30 shadow-lg shadow-amber-900/10" : ""
+			className={`rounded-xl border px-4 py-3 min-w-[200px] max-w-[240px] cursor-pointer transition-all duration-200 ${style.bg} ${style.border} ${
+				isSelected
+					? "ring-2 ring-[var(--accent-primary)]/50 scale-[1.03]"
+					: isCurrentStep
+						? "ring-1 ring-amber-400/30"
+						: "hover:scale-[1.02] hover:border-[var(--border-strong)]"
 			}`}
 		>
 			<Handle type="target" position={Position.Top} className="!bg-zinc-600 !w-2 !h-2 !border-0" />
