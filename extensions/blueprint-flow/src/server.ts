@@ -127,7 +127,21 @@ export async function startServer(
 					"SELECT * FROM projects WHERE archived = 0 ORDER BY updated_at DESC",
 				)
 				.all();
-			socket.send(JSON.stringify({ type: "init", data: { projects } }));
+
+			// Import getPiBridge lazily to avoid circular deps at module level
+			import("./pi-bridge.js")
+				.then(({ getPiBridge }) => {
+					const bridge = getPiBridge();
+					socket.send(
+						JSON.stringify({
+							type: "init",
+							data: { projects, bridgeStatus: bridge.getStatus() },
+						}),
+					);
+				})
+				.catch(() => {
+					socket.send(JSON.stringify({ type: "init", data: { projects } }));
+				});
 		} catch {
 			// DB might not be ready
 		}

@@ -62,6 +62,9 @@ export function useWebSocket() {
 						selectProject(msg.data.projects[0].id);
 					}
 				}
+				if (msg.data.bridgeStatus) {
+					store.setBridgeStatus(msg.data.bridgeStatus);
+				}
 				break;
 
 			// --- Action run events ---
