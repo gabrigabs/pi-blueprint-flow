@@ -69,17 +69,12 @@ export function useKeyboardShortcuts() {
 					break;
 
 				// --- View mode toggle ---
-				case "c":
+				case "v":
 					if (!store.activeModal && store.selectedFeatureId) {
 						e.preventDefault();
-						store.setViewMode("canvas");
-					}
-					break;
-
-				case "K":
-					if (!store.activeModal && store.selectedFeatureId) {
-						e.preventDefault();
-						store.setViewMode("kanban");
+						store.setViewMode(
+							store.viewMode === "kanban" ? "canvas" : "kanban",
+						);
 					}
 					break;
 

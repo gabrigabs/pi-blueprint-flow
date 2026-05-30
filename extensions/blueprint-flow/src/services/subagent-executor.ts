@@ -1,4 +1,6 @@
 import { nanoid } from "nanoid";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { getDb } from "../db.js";
 import type { ActionRunRow } from "../db.js";
 import { bus } from "../events.js";
@@ -15,14 +17,16 @@ import {
 
 const SUBAGENT_TIMEOUT_MS = 5 * 60 * 1000;
 
+const EXTENSION_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+
 const STEP_TO_PROFILE: Record<string, string> = {
-	research: "skills/agents/research.md",
-	spec: "skills/agents/spec.md",
-	ddd: "skills/agents/ddd.md",
-	design: "skills/agents/design.md",
-	implementation: "skills/agents/implementation.md",
-	review: "skills/agents/review.md",
-	memory_update: "skills/agents/memory.md",
+	research: join(EXTENSION_ROOT, "skills", "agents", "research.md"),
+	spec: join(EXTENSION_ROOT, "skills", "agents", "spec.md"),
+	ddd: join(EXTENSION_ROOT, "skills", "agents", "ddd.md"),
+	design: join(EXTENSION_ROOT, "skills", "agents", "design.md"),
+	implementation: join(EXTENSION_ROOT, "skills", "agents", "implementation.md"),
+	review: join(EXTENSION_ROOT, "skills", "agents", "review.md"),
+	memory_update: join(EXTENSION_ROOT, "skills", "agents", "memory.md"),
 };
 
 export async function executeViaSubagent(actionRun: ActionRunRow): Promise<void> {

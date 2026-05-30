@@ -302,11 +302,16 @@ export async function startServer(
 		"/api/features/:featureId/interviews",
 		async (req) => {
 			const db = getDb();
-			return db
+			const rows = db
 				.prepare(
 					"SELECT * FROM interviews WHERE feature_id = ? ORDER BY created_at ASC",
 				)
-				.all(req.params.featureId);
+				.all(req.params.featureId) as any[];
+
+			return rows.map((r) => ({
+				...r,
+				options: r.options ? JSON.parse(r.options) : null,
+			}));
 		},
 	);
 

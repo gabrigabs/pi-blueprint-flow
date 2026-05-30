@@ -31,6 +31,7 @@ export function WorkflowCanvas() {
 		[steps],
 	);
 	const prevStructureRef = useRef(structureKey);
+	const hasNodesRef = useRef(false);
 
 	useEffect(() => {
 		if (steps.length === 0) return;
@@ -43,8 +44,11 @@ export function WorkflowCanvas() {
 		const structureChanged = prevStructureRef.current !== structureKey;
 		prevStructureRef.current = structureKey;
 
-		if (structureChanged || nodes.length === 0) {
-			autoLayout(n, e).then(({ nodes: layouted }) => setNodes(layouted));
+		if (structureChanged || !hasNodesRef.current) {
+			autoLayout(n, e).then(({ nodes: layouted }) => {
+				setNodes(layouted);
+				hasNodesRef.current = true;
+			});
 		} else {
 			setNodes((prev) =>
 				prev.map((node) => {
@@ -56,7 +60,7 @@ export function WorkflowCanvas() {
 				}),
 			);
 		}
-	}, [structureKey, statusKey]);
+	}, [structureKey, statusKey, steps, artifacts, setEdges, setNodes]);
 
 	if (steps.length === 0) {
 		return (

@@ -237,21 +237,9 @@ export const api = {
 
 	interviews: {
 		list: (featureId: string) =>
-			request<Interview[]>(`/api/features/${featureId}/interviews`).then(
-				(interviews) =>
-					interviews.map((i) => ({
-						...i,
-						options: typeof i.options === "string" ? JSON.parse(i.options) : i.options,
-					})),
-			),
+			request<Interview[]>(`/api/features/${featureId}/interviews`),
 		pending: (featureId: string) =>
-			request<Interview[]>(`/api/features/${featureId}/interviews/pending`).then(
-				(interviews) =>
-					interviews.map((i) => ({
-						...i,
-						options: typeof i.options === "string" ? JSON.parse(i.options) : i.options,
-					})),
-			),
+			request<Interview[]>(`/api/features/${featureId}/interviews/pending`),
 		answer: (id: string, answer: string) =>
 			request<Interview>(`/api/interviews/${id}/answer`, {
 				method: "POST",

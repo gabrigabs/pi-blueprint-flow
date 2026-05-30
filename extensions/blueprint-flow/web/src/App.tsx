@@ -155,7 +155,7 @@ export function App() {
 										? "bg-[var(--bg-surface-hover)] text-amber-400"
 										: "text-[var(--text-muted)] hover:text-[var(--text-tertiary)]"
 								}`}
-								title="Timeline View [K]"
+								title="Timeline View [V]"
 							>
 								<BetweenVerticalEnd size={14} />
 							</button>
@@ -166,7 +166,7 @@ export function App() {
 										? "bg-[var(--bg-surface-hover)] text-amber-400"
 										: "text-[var(--text-muted)] hover:text-[var(--text-tertiary)]"
 								}`}
-								title="Canvas View [C]"
+								title="Canvas View [V]"
 							>
 								<GitGraph size={14} />
 							</button>

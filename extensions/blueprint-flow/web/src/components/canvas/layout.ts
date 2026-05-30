@@ -1,22 +1,9 @@
 import type { Edge, Node } from "@xyflow/react";
 import ELK from "elkjs/lib/elk.bundled.js";
+import { STEP_LABELS } from "../../constants/steps";
 import type { Artifact, Step } from "../../store";
 
 const elk = new ELK();
-
-const STEP_LABELS: Record<string, string> = {
-	intake: "Intake",
-	research: "Research",
-	interview: "Interview",
-	spec: "Specification",
-	ddd: "Domain Modeling",
-	behavior: "Behavior Scenarios",
-	implementation_plan: "Implementation Plan",
-	implementation: "Implementation",
-	review: "Review Gate",
-	memory_update: "Memory Update",
-	design: "Design",
-};
 
 const NODE_WIDTH = 240;
 const NODE_HEIGHT = 80;

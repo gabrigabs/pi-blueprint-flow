@@ -88,7 +88,7 @@ export const waitForInterviewTool = {
   name: "blueprint_wait_for_interview",
   label: "Blueprint: Wait for Interview Answers",
   description:
-    "Poll until all required interview questions for a feature are answered via the Blueprint UI. Call this after asking all questions with blueprint_ask_interview.",
+    "Wait until all required interview questions for a feature are answered via the Blueprint UI. Call this after asking all questions with blueprint_ask_interview.",
   parameters: Type.Object({
     feature_id: Type.String({ description: "Feature ID" }),
     timeout_ms: Type.Optional(
@@ -102,47 +102,71 @@ export const waitForInterviewTool = {
   ) => {
     const db = getDb();
     const timeout = params.timeout_ms ?? 120000;
-    const start = Date.now();
 
-    while (Date.now() - start < timeout) {
-      const pending = db
-        .prepare(
-          "SELECT COUNT(*) as count FROM interviews WHERE feature_id = ? AND required = 1 AND answer IS NULL"
-        )
-        .get(params.feature_id) as { count: number };
+    // Check if already complete
+    const check = () =>
+      (db.prepare(
+        "SELECT COUNT(*) as count FROM interviews WHERE feature_id = ? AND required = 1 AND answer IS NULL"
+      ).get(params.feature_id) as { count: number }).count === 0;
 
-      if (pending.count === 0) {
-        const all = db
-          .prepare("SELECT * FROM interviews WHERE feature_id = ? ORDER BY created_at ASC")
-          .all(params.feature_id) as Interview[];
-
-        return {
-          content: [{ type: "text" as const, text: formatInterviewSummary(all) }],
-          details: { interviews: all, timedOut: false },
-        };
-      }
-
-      if (signal?.aborted) break;
-      await new Promise((r) => setTimeout(r, 2000));
+    if (check()) {
+      return buildWaitResult(params.feature_id, false);
     }
 
-    const current = db
-      .prepare("SELECT * FROM interviews WHERE feature_id = ? ORDER BY created_at ASC")
-      .all(params.feature_id) as Interview[];
+    // Wait for answers via event bus instead of polling
+    const answered = await new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => {
+        bus.off("interview:answered", handler);
+        resolve(false);
+      }, timeout);
 
-    const unanswered = current.filter((i) => !i.answer && i.required);
+      function handler() {
+        if (check()) {
+          clearTimeout(timer);
+          bus.off("interview:answered", handler);
+          resolve(true);
+        }
+      }
 
+      bus.on("interview:answered", handler);
+
+      if (signal) {
+        signal.addEventListener("abort", () => {
+          clearTimeout(timer);
+          bus.off("interview:answered", handler);
+          resolve(false);
+        }, { once: true });
+      }
+    });
+
+    return buildWaitResult(params.feature_id, !answered);
+  },
+};
+
+function buildWaitResult(featureId: string, timedOut: boolean) {
+  const db = getDb();
+  const all = db
+    .prepare("SELECT * FROM interviews WHERE feature_id = ? ORDER BY created_at ASC")
+    .all(featureId) as Interview[];
+
+  if (timedOut) {
+    const unanswered = all.filter((i) => !i.answer && i.required);
     return {
       content: [
         {
           type: "text" as const,
-          text: `Timeout after ${Math.round(timeout / 1000)}s. ${unanswered.length} required question(s) still unanswered.\n\n${formatInterviewSummary(current)}`,
+          text: `Timed out. ${unanswered.length} required question(s) still unanswered.\n\n${formatInterviewSummary(all)}`,
         },
       ],
-      details: { interviews: current, timedOut: true },
+      details: { interviews: all, timedOut: true },
     };
-  },
-};
+  }
+
+  return {
+    content: [{ type: "text" as const, text: formatInterviewSummary(all) }],
+    details: { interviews: all, timedOut: false },
+  };
+}
 
 function formatInterviewSummary(interviews: Interview[]): string {
   if (interviews.length === 0) return "No interview questions.";

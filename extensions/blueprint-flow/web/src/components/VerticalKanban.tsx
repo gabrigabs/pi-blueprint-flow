@@ -19,6 +19,7 @@ import {
 	Workflow,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { STEP_LABELS } from "../constants/steps";
 import { api } from "../lib/api";
 import type { ActionRun } from "../store";
 import { useStore } from "../store";
@@ -43,19 +44,7 @@ const STEP_ICONS: Record<string, React.ReactNode> = {
 	memory_update: <Brain size={13} />,
 };
 
-const FALLBACK_LABELS: Record<string, string> = {
-	intake: "Intake",
-	research: "Research",
-	interview: "Interview",
-	spec: "Specification",
-	ddd: "Domain Modeling",
-	design: "Design",
-	behavior: "Behavior Scenarios",
-	implementation_plan: "Implementation Plan",
-	implementation: "Implementation",
-	review: "Review Gate",
-	memory_update: "Memory Update",
-};
+const FALLBACK_LABELS = STEP_LABELS;
 
 export function VerticalKanban() {
 	const {

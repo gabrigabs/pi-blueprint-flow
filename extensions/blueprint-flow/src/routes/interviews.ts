@@ -9,11 +9,16 @@ export function registerInterviewRoutes(app: FastifyInstance): void {
 		"/api/features/:featureId/interviews/pending",
 		async (req) => {
 			const db = getDb();
-			return db
+			const rows = db
 				.prepare(
 					"SELECT * FROM interviews WHERE feature_id = ? AND answer IS NULL ORDER BY created_at ASC",
 				)
-				.all(req.params.featureId) as Interview[];
+				.all(req.params.featureId) as any[];
+
+			return rows.map((r) => ({
+				...r,
+				options: r.options ? JSON.parse(r.options) : null,
+			}));
 		},
 	);
 
