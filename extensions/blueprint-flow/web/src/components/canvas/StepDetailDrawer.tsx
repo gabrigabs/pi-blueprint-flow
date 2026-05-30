@@ -1,10 +1,13 @@
 import {
+	ArrowLeft,
 	ChevronDown,
 	ChevronUp,
 	FileText,
 	Loader2,
 	Play,
+	RefreshCw,
 	SkipForward,
+	Square,
 	X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -100,6 +103,26 @@ export function StepDetailDrawer() {
 		if (!selectedFeatureId) return;
 		try {
 			await api.features.advance(selectedFeatureId);
+		} catch {}
+	}
+
+	async function handleBack() {
+		if (!selectedFeatureId) return;
+		try {
+			await api.features.back(selectedFeatureId);
+		} catch {}
+	}
+
+	async function handleCancel() {
+		const activeRun = actionRuns.find(
+			(r) =>
+				r.feature_id === selectedFeatureId &&
+				r.step_name === step?.name &&
+				!["completed", "failed", "cancelled"].includes(r.status),
+		);
+		if (!activeRun) return;
+		try {
+			await api.actionRuns.cancel(activeRun.id);
 		} catch {}
 	}
 
@@ -203,62 +226,131 @@ export function StepDetailDrawer() {
 			</div>
 
 			{/* Step actions */}
-			{isActive && step.status !== "done" && (
-				<div
-					className="border-t shrink-0"
-					style={{ borderColor: "var(--border-subtle)" }}
-				>
-					{(step.status === "pending" || step.status === "needs_user") &&
-						showSettings && (
-							<div
-								className="px-4 pt-3 pb-2 border-b"
-								style={{ borderColor: "var(--border-subtle)" }}
-							>
-								<AgentRunSettingsPanel
-									value={runSettings}
-									onChange={setRunSettings}
-									compact
-								/>
-							</div>
-						)}
-					<div className="px-5 py-3 flex items-center gap-2">
-						{(step.status === "pending" || step.status === "needs_user") && (
-							<>
-								<button
-									onClick={handleRun}
-									className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all hover:brightness-110"
-									style={{
-										color: "var(--accent-primary)",
-										background: "var(--cyan-glow)",
-										border: "1px solid rgba(91, 155, 213, 0.2)",
-									}}
-								>
-									<Play size={11} /> Run Step
-								</button>
-								<button
-									onClick={() => setShowSettings(!showSettings)}
-									className="flex items-center gap-1 rounded-lg px-2.5 py-2 text-[10px] font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
-									style={{ color: "var(--text-muted)" }}
-								>
-									{showSettings ? (
-										<ChevronDown size={10} />
-									) : (
-										<ChevronUp size={10} />
-									)}
-									Settings
-								</button>
-							</>
-						)}
-						<button
-							onClick={handleAdvance}
-							className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
-							style={{ color: "var(--text-tertiary)" }}
+			<div
+				className="border-t shrink-0"
+				style={{ borderColor: "var(--border-subtle)" }}
+			>
+				{/* Settings panel (expandable) */}
+				{(step.status === "pending" ||
+					step.status === "needs_user" ||
+					step.status === "done") &&
+					showSettings && (
+						<div
+							className="px-4 pt-3 pb-2 border-b"
+							style={{ borderColor: "var(--border-subtle)" }}
 						>
-							<SkipForward size={11} /> Skip
-						</button>
-					</div>
+							<AgentRunSettingsPanel
+								value={runSettings}
+								onChange={setRunSettings}
+								compact
+							/>
+						</div>
+					)}
+				<div className="px-5 py-3 flex items-center gap-2 flex-wrap">
+					{/* Pending / needs_user: Run + Settings + Skip + Back */}
+					{(step.status === "pending" || step.status === "needs_user") && (
+						<>
+							<button
+								onClick={handleRun}
+								className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all hover:brightness-110"
+								style={{
+									color: "var(--accent-primary)",
+									background: "var(--cyan-glow)",
+									border: "1px solid rgba(91, 155, 213, 0.2)",
+								}}
+							>
+								<Play size={11} /> Run
+							</button>
+							<button
+								onClick={() => setShowSettings(!showSettings)}
+								className="flex items-center gap-1 rounded-lg px-2.5 py-2 text-[10px] font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
+								style={{ color: "var(--text-muted)" }}
+							>
+								{showSettings ? (
+									<ChevronDown size={10} />
+								) : (
+									<ChevronUp size={10} />
+								)}
+								Settings
+							</button>
+							<button
+								onClick={handleAdvance}
+								className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
+								style={{ color: "var(--text-tertiary)" }}
+							>
+								<SkipForward size={10} /> Skip
+							</button>
+							<button
+								onClick={handleBack}
+								className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
+								style={{ color: "var(--text-tertiary)" }}
+							>
+								<ArrowLeft size={10} /> Back
+							</button>
+						</>
+					)}
+
+					{/* Running: Cancel + Back */}
+					{step.status === "running" && (
+						<>
+							<button
+								onClick={handleCancel}
+								className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all hover:brightness-110"
+								style={{
+									color: "var(--rose-400)",
+									background: "var(--rose-glow, rgba(231, 76, 60, 0.08))",
+									border: "1px solid rgba(231, 76, 60, 0.2)",
+								}}
+							>
+								<Square size={10} /> Stop
+							</button>
+							<button
+								onClick={handleBack}
+								className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
+								style={{ color: "var(--text-tertiary)" }}
+							>
+								<ArrowLeft size={10} /> Back
+							</button>
+						</>
+					)}
+
+					{/* Done: Re-run + Back */}
+					{step.status === "done" && (
+						<>
+							<button
+								onClick={handleRun}
+								className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium transition-all hover:brightness-110"
+								style={{
+									color: "var(--accent-primary)",
+									background: "var(--cyan-glow)",
+									border: "1px solid rgba(91, 155, 213, 0.2)",
+								}}
+							>
+								<RefreshCw size={11} /> Re-run
+							</button>
+							<button
+								onClick={() => setShowSettings(!showSettings)}
+								className="flex items-center gap-1 rounded-lg px-2.5 py-2 text-[10px] font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
+								style={{ color: "var(--text-muted)" }}
+							>
+								{showSettings ? (
+									<ChevronDown size={10} />
+								) : (
+									<ChevronUp size={10} />
+								)}
+								Settings
+							</button>
+							<button
+								onClick={handleBack}
+								className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
+								style={{ color: "var(--text-tertiary)" }}
+							>
+								<ArrowLeft size={10} /> Back
+							</button>
+						</>
+					)}
 				</div>
-			)}
+			</div>
 		</div>
 	);
 }

@@ -1,4 +1,4 @@
-import { Brain, Cpu, Flame, Loader2, Scale, Zap } from "lucide-react";
+import { Bot, Brain, Cpu, Flame, Loader2, Scale, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import type {
 	AgentConfigResponse,
@@ -20,33 +20,76 @@ const EFFORT_OPTIONS = [
 		value: "fast",
 		label: "Fast",
 		icon: Zap,
-		description: "Quick tasks, minimal research",
+		description: "3 research results, 2 questions, light review",
 	},
 	{
 		value: "balanced",
 		label: "Balanced",
 		icon: Scale,
-		description: "Standard workflow",
+		description: "5 results, 5 questions, normal review",
 	},
 	{
 		value: "deep",
 		label: "Deep",
 		icon: Brain,
-		description: "Complex features, thorough review",
+		description: "10 results, 8 questions, strict review",
 	},
 	{
 		value: "max",
 		label: "Max",
 		icon: Flame,
-		description: "Critical changes, full rigor",
+		description: "15 results, 12 questions, strict + review mode",
 	},
 ] as const;
 
 const MODE_OPTIONS = [
-	{ value: "draft", label: "Draft" },
-	{ value: "review", label: "Review" },
-	{ value: "apply", label: "Apply" },
+	{ value: "draft", label: "Draft", description: "Generate artifacts only" },
+	{
+		value: "review",
+		label: "Review",
+		description: "Generate + review before apply",
+	},
+	{
+		value: "apply",
+		label: "Apply",
+		description: "Generate + apply code changes",
+	},
+	{
+		value: "subagent",
+		label: "Sub-agent",
+		description: "Run in isolated sub-agent",
+	},
 ] as const;
+
+const FALLBACK_MODELS: AgentModelInfo[] = [
+	{
+		id: "claude-haiku-4-5-20251001",
+		name: "Claude Haiku 4.5",
+		provider: "anthropic",
+		reasoning: false,
+		contextWindow: 200000,
+		maxTokens: 8192,
+		cost: { input: 0.8, output: 4 },
+	},
+	{
+		id: "claude-sonnet-4-6-20250514",
+		name: "Claude Sonnet 4.6",
+		provider: "anthropic",
+		reasoning: true,
+		contextWindow: 200000,
+		maxTokens: 16384,
+		cost: { input: 3, output: 15 },
+	},
+	{
+		id: "claude-opus-4-7-20250219",
+		name: "Claude Opus 4.7",
+		provider: "anthropic",
+		reasoning: true,
+		contextWindow: 200000,
+		maxTokens: 32768,
+		cost: { input: 15, output: 75 },
+	},
+];
 
 export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 	const [showAdvanced, setShowAdvanced] = useState(false);
@@ -103,6 +146,7 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 
 	const models = agentConfig?.models ?? [];
 	const hasModels = models.length > 0;
+	const displayModels = hasModels ? models : FALLBACK_MODELS;
 	const defaultModel = agentConfig?.defaultModel;
 
 	return (
@@ -118,7 +162,7 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 						<Loader2 size={10} className="animate-spin" />
 						Loading models...
 					</div>
-				) : hasModels ? (
+				) : (
 					<select
 						value={value.modelId ?? ""}
 						onChange={(e) => update({ modelId: e.target.value || undefined })}
@@ -127,35 +171,28 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 						<option value="">
 							{defaultModel ? `default (${defaultModel})` : "default"}
 						</option>
-						{groupModelsByProvider(models).map(([provider, providerModels]) => (
-							<optgroup key={provider} label={provider}>
-								{providerModels.map((m) => (
-									<option key={`${m.provider}/${m.id}`} value={m.id}>
-										{m.name}
-										{m.reasoning ? " (reasoning)" : ""}
-									</option>
-								))}
-							</optgroup>
-						))}
+						{groupModelsByProvider(displayModels).map(
+							([provider, providerModels]) => (
+								<optgroup key={provider} label={provider}>
+									{providerModels.map((m) => (
+										<option key={`${m.provider}/${m.id}`} value={m.id}>
+											{m.name}
+											{m.reasoning ? " (reasoning)" : ""}
+										</option>
+									))}
+								</optgroup>
+							),
+						)}
 					</select>
-				) : (
-					<input
-						type="text"
-						value={value.modelId ?? ""}
-						onChange={(e) => update({ modelId: e.target.value || undefined })}
-						placeholder={defaultModel ?? "default"}
-						className="w-full rounded border border-gray-700 bg-gray-900 px-2 py-1.5 text-sm text-gray-200 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
-					/>
 				)}
-				{configError && (
+				{configError && !hasModels && (
 					<p className="mt-0.5 text-xs text-amber-500/70">
-						Could not load models from Pi agent
+						Pi not connected — showing known models
 					</p>
 				)}
-				{hasModels &&
-					value.modelId &&
+				{value.modelId &&
 					(() => {
-						const selected = models.find((m) => m.id === value.modelId);
+						const selected = displayModels.find((m) => m.id === value.modelId);
 						return selected ? (
 							<div className="mt-1">
 								<ModelBadges model={selected} />
@@ -170,21 +207,24 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 					Effort
 				</label>
 				<div className="grid grid-cols-4 gap-1">
-					{EFFORT_OPTIONS.map(({ value: v, label, icon: Icon }) => (
-						<button
-							key={v}
-							type="button"
-							onClick={() => update({ effortLevel: v })}
-							className={`flex flex-col items-center gap-0.5 rounded px-2 py-1.5 text-xs transition-colors ${
-								value.effortLevel === v
-									? "bg-blue-600/30 text-blue-300 ring-1 ring-blue-500/50"
-									: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
-							}`}
-						>
-							<Icon size={12} />
-							<span>{label}</span>
-						</button>
-					))}
+					{EFFORT_OPTIONS.map(
+						({ value: v, label, icon: Icon, description }) => (
+							<button
+								key={v}
+								type="button"
+								onClick={() => update({ effortLevel: v })}
+								title={description}
+								className={`flex flex-col items-center gap-0.5 rounded px-2 py-1.5 text-xs transition-colors ${
+									value.effortLevel === v
+										? "bg-blue-600/30 text-blue-300 ring-1 ring-blue-500/50"
+										: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
+								}`}
+							>
+								<Icon size={12} />
+								<span>{label}</span>
+							</button>
+						),
+					)}
 				</div>
 			</div>
 
@@ -193,19 +233,21 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 				<label className="mb-1.5 block text-xs font-medium text-gray-400">
 					Mode
 				</label>
-				<div className="grid grid-cols-3 gap-1">
-					{MODE_OPTIONS.map(({ value: v, label }) => (
+				<div className="grid grid-cols-4 gap-1">
+					{MODE_OPTIONS.map(({ value: v, label, description }) => (
 						<button
 							key={v}
 							type="button"
 							onClick={() => update({ executionMode: v })}
-							className={`rounded px-2 py-1.5 text-xs transition-colors ${
+							title={description}
+							className={`flex flex-col items-center gap-0.5 rounded px-2 py-1.5 text-xs transition-colors ${
 								value.executionMode === v
 									? "bg-emerald-600/30 text-emerald-300 ring-1 ring-emerald-500/50"
 									: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
 							}`}
 						>
-							{label}
+							{v === "subagent" && <Bot size={11} />}
+							<span>{label}</span>
 						</button>
 					))}
 				</div>
