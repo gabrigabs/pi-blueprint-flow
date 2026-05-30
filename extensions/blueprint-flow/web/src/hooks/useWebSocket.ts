@@ -2,6 +2,10 @@ import { useEffect, useRef } from "react";
 import { addToast } from "../components/Toasts";
 import { useStore } from "../store";
 
+/**
+ * Connects to the Blueprint WebSocket and handles all realtime events.
+ * Automatically refetches relevant data when backend emits changes.
+ */
 export function useWebSocket() {
 	const wsRef = useRef<WebSocket | null>(null);
 	const { setConnected, setProjects, selectProject } = useStore();
@@ -20,7 +24,6 @@ export function useWebSocket() {
 
 			ws.onclose = () => {
 				setConnected(false);
-				// Reconnect after 2s
 				setTimeout(connect, 2000);
 			};
 
@@ -61,15 +64,15 @@ export function useWebSocket() {
 				}
 				break;
 
+			// --- Action run events ---
 			case "action:created":
-				// Add new action run to store
 				if (msg.data.id) {
 					store.addActionRun({
 						id: msg.data.id,
 						project_id: msg.data.projectId ?? null,
 						feature_id: msg.data.featureId ?? null,
 						action_type: msg.data.actionType,
-						step_name: null,
+						step_name: msg.data.stepName ?? null,
 						status: msg.data.status,
 						prompt: null,
 						model_id: null,
@@ -95,7 +98,6 @@ export function useWebSocket() {
 				break;
 
 			case "action:event":
-				// Dispatch custom event for live streaming in ActionRunPanel
 				if (msg.data.actionRunId) {
 					window.dispatchEvent(
 						new CustomEvent("blueprint:action-event", {
@@ -112,14 +114,13 @@ export function useWebSocket() {
 			case "action:completed":
 				if (msg.data.id) {
 					store.updateActionRun(msg.data.id, {
-						status: msg.data.status,
+						status: msg.data.status ?? "completed",
 						completed_at: new Date().toISOString(),
 						updated_at: new Date().toISOString(),
 					});
-					addToast({
-						type: "success",
-						message: "Action completed successfully",
-					});
+					addToast({ type: "success", message: "Action completed" });
+					// Refetch steps/artifacts since completion likely changed state
+					refreshFeatureData();
 				}
 				break;
 
@@ -139,57 +140,140 @@ export function useWebSocket() {
 				}
 				break;
 
-			case "project:created":
+			// --- Step events ---
+			case "step:advanced":
+			case "step:back":
+			case "step:status_changed":
+				refreshFeatureData();
+				refreshProjects();
+				break;
+
+			// --- Feature events ---
 			case "feature:created":
 			case "feature:updated":
-			case "step:advanced":
+				refreshFeatures();
+				refreshFeatureData();
+				break;
+
+			// --- Artifact events ---
 			case "artifact:saved":
+			case "artifact:updated":
+				refreshArtifacts();
+				break;
+
+			// --- Memory events ---
 			case "memory:saved":
+				refreshMemories();
+				break;
+
+			// --- Interview events ---
 			case "interview:asked":
+				refreshInterviews();
+				addToast({
+					type: "info",
+					message: "New interview question available",
+					duration: 5000,
+				});
+				break;
+
 			case "interview:answered":
-				// Trigger a refresh of the relevant data
-				refreshData();
+				refreshInterviews();
+				break;
+
+			// --- Project events ---
+			case "project:created":
+			case "project:updated":
+			case "project:archived":
+				refreshProjects();
+				break;
+
+			// --- Import events ---
+			case "import:started":
+			case "import:completed":
+				refreshProjects();
+				break;
+
+			// --- Settings ---
+			case "settings:saved":
 				break;
 		}
 	}
 
-	async function refreshData() {
-		const store = useStore.getState();
+	// --- Granular refresh helpers ---
 
+	async function refreshProjects() {
 		try {
-			const projectsRes = await fetch("/api/projects");
-			if (projectsRes.ok) {
-				const projects = await projectsRes.json();
-				useStore.getState().setProjects(projects);
+			const res = await fetch("/api/projects");
+			if (res.ok) {
+				useStore.getState().setProjects(await res.json());
 			}
-
-			if (store.selectedProjectId) {
-				const featuresRes = await fetch(
-					`/api/projects/${store.selectedProjectId}/features`,
-				);
-				if (featuresRes.ok) {
-					const features = await featuresRes.json();
-					useStore.getState().setFeatures(features);
-				}
-			}
-
-			if (store.selectedFeatureId) {
-				const [stepsRes, artifactsRes, interviewsRes] = await Promise.all([
-					fetch(`/api/features/${store.selectedFeatureId}/steps`),
-					fetch(`/api/features/${store.selectedFeatureId}/artifacts`),
-					fetch(`/api/features/${store.selectedFeatureId}/interviews`),
-				]);
-
-				if (stepsRes.ok) useStore.getState().setSteps(await stepsRes.json());
-				if (artifactsRes.ok)
-					useStore.getState().setArtifacts(await artifactsRes.json());
-				if (interviewsRes.ok)
-					useStore.getState().setInterviews(await interviewsRes.json());
-			}
-		} catch {
-			// Network error — will retry on next event
-		}
+		} catch {}
 	}
 
-	return { refreshData };
+	async function refreshFeatures() {
+		const { selectedProjectId } = useStore.getState();
+		if (!selectedProjectId) return;
+		try {
+			const res = await fetch(`/api/projects/${selectedProjectId}/features`);
+			if (res.ok) {
+				useStore.getState().setFeatures(await res.json());
+			}
+		} catch {}
+	}
+
+	async function refreshFeatureData() {
+		const { selectedFeatureId, selectedProjectId } = useStore.getState();
+
+		if (selectedProjectId) {
+			try {
+				const res = await fetch(`/api/projects/${selectedProjectId}/features`);
+				if (res.ok) useStore.getState().setFeatures(await res.json());
+			} catch {}
+		}
+
+		if (!selectedFeatureId) return;
+
+		try {
+			const [stepsRes, artifactsRes, interviewsRes] = await Promise.all([
+				fetch(`/api/features/${selectedFeatureId}/steps`),
+				fetch(`/api/features/${selectedFeatureId}/artifacts`),
+				fetch(`/api/features/${selectedFeatureId}/interviews`),
+			]);
+
+			if (stepsRes.ok) useStore.getState().setSteps(await stepsRes.json());
+			if (artifactsRes.ok)
+				useStore.getState().setArtifacts(await artifactsRes.json());
+			if (interviewsRes.ok)
+				useStore.getState().setInterviews(await interviewsRes.json());
+		} catch {}
+	}
+
+	async function refreshArtifacts() {
+		const { selectedFeatureId } = useStore.getState();
+		if (!selectedFeatureId) return;
+		try {
+			const res = await fetch(`/api/features/${selectedFeatureId}/artifacts`);
+			if (res.ok) useStore.getState().setArtifacts(await res.json());
+		} catch {}
+	}
+
+	async function refreshMemories() {
+		const { selectedProjectId } = useStore.getState();
+		if (!selectedProjectId) return;
+		try {
+			const res = await fetch(`/api/projects/${selectedProjectId}/memories`);
+			if (res.ok) useStore.getState().setMemories(await res.json());
+		} catch {}
+	}
+
+	async function refreshInterviews() {
+		const { selectedFeatureId } = useStore.getState();
+		if (!selectedFeatureId) return;
+		try {
+			const res = await fetch(`/api/features/${selectedFeatureId}/interviews`);
+			if (res.ok) useStore.getState().setInterviews(await res.json());
+		} catch {}
+	}
+
+	return { refreshFeatureData };
 }

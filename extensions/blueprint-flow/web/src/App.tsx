@@ -1,4 +1,4 @@
-import { Wifi, WifiOff } from "lucide-react";
+import { Loader2, Radio, Wifi, WifiOff } from "lucide-react";
 import { useEffect } from "react";
 import { ActionRunPanel } from "./components/ActionRunPanel";
 import { ArtifactInspector } from "./components/ArtifactInspector";
@@ -16,8 +16,25 @@ import { useStore } from "./store";
 
 export function App() {
 	useWebSocket();
-	const { connected, selectedProjectId, selectedFeatureId, activeModal } =
-		useStore();
+	const {
+		connected,
+		selectedProjectId,
+		selectedFeatureId,
+		activeModal,
+		bridgeStatus,
+		actionRuns,
+	} = useStore();
+
+	const currentFeature = useStore((s) =>
+		s.features.find((f) => f.id === s.selectedFeatureId),
+	);
+
+	// Determine if any action is actively running
+	const activeRun = actionRuns.find((r) =>
+		["agent_running", "tool_running", "injected", "waiting_for_pi"].includes(
+			r.status,
+		),
+	);
 
 	useEffect(() => {
 		if (selectedProjectId) {
@@ -57,11 +74,35 @@ export function App() {
 		<div className="flex h-screen flex-col bg-gray-950">
 			{/* Header */}
 			<header className="flex items-center justify-between border-b border-gray-800 px-4 py-2">
-				<h1 className="text-lg font-semibold text-gray-100">Blueprint Flow</h1>
-				<div className="flex items-center gap-2 text-sm">
+				<div className="flex items-center gap-3">
+					<h1 className="text-lg font-semibold text-gray-100">
+						Blueprint Flow
+					</h1>
+					{currentFeature && (
+						<span className="text-sm text-gray-500 truncate max-w-[200px]">
+							/ {currentFeature.title}
+						</span>
+					)}
+				</div>
+				<div className="flex items-center gap-3 text-sm">
+					{/* Active run indicator */}
+					{activeRun && (
+						<span className="flex items-center gap-1.5 text-fuchsia-400">
+							<Loader2 size={12} className="animate-spin" />
+							<span className="text-xs">Pi running</span>
+						</span>
+					)}
+					{/* Bridge status */}
+					{bridgeStatus === "not_connected" && !activeRun && (
+						<span className="flex items-center gap-1 text-xs text-red-400/70">
+							<Radio size={11} />
+							Pi offline
+						</span>
+					)}
+					{/* WebSocket connection */}
 					{connected ? (
 						<span className="flex items-center gap-1 text-emerald-400">
-							<Wifi size={14} /> Connected
+							<Wifi size={14} />
 						</span>
 					) : (
 						<span className="flex items-center gap-1 text-red-400">

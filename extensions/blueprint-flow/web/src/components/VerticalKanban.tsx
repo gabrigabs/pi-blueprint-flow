@@ -1,18 +1,23 @@
 import {
 	Boxes,
 	Brain,
+	ChevronDown,
+	ChevronRight,
 	CircleDot,
 	ClipboardList,
+	Clock,
 	Code,
 	FileText,
 	Inbox,
+	Loader2,
 	MessageSquare,
 	Search,
 	ShieldCheck,
 	Workflow,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import type { ActionRun } from "../store";
 import { useStore } from "../store";
 import { StepActions } from "./StepActions";
 
@@ -82,6 +87,7 @@ export function VerticalKanban() {
 	const {
 		steps,
 		artifacts,
+		actionRuns,
 		selectedFeatureId,
 		selectedProjectId,
 		activeWorkflow,
@@ -90,6 +96,7 @@ export function VerticalKanban() {
 	const currentFeature = useStore((s) =>
 		s.features.find((f) => f.id === s.selectedFeatureId),
 	);
+	const [expandedStep, setExpandedStep] = useState<string | null>(null);
 
 	// Load active workflow for label resolution
 	useEffect(() => {
@@ -100,6 +107,14 @@ export function VerticalKanban() {
 				.catch(() => {});
 		}
 	}, [selectedProjectId, setActiveWorkflow]);
+
+	// Auto-expand running step
+	useEffect(() => {
+		const runningStep = steps.find((s) => s.status === "running");
+		if (runningStep) {
+			setExpandedStep(runningStep.name);
+		}
+	}, [steps]);
 
 	// Build label map from active workflow
 	const labelMap: Record<string, string> = {};
@@ -134,12 +149,18 @@ export function VerticalKanban() {
 				const stepArtifacts = artifacts.filter(
 					(a) => a.step_name === step.name,
 				);
+				const stepRuns = actionRuns.filter(
+					(r) =>
+						r.step_name === step.name && r.feature_id === selectedFeatureId,
+				);
 				const isActive =
 					step.status === "running" || step.status === "needs_user";
 				const isCurrentStep = currentFeature?.current_step === step.name;
+				const isExpanded = expandedStep === step.name;
 				const label =
 					labelMap[step.name] || FALLBACK_LABELS[step.name] || step.name;
 				const icon = STEP_ICONS[step.name] || <CircleDot size={14} />;
+				const latestRun = stepRuns[0];
 
 				return (
 					<div
@@ -148,12 +169,17 @@ export function VerticalKanban() {
 							isActive ? "ring-1 ring-blue-500/30" : ""
 						}`}
 					>
-						<div className="flex items-center justify-between">
+						{/* Step header */}
+						<div
+							className="flex items-center justify-between cursor-pointer"
+							onClick={() => setExpandedStep(isExpanded ? null : step.name)}
+						>
 							<div className="flex items-center gap-2">
 								<span className={style.text}>{icon}</span>
 								<span className={`text-sm font-medium ${style.text}`}>
 									{label}
 								</span>
+								{step.status === "running" && <RunningSpinner />}
 							</div>
 							<div className="flex items-center gap-2">
 								{stepArtifacts.length > 0 && (
@@ -162,15 +188,86 @@ export function VerticalKanban() {
 										{stepArtifacts.length > 1 ? "s" : ""}
 									</span>
 								)}
+								{step.status === "running" && step.started_at && (
+									<ElapsedBadge startedAt={step.started_at} />
+								)}
 								<StepStatusBadge status={step.status} />
+								<span
+									className={`text-gray-600 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+								>
+									{isExpanded ? (
+										<ChevronDown size={12} />
+									) : (
+										<ChevronRight size={12} />
+									)}
+								</span>
 							</div>
 						</div>
-						{step.started_at && (
-							<p className="mt-1 text-xs text-gray-600">
-								Started: {new Date(step.started_at).toLocaleString()}
-							</p>
+
+						{/* Running step summary (always visible when running) */}
+						{step.status === "running" && latestRun && !isExpanded && (
+							<div className="mt-1.5 flex items-center gap-2 text-xs text-blue-400/70">
+								<Loader2 size={10} className="animate-spin" />
+								<span className="truncate">
+									{latestRun.action_type.replace(/_/g, " ")} —{" "}
+									{latestRun.status}
+								</span>
+							</div>
 						)}
-						{selectedFeatureId && isActive && (
+
+						{/* Expanded content */}
+						{isExpanded && (
+							<div className="mt-2 space-y-2">
+								{/* Action timeline for this step */}
+								{stepRuns.length > 0 && <StepRunTimeline runs={stepRuns} />}
+
+								{/* Step artifacts summary */}
+								{stepArtifacts.length > 0 && (
+									<div className="flex flex-wrap gap-1">
+										{stepArtifacts.map((a) => (
+											<button
+												key={a.id}
+												onClick={(e) => {
+													e.stopPropagation();
+													useStore.getState().selectArtifact(a.id);
+												}}
+												className="rounded bg-gray-800/80 px-1.5 py-0.5 text-[10px] text-gray-400 hover:bg-gray-700 hover:text-gray-200 transition-colors"
+											>
+												{a.filename}
+											</button>
+										))}
+									</div>
+								)}
+
+								{/* Step actions (run/advance/back) */}
+								{selectedFeatureId && (isActive || isCurrentStep) && (
+									<StepActions
+										featureId={selectedFeatureId}
+										stepId={step.id}
+										stepName={step.name}
+										stepStatus={step.status}
+										isCurrentStep={isCurrentStep}
+									/>
+								)}
+
+								{/* Started/completed timestamps */}
+								{step.started_at && (
+									<p className="text-[10px] text-gray-600">
+										Started: {new Date(step.started_at).toLocaleString()}
+										{step.completed_at && (
+											<>
+												{" "}
+												— Completed:{" "}
+												{new Date(step.completed_at).toLocaleString()}
+											</>
+										)}
+									</p>
+								)}
+							</div>
+						)}
+
+						{/* Collapsed: show actions only for active/current step */}
+						{!isExpanded && selectedFeatureId && isActive && (
 							<StepActions
 								featureId={selectedFeatureId}
 								stepId={step.id}
@@ -184,6 +281,80 @@ export function VerticalKanban() {
 			})}
 		</div>
 	);
+}
+
+// --- Sub-components ---
+
+function RunningSpinner() {
+	return (
+		<span className="relative flex h-2 w-2">
+			<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-50" />
+			<span className="relative inline-flex h-2 w-2 rounded-full bg-blue-400" />
+		</span>
+	);
+}
+
+function ElapsedBadge({ startedAt }: { startedAt: string }) {
+	const [elapsed, setElapsed] = useState("");
+
+	useEffect(() => {
+		const start = new Date(startedAt).getTime();
+		const update = () => {
+			const diff = Math.floor((Date.now() - start) / 1000);
+			const m = Math.floor(diff / 60);
+			const s = diff % 60;
+			setElapsed(m > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${s}s`);
+		};
+		update();
+		const interval = setInterval(update, 1000);
+		return () => clearInterval(interval);
+	}, [startedAt]);
+
+	return (
+		<span className="flex items-center gap-0.5 rounded bg-blue-900/30 px-1.5 py-0.5 text-[10px] text-blue-400 font-mono">
+			<Clock size={9} />
+			{elapsed}
+		</span>
+	);
+}
+
+function StepRunTimeline({ runs }: { runs: ActionRun[] }) {
+	return (
+		<div className="space-y-1 rounded border border-gray-800 bg-gray-900/50 p-2">
+			<p className="text-[10px] font-medium uppercase tracking-wider text-gray-500 mb-1">
+				Run History
+			</p>
+			{runs.slice(0, 5).map((run) => (
+				<div key={run.id} className="flex items-center gap-2 text-[11px]">
+					<RunStatusDot status={run.status} />
+					<span className="text-gray-400 truncate flex-1">
+						{run.action_type.replace(/_/g, " ")}
+					</span>
+					<span className="text-gray-600 shrink-0">
+						{run.status === "completed"
+							? "done"
+							: run.status === "failed"
+								? "failed"
+								: run.status}
+					</span>
+				</div>
+			))}
+		</div>
+	);
+}
+
+function RunStatusDot({ status }: { status: string }) {
+	const colors: Record<string, string> = {
+		completed: "bg-emerald-400",
+		failed: "bg-red-400",
+		running: "bg-blue-400 animate-pulse",
+		agent_running: "bg-fuchsia-400 animate-pulse",
+		tool_running: "bg-cyan-400 animate-pulse",
+		queued: "bg-sky-400",
+		cancelled: "bg-gray-500",
+	};
+	const color = colors[status] ?? "bg-gray-500";
+	return <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${color}`} />;
 }
 
 function StepStatusBadge({ status }: { status: string }) {
