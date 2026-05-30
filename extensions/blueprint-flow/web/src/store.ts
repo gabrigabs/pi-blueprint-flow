@@ -4,6 +4,9 @@ export interface Project {
   id: string;
   name: string;
   description: string | null;
+  repo_path: string | null;
+  stack: string;
+  archived: number;
   feature_count?: number;
   created_at: string;
   updated_at: string;
@@ -14,6 +17,9 @@ export interface Feature {
   project_id: string;
   title: string;
   description: string | null;
+  type: string;
+  risk_level: string;
+  priority: string;
   current_step: string;
   status: string;
   created_at: string;
@@ -59,8 +65,14 @@ export interface Interview {
   created_at: string;
 }
 
+export type ModalType =
+  | "create_project"
+  | "import_project"
+  | "create_feature"
+  | "agent_settings"
+  | null;
+
 interface BlueprintStore {
-  // State
   projects: Project[];
   features: Feature[];
   steps: Step[];
@@ -71,8 +83,8 @@ interface BlueprintStore {
   selectedFeatureId: string | null;
   selectedArtifactId: string | null;
   connected: boolean;
+  activeModal: ModalType;
 
-  // Actions
   setProjects: (projects: Project[]) => void;
   setFeatures: (features: Feature[]) => void;
   setSteps: (steps: Step[]) => void;
@@ -83,6 +95,8 @@ interface BlueprintStore {
   selectFeature: (id: string | null) => void;
   selectArtifact: (id: string | null) => void;
   setConnected: (connected: boolean) => void;
+  openModal: (modal: ModalType) => void;
+  closeModal: () => void;
 }
 
 export const useStore = create<BlueprintStore>((set) => ({
@@ -96,6 +110,7 @@ export const useStore = create<BlueprintStore>((set) => ({
   selectedFeatureId: null,
   selectedArtifactId: null,
   connected: false,
+  activeModal: null,
 
   setProjects: (projects) => set({ projects }),
   setFeatures: (features) => set({ features }),
@@ -107,4 +122,6 @@ export const useStore = create<BlueprintStore>((set) => ({
   selectFeature: (id) => set({ selectedFeatureId: id, selectedArtifactId: null }),
   selectArtifact: (id) => set({ selectedArtifactId: id }),
   setConnected: (connected) => set({ connected }),
+  openModal: (modal) => set({ activeModal: modal }),
+  closeModal: () => set({ activeModal: null }),
 }));
