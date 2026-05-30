@@ -38,6 +38,10 @@ export function App() {
 		s.features.find((f) => f.id === s.selectedFeatureId),
 	);
 
+	const steps = useStore((s) => s.steps);
+	const doneSteps = steps.filter((s) => s.status === "done").length;
+	const progressPercent = steps.length > 0 ? (doneSteps / steps.length) * 100 : 0;
+
 	const activeRun = actionRuns.find((r) =>
 		["agent_running", "tool_running", "injected", "waiting_for_pi"].includes(
 			r.status,
@@ -104,7 +108,7 @@ export function App() {
 						</h1>
 					</div>
 					{currentFeature && (
-						<div className="flex items-center gap-2">
+						<div className="flex items-center gap-3">
 							<span className="text-[var(--text-muted)]">/</span>
 							<span
 								className="font-mono text-xs tracking-wide"
@@ -112,6 +116,19 @@ export function App() {
 							>
 								{currentFeature.title}
 							</span>
+							{steps.length > 0 && (
+								<div className="flex items-center gap-2">
+									<div className="flow-progress-bar w-20">
+										<div
+											className="flow-progress-fill"
+											style={{ width: `${progressPercent}%` }}
+										/>
+									</div>
+									<span className="font-mono text-[10px] text-[var(--text-muted)]">
+										{doneSteps}/{steps.length}
+									</span>
+								</div>
+							)}
 						</div>
 					)}
 				</div>
