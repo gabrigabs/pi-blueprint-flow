@@ -1,4 +1,5 @@
 import { useStore } from "../store";
+import { StepActions } from "./StepActions";
 import {
   Inbox,
   Search,
@@ -48,7 +49,8 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; border: string }
 };
 
 export function VerticalKanban() {
-  const { steps, artifacts } = useStore();
+  const { steps, artifacts, selectedFeatureId } = useStore();
+  const currentFeature = useStore((s) => s.features.find((f) => f.id === s.selectedFeatureId));
 
   if (steps.length === 0) {
     return (
@@ -63,10 +65,11 @@ export function VerticalKanban() {
       <h2 className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400">
         Development Flow
       </h2>
-      {steps.map((step, idx) => {
+      {steps.map((step) => {
         const style = STATUS_STYLES[step.status] || STATUS_STYLES.pending;
         const stepArtifacts = artifacts.filter((a) => a.step_name === step.name);
         const isActive = step.status === "running" || step.status === "needs_user";
+        const isCurrentStep = currentFeature?.current_step === step.name;
 
         return (
           <div
@@ -95,6 +98,15 @@ export function VerticalKanban() {
               <p className="mt-1 text-xs text-gray-600">
                 Started: {new Date(step.started_at).toLocaleString()}
               </p>
+            )}
+            {selectedFeatureId && isActive && (
+              <StepActions
+                featureId={selectedFeatureId}
+                stepId={step.id}
+                stepName={step.name}
+                stepStatus={step.status}
+                isCurrentStep={isCurrentStep}
+              />
             )}
           </div>
         );

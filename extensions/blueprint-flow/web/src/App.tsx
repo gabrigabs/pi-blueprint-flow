@@ -6,12 +6,14 @@ import { VerticalKanban } from "./components/VerticalKanban";
 import { ArtifactInspector } from "./components/ArtifactInspector";
 import { InterviewPanel } from "./components/InterviewPanel";
 import { MemoryPanel } from "./components/MemoryPanel";
-import { CanvasBoard } from "./components/CanvasBoard";
+import { CreateProjectModal } from "./components/CreateProjectModal";
+import { CreateFeatureModal } from "./components/CreateFeatureModal";
+import { ImportProjectModal } from "./components/ImportProjectModal";
 import { Wifi, WifiOff } from "lucide-react";
 
 export function App() {
-  const { refreshData } = useWebSocket();
-  const { connected, selectedProjectId, selectedFeatureId } = useStore();
+  useWebSocket();
+  const { connected, selectedProjectId, selectedFeatureId, activeModal } = useStore();
 
   useEffect(() => {
     if (selectedProjectId) {
@@ -44,7 +46,7 @@ export function App() {
   }, [selectedFeatureId]);
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col bg-gray-950">
       {/* Header */}
       <header className="flex items-center justify-between border-b border-gray-800 px-4 py-2">
         <h1 className="text-lg font-semibold text-gray-100">
@@ -74,7 +76,6 @@ export function App() {
         <main className="flex flex-1 flex-col overflow-hidden">
           {selectedFeatureId ? (
             <div className="flex flex-1 overflow-hidden">
-              {/* Kanban + Canvas */}
               <div className="flex flex-1 flex-col overflow-hidden">
                 <VerticalKanban />
               </div>
@@ -99,6 +100,11 @@ export function App() {
           <MemoryPanel />
         </footer>
       )}
+
+      {/* Modals */}
+      {activeModal === "create_project" && <CreateProjectModal />}
+      {activeModal === "create_feature" && <CreateFeatureModal />}
+      {activeModal === "import_project" && <ImportProjectModal />}
     </div>
   );
 }
