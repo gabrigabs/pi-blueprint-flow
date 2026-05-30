@@ -67,8 +67,8 @@ export default function (pi: ExtensionAPI) {
 		initDb(dbPath);
 	});
 
-	// Cleanup on session end
-	pi.on("agent_end", async () => {
+	// Server persists between agent turns — only shutdown on session end
+	pi.on("session_end", async () => {
 		await stopServer();
 		closeDb();
 		bus.removeAll();
