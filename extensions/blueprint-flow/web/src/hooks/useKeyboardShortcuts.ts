@@ -1,27 +1,9 @@
 import { useEffect } from "react";
 import { useStore } from "../store";
 
-/**
- * Global keyboard shortcuts for Blueprint Flow.
- *
- * Navigation:
- *   j / ArrowDown — next step
- *   k / ArrowUp   — previous step
- *   Enter         — expand/collapse current step
- *   Escape        — close modal or deselect
- *
- * Panels:
- *   [ — toggle sidebar
- *   ] — toggle right panel
- *   \ — toggle footer (memory panel)
- *
- * Actions:
- *   n — new feature (when project selected)
- */
 export function useKeyboardShortcuts() {
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent) {
-			// Don't capture when typing in inputs/textareas
 			const target = e.target as HTMLElement;
 			if (
 				target.tagName === "INPUT" ||
@@ -35,7 +17,6 @@ export function useKeyboardShortcuts() {
 			const store = useStore.getState();
 
 			switch (e.key) {
-				// --- Panel toggles ---
 				case "[":
 					e.preventDefault();
 					store.toggleSidebar();
@@ -43,7 +24,7 @@ export function useKeyboardShortcuts() {
 
 				case "]":
 					e.preventDefault();
-					store.toggleRightPanel();
+					store.selectNode(null);
 					break;
 
 				case "\\":
@@ -51,16 +32,16 @@ export function useKeyboardShortcuts() {
 					store.toggleFooter();
 					break;
 
-				// --- Modal / deselect ---
 				case "Escape":
 					if (store.activeModal) {
 						store.closeModal();
+					} else if (store.selectedNodeId) {
+						store.selectNode(null);
 					} else if (store.selectedArtifactId) {
 						store.selectArtifact(null);
 					}
 					break;
 
-				// --- New feature shortcut ---
 				case "n":
 					if (store.selectedProjectId && !store.activeModal) {
 						e.preventDefault();
@@ -68,43 +49,27 @@ export function useKeyboardShortcuts() {
 					}
 					break;
 
-				// --- View mode toggle ---
-				case "v":
-					if (!store.activeModal && store.selectedFeatureId) {
-						e.preventDefault();
-						store.setViewMode(
-							store.viewMode === "kanban" ? "canvas" : "kanban",
-						);
-					}
-					break;
-
-				// --- Step navigation (dispatched as custom events for VerticalKanban) ---
 				case "j":
 				case "ArrowDown":
-					if (!store.activeModal) {
+					if (!store.activeModal && store.steps.length > 0) {
 						e.preventDefault();
-						window.dispatchEvent(
-							new CustomEvent("blueprint:step-nav", { detail: "next" }),
+						const currentIdx = store.steps.findIndex(
+							(s) => s.id === store.selectedNodeId,
 						);
+						const nextIdx = Math.min(currentIdx + 1, store.steps.length - 1);
+						store.selectNode(store.steps[nextIdx].id);
 					}
 					break;
 
 				case "k":
 				case "ArrowUp":
-					if (!store.activeModal) {
+					if (!store.activeModal && store.steps.length > 0) {
 						e.preventDefault();
-						window.dispatchEvent(
-							new CustomEvent("blueprint:step-nav", { detail: "prev" }),
+						const currentIdx = store.steps.findIndex(
+							(s) => s.id === store.selectedNodeId,
 						);
-					}
-					break;
-
-				case "Enter":
-					if (!store.activeModal) {
-						e.preventDefault();
-						window.dispatchEvent(
-							new CustomEvent("blueprint:step-nav", { detail: "toggle" }),
-						);
+						const prevIdx = Math.max(currentIdx - 1, 0);
+						store.selectNode(store.steps[prevIdx].id);
 					}
 					break;
 			}
