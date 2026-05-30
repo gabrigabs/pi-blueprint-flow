@@ -1,5 +1,6 @@
-import { Loader2, PanelLeftClose, PanelLeftOpen, Radio, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { BetweenVerticalEnd, GitGraph, Loader2, PanelLeftClose, PanelLeftOpen, Radio, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useEffect } from "react";
+import { WorkflowCanvas } from "./components/canvas/WorkflowCanvas";
 import { CreateFeatureModal } from "./components/CreateFeatureModal";
 import { CreateProjectModal } from "./components/CreateProjectModal";
 import { ImportProjectModal } from "./components/ImportProjectModal";
@@ -25,8 +26,10 @@ export function App() {
 		actionRuns,
 		sidebarCollapsed,
 		footerCollapsed,
+		viewMode,
 		toggleSidebar,
 		toggleFooter,
+		setViewMode,
 	} = useStore();
 
 	const currentFeature = useStore((s) =>
@@ -142,6 +145,34 @@ export function App() {
 						</button>
 					</div>
 
+					{/* View mode toggle */}
+					{selectedFeatureId && (
+						<div className="flex items-center gap-0.5 rounded-lg p-0.5" style={{ background: "var(--bg-surface)" }}>
+							<button
+								onClick={() => setViewMode("kanban")}
+								className={`rounded-md p-1.5 transition-colors ${
+									viewMode === "kanban"
+										? "bg-[var(--bg-surface-hover)] text-amber-400"
+										: "text-[var(--text-muted)] hover:text-[var(--text-tertiary)]"
+								}`}
+								title="Timeline View [K]"
+							>
+								<BetweenVerticalEnd size={14} />
+							</button>
+							<button
+								onClick={() => setViewMode("canvas")}
+								className={`rounded-md p-1.5 transition-colors ${
+									viewMode === "canvas"
+										? "bg-[var(--bg-surface-hover)] text-amber-400"
+										: "text-[var(--text-muted)] hover:text-[var(--text-tertiary)]"
+								}`}
+								title="Canvas View [C]"
+							>
+								<GitGraph size={14} />
+							</button>
+						</div>
+					)}
+
 					{/* Separator */}
 					<div className="h-4 w-px" style={{ background: "var(--border-subtle)" }} />
 
@@ -222,7 +253,11 @@ export function App() {
 					{selectedFeatureId ? (
 						<div className="flex flex-1 overflow-hidden">
 							<div className="flex flex-1 flex-col overflow-hidden">
-								<VerticalKanban />
+								{viewMode === "kanban" ? (
+									<VerticalKanban />
+								) : (
+									<WorkflowCanvas />
+								)}
 							</div>
 						</div>
 					) : (

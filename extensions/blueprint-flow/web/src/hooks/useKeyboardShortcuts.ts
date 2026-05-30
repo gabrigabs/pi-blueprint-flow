@@ -68,6 +68,21 @@ export function useKeyboardShortcuts() {
 					}
 					break;
 
+				// --- View mode toggle ---
+				case "c":
+					if (!store.activeModal && store.selectedFeatureId) {
+						e.preventDefault();
+						store.setViewMode("canvas");
+					}
+					break;
+
+				case "K":
+					if (!store.activeModal && store.selectedFeatureId) {
+						e.preventDefault();
+						store.setViewMode("kanban");
+					}
+					break;
+
 				// --- Step navigation (dispatched as custom events for VerticalKanban) ---
 				case "j":
 				case "ArrowDown":

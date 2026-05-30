@@ -108,6 +108,8 @@ export interface Workflow {
 
 export type ConnectionState = "connected" | "reconnecting" | "disconnected";
 
+export type ViewMode = "kanban" | "canvas";
+
 export type ModalType =
 	| "create_project"
 	| "import_project"
@@ -133,6 +135,7 @@ interface BlueprintStore {
 	connected: boolean;
 	connectionState: ConnectionState;
 	activeModal: ModalType;
+	viewMode: ViewMode;
 
 	// Panel visibility
 	sidebarCollapsed: boolean;
@@ -159,6 +162,7 @@ interface BlueprintStore {
 	selectArtifact: (id: string | null) => void;
 	setConnected: (connected: boolean) => void;
 	setConnectionState: (state: ConnectionState) => void;
+	setViewMode: (mode: ViewMode) => void;
 	toggleSidebar: () => void;
 	toggleRightPanel: () => void;
 	toggleFooter: () => void;
@@ -184,6 +188,7 @@ export const useStore = create<BlueprintStore>((set) => ({
 	connected: false,
 	connectionState: "disconnected" as ConnectionState,
 	activeModal: null,
+	viewMode: "kanban" as ViewMode,
 
 	sidebarCollapsed: false,
 	rightPanelCollapsed: false,
@@ -219,6 +224,7 @@ export const useStore = create<BlueprintStore>((set) => ({
 	selectArtifact: (id) => set({ selectedArtifactId: id }),
 	setConnected: (connected) => set({ connected }),
 	setConnectionState: (connectionState) => set({ connectionState }),
+	setViewMode: (viewMode) => set({ viewMode }),
 	toggleSidebar: () =>
 		set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 	toggleRightPanel: () =>

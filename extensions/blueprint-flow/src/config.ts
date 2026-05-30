@@ -133,6 +133,41 @@ export type StepStatus =
 
 export type FeatureStatus = "pending" | "in_progress" | "done" | "archived";
 
+// --- Workflow Templates ---
+
+export const WORKFLOW_TEMPLATES: Record<string, readonly string[]> = {
+	feature: [
+		"intake",
+		"research",
+		"interview",
+		"spec",
+		"ddd",
+		"design",
+		"behavior",
+		"implementation_plan",
+		"implementation",
+		"review",
+		"memory_update",
+	],
+	bugfix: ["intake", "research", "spec", "implementation", "review", "memory_update"],
+	refactor: ["intake", "spec", "implementation", "review", "memory_update"],
+	spike: ["intake", "research", "memory_update"],
+	research: ["intake", "research", "memory_update"],
+	maintenance: ["intake", "implementation", "review", "memory_update"],
+};
+
+export const PROJECT_SCOPES = [
+	"app",
+	"electron_app",
+	"website",
+	"portfolio",
+	"library",
+	"cli",
+	"api",
+] as const;
+
+export type ProjectScope = (typeof PROJECT_SCOPES)[number];
+
 /**
  * Resolves the web source directory (for auto-build detection).
  * Returns the first candidate that contains a package.json.
