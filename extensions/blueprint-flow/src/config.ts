@@ -6,6 +6,10 @@ import { fileURLToPath } from "node:url";
 export const BLUEPRINT_PORT = 4377;
 export const BLUEPRINT_DB_FILE = "blueprint.sqlite";
 
+export const WEB_SEARCH_TIMEOUT_MS = 10_000;
+export const WEB_FETCH_MAX_SIZE = 50 * 1024;
+export const WEB_SEARCH_CACHE_TTL = 5 * 60 * 1000;
+
 /**
  * The stable data directory lives OUTSIDE the Pi-installed clone.
  * Priority:
