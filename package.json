@@ -35,7 +35,8 @@
       "./skills/blueprint-ddd/SKILL.md",
       "./skills/blueprint-behavior-scenarios/SKILL.md",
       "./skills/blueprint-implementation/SKILL.md",
-      "./skills/blueprint-review/SKILL.md"
+      "./skills/blueprint-review/SKILL.md",
+      "./skills/blueprint-coding-discipline/SKILL.md"
     ]
   },
   "dependencies": {
@@ -47,6 +48,7 @@
     "nanoid": "^5.1.5"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13"
+    "@types/better-sqlite3": "^7.6.13",
+    "typescript": "^6.0.3"
   }
 }
