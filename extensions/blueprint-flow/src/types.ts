@@ -18,7 +18,7 @@ export type PriorityLevel = (typeof PRIORITY_LEVELS)[number];
 export const EFFORT_LEVELS = ["fast", "balanced", "deep", "max"] as const;
 export type EffortLevel = (typeof EFFORT_LEVELS)[number];
 
-export const EXECUTION_MODES = ["draft", "review", "apply"] as const;
+export const EXECUTION_MODES = ["draft", "review", "apply", "subagent"] as const;
 export type ExecutionMode = (typeof EXECUTION_MODES)[number];
 
 export const REVIEW_STRICTNESS = ["light", "normal", "strict"] as const;

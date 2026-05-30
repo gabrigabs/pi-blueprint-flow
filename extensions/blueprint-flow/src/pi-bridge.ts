@@ -180,6 +180,23 @@ function attemptInjection(runId: string): void {
 	const pi = getPi();
 	if (!pi || currentRunId !== runId) return;
 
+	// Check if this run should use sub-agent execution
+	const actionRun = getActionRun(runId);
+	if (!actionRun) {
+		currentRunId = null;
+		processNext();
+		return;
+	}
+
+	if (actionRun.execution_mode === "subagent") {
+		import("./services/subagent-executor.js").then(({ executeViaSubagent }) => {
+			executeViaSubagent(actionRun);
+		}).catch((err) => {
+			notifyAgentError(runId, `Failed to load subagent executor: ${err?.message}`);
+		});
+		return;
+	}
+
 	// If Pi is busy with a user conversation, wait and retry
 	if (piAgentBusy) {
 		retryCount++;
@@ -217,13 +234,6 @@ function attemptInjection(runId: string): void {
 	}
 
 	// Build the prompt from DB context
-	const actionRun = getActionRun(runId);
-	if (!actionRun) {
-		currentRunId = null;
-		processNext();
-		return;
-	}
-
 	const ctx = gatherPromptContext(actionRun);
 	const prompt = buildPrompt(ctx);
 
