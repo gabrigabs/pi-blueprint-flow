@@ -1,19 +1,35 @@
-import { ArrowDownUp, ArrowRightLeft, Maximize2, Play } from "lucide-react";
+import { ArrowDownUp, ArrowRightLeft, Brain, Maximize2, Play } from "lucide-react";
 import { api } from "../../lib/api";
 import { useStore } from "../../store";
 import type { LayoutDirection } from "./layout";
+import { useReactFlow } from "@xyflow/react";
+import { useEffect, useState } from "react";
 
 interface Props {
 	direction: LayoutDirection;
 	onDirectionChange: (d: LayoutDirection) => void;
 	onFitView: () => void;
+	showKnowledge: boolean;
+	onToggleKnowledge: () => void;
 }
 
-export function CanvasToolbar({ direction, onDirectionChange, onFitView }: Props) {
+export function CanvasToolbar({ direction, onDirectionChange, onFitView, showKnowledge, onToggleKnowledge }: Props) {
 	const selectedFeatureId = useStore((s) => s.selectedFeatureId);
 	const steps = useStore((s) => s.steps);
+	const memories = useStore((s) => s.memories);
+	const { getViewport } = useReactFlow();
+	const [zoom, setZoom] = useState(100);
+
+	useEffect(() => {
+		const interval = setInterval(() => {
+			const vp = getViewport();
+			setZoom(Math.round(vp.zoom * 100));
+		}, 300);
+		return () => clearInterval(interval);
+	}, [getViewport]);
 
 	const doneSteps = steps.filter((s) => s.status === "done").length;
+	const runningStep = steps.find((s) => s.status === "running");
 	const currentStep = steps.find((s) => s.status === "running" || s.status === "needs_user" || s.status === "pending");
 
 	async function handleRunCurrent() {
@@ -32,23 +48,29 @@ export function CanvasToolbar({ direction, onDirectionChange, onFitView }: Props
 				boxShadow: "0 4px 24px rgba(0, 0, 0, 0.3)",
 			}}
 		>
-			{/* Progress */}
+			{/* Progress dots */}
 			<div className="flex items-center gap-2 pr-3 border-r" style={{ borderColor: "var(--border-subtle)" }}>
-				<span className="font-mono text-xs" style={{ color: "var(--text-secondary)" }}>
+				<div className="flex items-center gap-1">
+					{steps.map((s) => (
+						<div
+							key={s.id}
+							className="h-2 w-2 rounded-full transition-all duration-300"
+							style={{
+								background: s.status === "done"
+									? "var(--accent-success)"
+									: s.status === "running"
+										? "var(--accent-primary)"
+										: s.status === "needs_user"
+											? "var(--amber-400)"
+											: "var(--border-default)",
+								boxShadow: s.status === "running" ? "0 0 6px var(--accent-primary)" : "none",
+							}}
+						/>
+					))}
+				</div>
+				<span className="font-mono text-[10px]" style={{ color: "var(--text-muted)" }}>
 					{doneSteps}/{steps.length}
 				</span>
-				<div
-					className="h-1.5 w-16 rounded-full overflow-hidden"
-					style={{ background: "var(--bg-surface)" }}
-				>
-					<div
-						className="h-full rounded-full transition-all duration-500"
-						style={{
-							width: steps.length > 0 ? `${(doneSteps / steps.length) * 100}%` : "0%",
-							background: "linear-gradient(90deg, var(--accent-success), var(--accent-primary))",
-						}}
-					/>
-				</div>
 			</div>
 
 			{/* Run current step */}
@@ -61,6 +83,22 @@ export function CanvasToolbar({ direction, onDirectionChange, onFitView }: Props
 					<Play size={11} /> Run
 				</button>
 			)}
+
+			{/* Knowledge toggle */}
+			<button
+				onClick={onToggleKnowledge}
+				title="Toggle knowledge panel"
+				className="relative rounded-lg p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
+				style={{ color: showKnowledge ? "var(--accent-primary)" : "var(--text-tertiary)" }}
+			>
+				<Brain size={14} />
+				{memories.length > 0 && (
+					<div
+						className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full"
+						style={{ background: "var(--accent-primary)" }}
+					/>
+				)}
+			</button>
 
 			{/* Layout toggle */}
 			<button
@@ -81,6 +119,21 @@ export function CanvasToolbar({ direction, onDirectionChange, onFitView }: Props
 			>
 				<Maximize2 size={14} />
 			</button>
+
+			{/* Zoom indicator */}
+			<span className="font-mono text-[10px] pl-1 tabular-nums" style={{ color: "var(--text-muted)" }}>
+				{zoom}%
+			</span>
+
+			{/* Running step breadcrumb */}
+			{runningStep && (
+				<div className="flex items-center gap-1.5 pl-2 border-l" style={{ borderColor: "var(--border-subtle)" }}>
+					<div className="h-1.5 w-1.5 rounded-full animate-pulse-glow" style={{ background: "var(--accent-primary)" }} />
+					<span className="text-[10px] font-mono truncate max-w-[100px]" style={{ color: "var(--accent-primary)" }}>
+						{runningStep.name}
+					</span>
+				</div>
+			)}
 		</div>
 	);
 }
