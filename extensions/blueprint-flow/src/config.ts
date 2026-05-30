@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -132,6 +132,55 @@ export type StepStatus =
 	| "rejected";
 
 export type FeatureStatus = "pending" | "in_progress" | "done" | "archived";
+
+/**
+ * Resolves the web source directory (for auto-build detection).
+ * Returns the first candidate that contains a package.json.
+ */
+export function resolveWebSrcDir(): string | null {
+	const thisDir = dirname(fileURLToPath(import.meta.url));
+
+	const candidates = [
+		join(thisDir, "..", "web"),
+		join(thisDir, "..", "..", "web"),
+		join(process.cwd(), "extensions", "blueprint-flow", "web"),
+	];
+
+	for (const candidate of candidates) {
+		if (existsSync(join(candidate, "package.json"))) {
+			return candidate;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Checks if the web UI needs a rebuild.
+ * Returns true if dist doesn't exist or if src files are newer than dist.
+ */
+export function webUiNeedsBuild(): boolean {
+	const { found } = resolveWebDistPath();
+	if (!found) return true;
+
+	// Check if src is newer than dist (simple mtime check on package.json vs dist/index.html)
+	const webDir = resolveWebSrcDir();
+	if (!webDir) return false;
+
+	const distIndex = join(webDir, "dist", "index.html");
+	const srcPkg = join(webDir, "package.json");
+
+	if (!existsSync(distIndex)) return true;
+
+	try {
+		const distMtime = statSync(distIndex).mtimeMs;
+		const srcMtime = statSync(srcPkg).mtimeMs;
+		// If package.json is newer, likely needs rebuild
+		return srcMtime > distMtime;
+	} catch {
+		return false;
+	}
+}
 
 /**
  * Resolves the web UI dist path by trying multiple candidate locations.

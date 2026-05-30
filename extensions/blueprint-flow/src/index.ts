@@ -6,7 +6,9 @@ import {
 	resolveDataDir,
 	resolveDbPath,
 	resolveWebDistPath,
+	resolveWebSrcDir,
 	STEP_LABELS,
+	webUiNeedsBuild,
 } from "./config.js";
 import type { Feature } from "./db.js";
 import { closeDb, getDb, initDb, migrateFromLegacyDb } from "./db.js";
@@ -116,6 +118,31 @@ export default function (pi: ExtensionAPI) {
 			try {
 				const dbPath = resolveDbPath();
 				initDb(dbPath);
+
+				// Auto-build web UI if needed
+				if (webUiNeedsBuild()) {
+					const webDir = resolveWebSrcDir();
+					if (webDir) {
+						ctx.ui.notify(
+							"[Blueprint] Web UI not built — building automatically...",
+						);
+						try {
+							const { execSync } = await import("node:child_process");
+							execSync("npm install && npm run build", {
+								cwd: webDir,
+								stdio: "pipe",
+								timeout: 120_000,
+							});
+							ctx.ui.notify("[Blueprint] Web UI built successfully.");
+						} catch (buildErr: any) {
+							const stderr = buildErr?.stderr?.toString?.() ?? "";
+							ctx.ui.notify(
+								`[Blueprint] Auto-build failed. Run manually: cd ${webDir} && npm install && npm run build\n${stderr.slice(0, 300)}`,
+							);
+						}
+					}
+				}
+
 				const { path: webDist, found: webUiFound } = resolveWebDistPath();
 				await startServer(webDist, webUiFound);
 
