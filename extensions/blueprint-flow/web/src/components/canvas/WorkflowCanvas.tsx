@@ -12,25 +12,25 @@ import {
 	type Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../../store";
-import { autoLayout, stepsToEdges, stepsToNodes, type StepNodeData } from "./layout";
+import { CanvasToolbar } from "./CanvasToolbar";
+import { autoLayout, NODE_HEIGHT, NODE_WIDTH, stepsToEdges, stepsToNodes, type LayoutDirection, type StepNodeData } from "./layout";
 import { WorkflowStepNode } from "./WorkflowStepNode";
 
 type StepNode = Node<StepNodeData>;
 
 const nodeTypes = { workflowStep: WorkflowStepNode };
 
-const NODE_WIDTH = 240;
-const NODE_HEIGHT = 80;
-
 function WorkflowCanvasInner() {
 	const steps = useStore((s) => s.steps);
 	const artifacts = useStore((s) => s.artifacts);
+	const interviews = useStore((s) => s.interviews);
 	const selectedNodeId = useStore((s) => s.selectedNodeId);
 	const selectNode = useStore((s) => s.selectNode);
 
-	const { setCenter, getNode } = useReactFlow();
+	const [direction, setDirection] = useState<LayoutDirection>("vertical");
+	const { setCenter, getNode, fitView } = useReactFlow();
 
 	const initialNodes: StepNode[] = [];
 	const initialEdges: Edge[] = [];
@@ -51,7 +51,7 @@ function WorkflowCanvasInner() {
 	useEffect(() => {
 		if (steps.length === 0) return;
 
-		const n = stepsToNodes(steps, artifacts, selectedNodeId);
+		const n = stepsToNodes(steps, artifacts, interviews, selectedNodeId);
 		const e = stepsToEdges(steps);
 
 		setEdges(e);
@@ -60,7 +60,7 @@ function WorkflowCanvasInner() {
 		prevStructureRef.current = structureKey;
 
 		if (structureChanged || !hasNodesRef.current) {
-			autoLayout(n, e).then(({ nodes: layouted }) => {
+			autoLayout(n, e, direction).then(({ nodes: layouted }) => {
 				setNodes(layouted);
 				hasNodesRef.current = true;
 			});
@@ -75,7 +75,16 @@ function WorkflowCanvasInner() {
 				}),
 			);
 		}
-	}, [structureKey, statusKey, steps, artifacts, setEdges, setNodes]);
+	}, [structureKey, statusKey, steps, artifacts, interviews, setEdges, setNodes, direction]);
+
+	useEffect(() => {
+		if (steps.length === 0 || !hasNodesRef.current) return;
+		const n = stepsToNodes(steps, artifacts, interviews, selectedNodeId);
+		const e = stepsToEdges(steps);
+		autoLayout(n, e, direction).then(({ nodes: layouted }) => {
+			setNodes(layouted);
+		});
+	}, [direction]);
 
 	useEffect(() => {
 		if (!hasNodesRef.current) return;
@@ -111,22 +120,31 @@ function WorkflowCanvasInner() {
 		selectNode(null);
 	}, [selectNode]);
 
+	function handleFitView() {
+		fitView({ padding: 0.3, duration: 300 });
+	}
+
 	if (steps.length === 0) {
 		return (
 			<div className="flex flex-1 items-center justify-center">
 				<div className="flex flex-col items-center gap-4 animate-fade-in">
-					<div className="skeleton h-[60px] w-[200px] rounded-xl" />
+					<div className="skeleton h-[70px] w-[280px] rounded-xl" />
 					<div className="skeleton h-[2px] w-[2px] rounded-full" />
-					<div className="skeleton h-[60px] w-[200px] rounded-xl" />
+					<div className="skeleton h-[70px] w-[280px] rounded-xl" />
 					<div className="skeleton h-[2px] w-[2px] rounded-full" />
-					<div className="skeleton h-[60px] w-[200px] rounded-xl" />
+					<div className="skeleton h-[70px] w-[280px] rounded-xl" />
 				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="flex-1 h-full">
+		<div className="relative flex-1 h-full">
+			<CanvasToolbar
+				direction={direction}
+				onDirectionChange={setDirection}
+				onFitView={handleFitView}
+			/>
 			<ReactFlow
 				nodes={nodes}
 				edges={edges}
@@ -139,10 +157,10 @@ function WorkflowCanvasInner() {
 				fitViewOptions={{ padding: 0.3 }}
 				minZoom={0.3}
 				maxZoom={1.5}
-				nodesDraggable={false}
+				nodesDraggable
 				nodesConnectable={false}
-				zoomOnScroll={false}
-				panOnScroll
+				zoomOnScroll
+				panOnScroll={false}
 				proOptions={{ hideAttribution: true }}
 			>
 				<Background
@@ -152,8 +170,8 @@ function WorkflowCanvasInner() {
 					color="rgba(91, 155, 213, 0.06)"
 				/>
 				<Controls
-					showZoom
-					showFitView
+					showZoom={false}
+					showFitView={false}
 					showInteractive={false}
 					position="bottom-right"
 					className="!bg-[var(--bg-surface)] !border-[var(--border-default)] !shadow-lg [&>button]:!bg-[var(--bg-elevated)] [&>button]:!border-[var(--border-default)] [&>button]:!text-[var(--text-tertiary)] [&>button:hover]:!bg-[var(--bg-surface-hover)]"

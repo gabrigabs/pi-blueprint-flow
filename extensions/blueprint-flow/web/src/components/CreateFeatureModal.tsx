@@ -1,10 +1,11 @@
-import { CheckCircle, GitBranch, Loader2 } from "lucide-react";
-import { useState } from "react";
-import type { AgentRunSettingsPayload } from "../lib/api";
+import { CheckCircle, ChevronDown, ChevronUp, GitBranch, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from "../constants/workflow-templates";
 import { api } from "../lib/api";
+import type { WorkflowStep } from "../store";
 import { useStore } from "../store";
-import { AgentRunSettingsPanel } from "./AgentRunSettingsPanel";
 import { BlueprintModal } from "./BlueprintModal";
+import { WorkflowTemplateSelector } from "./onboarding/WorkflowTemplateSelector";
 
 const FEATURE_TYPES = [
 	{ value: "feature", label: "Feature" },
@@ -21,30 +22,30 @@ const PRIORITY_OPTIONS = [
 	{ value: "high", label: "High" },
 ] as const;
 
-const RISK_OPTIONS = [
-	{ value: "auto", label: "Auto" },
-	{ value: "low", label: "Low" },
-	{ value: "medium", label: "Medium" },
-	{ value: "high", label: "High" },
-] as const;
-
 type ModalState = "form" | "creating" | "success";
 
 export function CreateFeatureModal() {
-	const { closeModal, selectedProjectId, setFeatures, selectFeature } = useStore();
+	const { closeModal, selectedProjectId, activeWorkflow, setFeatures, selectFeature } = useStore();
 	const [modalState, setModalState] = useState<ModalState>("form");
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
 	const [type, setType] = useState("feature");
 	const [priority, setPriority] = useState("medium");
-	const [riskLevel, setRiskLevel] = useState("auto");
-	const [settings, setSettings] = useState<AgentRunSettingsPayload>({
-		effortLevel: "balanced",
-		executionMode: "draft",
-	});
+	const [showWorkflow, setShowWorkflow] = useState(false);
+	const [workflowOverride, setWorkflowOverride] = useState<WorkflowTemplate | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [createdTitle, setCreatedTitle] = useState("");
+
+	const currentSteps: WorkflowStep[] = workflowOverride?.steps ?? activeWorkflow?.steps ?? [];
+	const currentTemplateName = workflowOverride?.name
+		?? WORKFLOW_TEMPLATES.find(
+			(t) =>
+				activeWorkflow &&
+				t.steps.length === activeWorkflow.steps.length &&
+				t.steps.every((s, i) => s.name === activeWorkflow.steps[i]?.name),
+		)?.name
+		?? "Custom";
 
 	async function handleSubmit(e?: React.FormEvent) {
 		e?.preventDefault();
@@ -60,9 +61,17 @@ export function CreateFeatureModal() {
 				description: description.trim() || undefined,
 				type,
 				priority,
-				riskLevel,
-				agentRunSettings: settings,
 			});
+
+			if (workflowOverride) {
+				const workflow = await api.workflows.create({
+					projectId: selectedProjectId,
+					name: `${feature.title} — ${workflowOverride.name}`,
+					description: workflowOverride.description,
+					steps: workflowOverride.steps,
+				});
+				await api.workflows.assignToProject(selectedProjectId, workflow.id);
+			}
 
 			const features = await api.features.list(selectedProjectId);
 			setFeatures(features);
@@ -70,8 +79,7 @@ export function CreateFeatureModal() {
 			setCreatedTitle(feature.title);
 			setModalState("success");
 
-			// Auto-close after brief success display
-			setTimeout(() => closeModal(), 1500);
+			setTimeout(() => closeModal(), 1200);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create feature");
 			setModalState("form");
@@ -89,9 +97,9 @@ export function CreateFeatureModal() {
 					? "Creating Feature..."
 					: modalState === "success"
 						? "Feature Created"
-						: "New Feature / Task"
+						: "New Feature"
 			}
-			icon={<GitBranch size={16} className="text-emerald-400" />}
+			icon={<GitBranch size={16} style={{ color: "var(--accent-success)" }} />}
 			width="lg"
 			preventOutsideClose={modalState === "creating"}
 			footer={
@@ -100,14 +108,16 @@ export function CreateFeatureModal() {
 						<button
 							type="button"
 							onClick={closeModal}
-							className="rounded px-3 py-1.5 text-sm text-gray-400 hover:bg-gray-800 hover:text-gray-300"
+							className="rounded-lg px-3 py-1.5 text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
+							style={{ color: "var(--text-tertiary)" }}
 						>
 							Cancel
 						</button>
 						<button
 							onClick={() => handleSubmit()}
 							disabled={!title.trim() || loading}
-							className="rounded bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+							className="rounded-lg px-4 py-1.5 text-sm font-medium text-white transition-colors disabled:opacity-40"
+							style={{ background: "var(--accent-success)" }}
 						>
 							Create
 						</button>
@@ -117,10 +127,12 @@ export function CreateFeatureModal() {
 		>
 			{modalState === "form" && (
 				<form onSubmit={handleSubmit} className="space-y-4">
-					{/* Title */}
 					<div>
-						<label className="mb-1 block text-xs font-medium text-gray-400">
-							Title <span className="text-red-400">*</span>
+						<label
+							className="mb-1.5 block text-xs font-medium"
+							style={{ color: "var(--text-secondary)" }}
+						>
+							Title
 						</label>
 						<input
 							type="text"
@@ -128,86 +140,147 @@ export function CreateFeatureModal() {
 							onChange={(e) => setTitle(e.target.value)}
 							placeholder="Add user authentication with OAuth2"
 							autoFocus
-							className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
+							className="w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none"
+							style={{
+								borderColor: "var(--border-default)",
+								background: "var(--bg-surface)",
+								color: "var(--text-primary)",
+							}}
 						/>
 					</div>
 
-					{/* Description */}
 					<div>
-						<label className="mb-1 block text-xs font-medium text-gray-400">
+						<label
+							className="mb-1.5 block text-xs font-medium"
+							style={{ color: "var(--text-secondary)" }}
+						>
 							Description
+							<span className="ml-1.5 font-normal" style={{ color: "var(--text-muted)" }}>
+								optional
+							</span>
 						</label>
 						<textarea
 							value={description}
 							onChange={(e) => setDescription(e.target.value)}
-							placeholder="Detailed description of what this should accomplish..."
-							rows={3}
-							className="w-full resize-none rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
+							placeholder="What should this accomplish..."
+							rows={2}
+							className="w-full resize-none rounded-lg border px-3 py-2.5 text-sm focus:outline-none"
+							style={{
+								borderColor: "var(--border-default)",
+								background: "var(--bg-surface)",
+								color: "var(--text-primary)",
+							}}
 						/>
 					</div>
 
-					{/* Type + Priority + Risk */}
-					<div className="grid grid-cols-3 gap-3">
+					<div className="grid grid-cols-2 gap-3">
 						<div>
-							<label className="mb-1 block text-xs font-medium text-gray-400">
+							<label
+								className="mb-1.5 block text-xs font-medium"
+								style={{ color: "var(--text-secondary)" }}
+							>
 								Type
 							</label>
 							<select
 								value={type}
 								onChange={(e) => setType(e.target.value)}
-								className="w-full rounded border border-gray-700 bg-gray-800 px-2 py-1.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none"
+								className="w-full rounded-lg border px-2.5 py-2 text-sm focus:outline-none"
+								style={{
+									borderColor: "var(--border-default)",
+									background: "var(--bg-surface)",
+									color: "var(--text-primary)",
+								}}
 							>
 								{FEATURE_TYPES.map((t) => (
-									<option key={t.value} value={t.value}>
-										{t.label}
-									</option>
+									<option key={t.value} value={t.value}>{t.label}</option>
 								))}
 							</select>
 						</div>
 						<div>
-							<label className="mb-1 block text-xs font-medium text-gray-400">
+							<label
+								className="mb-1.5 block text-xs font-medium"
+								style={{ color: "var(--text-secondary)" }}
+							>
 								Priority
 							</label>
 							<select
 								value={priority}
 								onChange={(e) => setPriority(e.target.value)}
-								className="w-full rounded border border-gray-700 bg-gray-800 px-2 py-1.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none"
+								className="w-full rounded-lg border px-2.5 py-2 text-sm focus:outline-none"
+								style={{
+									borderColor: "var(--border-default)",
+									background: "var(--bg-surface)",
+									color: "var(--text-primary)",
+								}}
 							>
 								{PRIORITY_OPTIONS.map((p) => (
-									<option key={p.value} value={p.value}>
-										{p.label}
-									</option>
-								))}
-							</select>
-						</div>
-						<div>
-							<label className="mb-1 block text-xs font-medium text-gray-400">
-								Risk
-							</label>
-							<select
-								value={riskLevel}
-								onChange={(e) => setRiskLevel(e.target.value)}
-								className="w-full rounded border border-gray-700 bg-gray-800 px-2 py-1.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none"
-							>
-								{RISK_OPTIONS.map((r) => (
-									<option key={r.value} value={r.value}>
-										{r.label}
-									</option>
+									<option key={p.value} value={p.value}>{p.label}</option>
 								))}
 							</select>
 						</div>
 					</div>
 
-					{/* Agent Run Settings */}
-					<div className="rounded border border-gray-800 bg-gray-950/50 p-3">
-						<h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">
-							Agent Settings
-						</h3>
-						<AgentRunSettingsPanel value={settings} onChange={setSettings} />
+					{/* Workflow section */}
+					<div
+						className="rounded-lg border"
+						style={{ borderColor: "var(--border-subtle)", background: "var(--bg-elevated)" }}
+					>
+						<button
+							type="button"
+							onClick={() => setShowWorkflow(!showWorkflow)}
+							className="flex w-full items-center justify-between px-3 py-2.5"
+						>
+							<div className="flex items-center gap-2">
+								<span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
+									Workflow
+								</span>
+								<span
+									className="rounded-md px-2 py-0.5 text-[11px] font-mono"
+									style={{ background: "var(--bg-surface)", color: "var(--text-tertiary)" }}
+								>
+									{currentTemplateName} ({currentSteps.length} steps)
+								</span>
+								{workflowOverride && (
+									<span className="text-[10px]" style={{ color: "var(--amber-400)" }}>
+										overridden
+									</span>
+								)}
+							</div>
+							{showWorkflow ? (
+								<ChevronUp size={14} style={{ color: "var(--text-muted)" }} />
+							) : (
+								<ChevronDown size={14} style={{ color: "var(--text-muted)" }} />
+							)}
+						</button>
+
+						{showWorkflow && (
+							<div className="border-t px-3 py-3" style={{ borderColor: "var(--border-subtle)" }}>
+								<p className="text-xs mb-3" style={{ color: "var(--text-tertiary)" }}>
+									Override the project workflow for this feature only.
+								</p>
+								<WorkflowTemplateSelector
+									selected={workflowOverride?.id ?? null}
+									onSelect={(t) => setWorkflowOverride(t)}
+								/>
+								{workflowOverride && (
+									<button
+										type="button"
+										onClick={() => setWorkflowOverride(null)}
+										className="mt-2 text-xs transition-colors hover:underline"
+										style={{ color: "var(--text-tertiary)" }}
+									>
+										Use project default instead
+									</button>
+								)}
+							</div>
+						)}
 					</div>
 
 					{error && (
-						<p className="rounded bg-red-900/30 px-3 py-2 text-xs text-red-400">
+						<p
+							className="rounded-lg px-3 py-2 text-xs"
+							style={{ background: "var(--rose-glow)", color: "var(--rose-400)" }}
+						>
 							{error}
 						</p>
 					)}
@@ -216,24 +289,23 @@ export function CreateFeatureModal() {
 
 			{modalState === "creating" && (
 				<div className="flex flex-col items-center justify-center py-10">
-					<Loader2 size={32} className="animate-spin text-emerald-400 mb-3" />
-					<p className="text-sm text-gray-300">Creating feature and initializing flow steps...</p>
-					<p className="text-xs text-gray-500 mt-1">
-						Setting up workflow pipeline
+					<Loader2 size={28} className="animate-spin mb-3" style={{ color: "var(--accent-success)" }} />
+					<p className="text-sm" style={{ color: "var(--text-primary)" }}>
+						Creating feature and initializing steps...
 					</p>
 				</div>
 			)}
 
 			{modalState === "success" && (
 				<div className="flex flex-col items-center justify-center py-10">
-					<div className="rounded-full bg-emerald-950/30 border border-emerald-800/50 p-3 mb-3">
-						<CheckCircle size={24} className="text-emerald-400" />
+					<div
+						className="mb-3 flex h-12 w-12 items-center justify-center rounded-full"
+						style={{ background: "var(--emerald-glow)", border: "1px solid rgba(107, 207, 127, 0.3)" }}
+					>
+						<CheckCircle size={22} style={{ color: "var(--emerald-400)" }} />
 					</div>
-					<p className="text-sm font-medium text-emerald-300">
+					<p className="text-sm font-medium" style={{ color: "var(--emerald-400)" }}>
 						"{createdTitle}" created
-					</p>
-					<p className="text-xs text-gray-500 mt-1">
-						Opening flow view...
 					</p>
 				</div>
 			)}

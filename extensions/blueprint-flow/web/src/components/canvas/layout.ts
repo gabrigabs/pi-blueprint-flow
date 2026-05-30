@@ -1,24 +1,34 @@
 import type { Edge, Node } from "@xyflow/react";
 import ELK from "elkjs/lib/elk.bundled.js";
 import { STEP_LABELS } from "../../constants/steps";
-import type { Artifact, Step } from "../../store";
+import type { Artifact, Interview, Step } from "../../store";
 
 const elk = new ELK();
 
-const NODE_WIDTH = 240;
-const NODE_HEIGHT = 80;
+export const NODE_WIDTH = 300;
+export const NODE_HEIGHT = 90;
+
+export type LayoutDirection = "vertical" | "horizontal";
 
 export interface StepNodeData {
 	label: string;
 	status: string;
 	stepName: string;
 	artifactCount: number;
+	interviewCount: number;
 	isCurrentStep: boolean;
 	isSelected: boolean;
 	[key: string]: unknown;
 }
 
-export function stepsToNodes(steps: Step[], artifacts: Artifact[], selectedNodeId?: string | null): Node<StepNodeData>[] {
+export function stepsToNodes(
+	steps: Step[],
+	artifacts: Artifact[],
+	interviews?: Interview[],
+	selectedNodeId?: string | null,
+): Node<StepNodeData>[] {
+	const pendingInterviews = interviews?.filter((i) => !i.answer) ?? [];
+
 	return steps.map((step, index) => ({
 		id: step.id,
 		type: "workflowStep",
@@ -28,6 +38,9 @@ export function stepsToNodes(steps: Step[], artifacts: Artifact[], selectedNodeI
 			status: step.status,
 			stepName: step.name,
 			artifactCount: artifacts.filter((a) => a.step_name === step.name).length,
+			interviewCount: step.status === "needs_user"
+				? pendingInterviews.length
+				: 0,
 			isCurrentStep: step.status === "running" || step.status === "needs_user",
 			isSelected: step.id === selectedNodeId,
 		},
@@ -51,16 +64,19 @@ export function stepsToEdges(steps: Step[]): Edge[] {
 export async function autoLayout(
 	nodes: Node<StepNodeData>[],
 	edges: Edge[],
+	direction: LayoutDirection = "vertical",
 ): Promise<{ nodes: Node<StepNodeData>[] }> {
+	const elkDirection = direction === "horizontal" ? "RIGHT" : "DOWN";
+
 	const graph = {
 		id: "workflow-root",
 		layoutOptions: {
 			"elk.algorithm": "layered",
-			"elk.direction": "DOWN",
-			"elk.spacing.nodeNode": "32",
-			"elk.layered.spacing.nodeNodeBetweenLayers": "64",
+			"elk.direction": elkDirection,
+			"elk.spacing.nodeNode": "40",
+			"elk.layered.spacing.nodeNodeBetweenLayers": "80",
 			"elk.layered.nodePlacement.strategy": "SIMPLE",
-			"elk.padding": "[top=24,left=24,bottom=24,right=24]",
+			"elk.padding": "[top=32,left=32,bottom=32,right=32]",
 		},
 		children: nodes.map((n) => ({
 			id: n.id,

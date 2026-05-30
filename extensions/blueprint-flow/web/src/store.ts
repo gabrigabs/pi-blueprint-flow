@@ -109,8 +109,7 @@ export interface Workflow {
 export type ConnectionState = "connected" | "reconnecting" | "disconnected";
 
 export type ModalType =
-	| "create_project"
-	| "import_project"
+	| "onboarding"
 	| "create_feature"
 	| "agent_settings"
 	| "workflow_editor"
