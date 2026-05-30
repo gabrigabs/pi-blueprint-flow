@@ -85,11 +85,31 @@ export interface ActionRun {
 
 export type BridgeStatus = "idle" | "busy" | "not_connected";
 
+export interface WorkflowStep {
+	name: string;
+	label: string;
+	actionType?: string;
+	optional?: boolean;
+}
+
+export interface Workflow {
+	id: string;
+	project_id: string | null;
+	name: string;
+	description: string | null;
+	steps_json: string;
+	steps: WorkflowStep[];
+	is_default: number;
+	created_at: string;
+	updated_at: string;
+}
+
 export type ModalType =
 	| "create_project"
 	| "import_project"
 	| "create_feature"
 	| "agent_settings"
+	| "workflow_editor"
 	| null;
 
 interface BlueprintStore {
@@ -100,6 +120,8 @@ interface BlueprintStore {
 	memories: Memory[];
 	interviews: Interview[];
 	actionRuns: ActionRun[];
+	workflows: Workflow[];
+	activeWorkflow: Workflow | null;
 	bridgeStatus: BridgeStatus;
 	selectedProjectId: string | null;
 	selectedFeatureId: string | null;
@@ -116,6 +138,8 @@ interface BlueprintStore {
 	setActionRuns: (runs: ActionRun[]) => void;
 	updateActionRun: (id: string, updates: Partial<ActionRun>) => void;
 	addActionRun: (run: ActionRun) => void;
+	setWorkflows: (workflows: Workflow[]) => void;
+	setActiveWorkflow: (workflow: Workflow | null) => void;
 	setBridgeStatus: (status: BridgeStatus) => void;
 	selectProject: (id: string | null) => void;
 	selectFeature: (id: string | null) => void;
@@ -133,6 +157,8 @@ export const useStore = create<BlueprintStore>((set) => ({
 	memories: [],
 	interviews: [],
 	actionRuns: [],
+	workflows: [],
+	activeWorkflow: null,
 	bridgeStatus: "not_connected",
 	selectedProjectId: null,
 	selectedFeatureId: null,
@@ -155,6 +181,8 @@ export const useStore = create<BlueprintStore>((set) => ({
 		})),
 	addActionRun: (run) =>
 		set((state) => ({ actionRuns: [run, ...state.actionRuns] })),
+	setWorkflows: (workflows) => set({ workflows }),
+	setActiveWorkflow: (activeWorkflow) => set({ activeWorkflow }),
 	setBridgeStatus: (bridgeStatus) => set({ bridgeStatus }),
 	selectProject: (id) =>
 		set({

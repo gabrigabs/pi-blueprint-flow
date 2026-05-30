@@ -136,6 +136,17 @@ export interface ActionRunEventRow {
 	created_at: string;
 }
 
+export interface WorkflowRow {
+	id: string;
+	project_id: string | null;
+	name: string;
+	description: string | null;
+	steps_json: string;
+	is_default: number;
+	created_at: string;
+	updated_at: string;
+}
+
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
@@ -265,6 +276,17 @@ CREATE TABLE IF NOT EXISTS action_run_events (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS workflows (
+  id TEXT PRIMARY KEY,
+  project_id TEXT REFERENCES projects(id),
+  name TEXT NOT NULL,
+  description TEXT,
+  steps_json TEXT NOT NULL,
+  is_default INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_features_project ON features(project_id);
 CREATE INDEX IF NOT EXISTS idx_steps_feature ON steps(feature_id);
 CREATE INDEX IF NOT EXISTS idx_artifacts_feature ON artifacts(feature_id);
@@ -276,6 +298,7 @@ CREATE INDEX IF NOT EXISTS idx_action_runs_feature ON action_runs(feature_id);
 CREATE INDEX IF NOT EXISTS idx_action_runs_project ON action_runs(project_id);
 CREATE INDEX IF NOT EXISTS idx_action_runs_status ON action_runs(status);
 CREATE INDEX IF NOT EXISTS idx_action_run_events_run ON action_run_events(action_run_id);
+CREATE INDEX IF NOT EXISTS idx_workflows_project ON workflows(project_id);
 `;
 
 /** Incremental migrations for existing databases */
@@ -287,6 +310,9 @@ const MIGRATIONS = [
 	`ALTER TABLE features ADD COLUMN type TEXT DEFAULT 'feature'`,
 	`ALTER TABLE features ADD COLUMN risk_level TEXT DEFAULT 'auto'`,
 	`ALTER TABLE features ADD COLUMN priority TEXT DEFAULT 'medium'`,
+	// v0.3.0: Workflow support
+	`ALTER TABLE features ADD COLUMN workflow_id TEXT`,
+	`ALTER TABLE projects ADD COLUMN workflow_id TEXT`,
 ];
 
 let db: Database.Database | null = null;
@@ -311,6 +337,7 @@ export function initDb(dbPath: string): Database.Database {
 	db.pragma("foreign_keys = ON");
 	db.exec(SCHEMA);
 	runMigrations(db);
+	seedDefaultWorkflow();
 
 	return db;
 }
@@ -496,4 +523,210 @@ export function getActiveActionRun(): ActionRunRow | null {
 			)
 			.get(...activeStatuses) as ActionRunRow | undefined) ?? null
 	);
+}
+
+// --- Workflow CRUD ---
+
+export interface WorkflowStep {
+	name: string;
+	label: string;
+	actionType?: string;
+	optional?: boolean;
+}
+
+const DEFAULT_WORKFLOW_STEPS: WorkflowStep[] = [
+	{ name: "intake", label: "Intake", actionType: "run_step" },
+	{ name: "research", label: "Research", actionType: "research" },
+	{ name: "interview", label: "Interview", actionType: "interview" },
+	{ name: "spec", label: "Specification", actionType: "spec" },
+	{ name: "ddd", label: "Domain Modeling", actionType: "ddd" },
+	{ name: "behavior", label: "Behavior Scenarios", actionType: "behavior" },
+	{
+		name: "implementation_plan",
+		label: "Implementation Plan",
+		actionType: "implementation_plan",
+	},
+	{
+		name: "implementation",
+		label: "Implementation",
+		actionType: "implementation",
+	},
+	{ name: "review", label: "Review Gate", actionType: "review" },
+	{
+		name: "memory_update",
+		label: "Memory Update",
+		actionType: "memory_update",
+	},
+];
+
+const DEFAULT_WORKFLOW_ID = "default";
+
+/** Ensures the default workflow exists. Called during DB init. */
+export function seedDefaultWorkflow(): void {
+	const database = getDb();
+	const existing = database
+		.prepare("SELECT id FROM workflows WHERE id = ?")
+		.get(DEFAULT_WORKFLOW_ID);
+	if (!existing) {
+		database
+			.prepare(
+				`INSERT INTO workflows (id, project_id, name, description, steps_json, is_default)
+			 VALUES (?, NULL, ?, ?, ?, 1)`,
+			)
+			.run(
+				DEFAULT_WORKFLOW_ID,
+				"Blueprint Standard",
+				"Full 10-step software development workflow",
+				JSON.stringify(DEFAULT_WORKFLOW_STEPS),
+			);
+	}
+}
+
+export function getWorkflow(id: string): WorkflowRow | null {
+	const database = getDb();
+	return (
+		(database.prepare("SELECT * FROM workflows WHERE id = ?").get(id) as
+			| WorkflowRow
+			| undefined) ?? null
+	);
+}
+
+export function getDefaultWorkflow(): WorkflowRow {
+	const database = getDb();
+	const row = database
+		.prepare("SELECT * FROM workflows WHERE id = ?")
+		.get(DEFAULT_WORKFLOW_ID) as WorkflowRow | undefined;
+	if (!row) {
+		// Shouldn't happen, but fallback
+		seedDefaultWorkflow();
+		return database
+			.prepare("SELECT * FROM workflows WHERE id = ?")
+			.get(DEFAULT_WORKFLOW_ID) as WorkflowRow;
+	}
+	return row;
+}
+
+export function getProjectWorkflow(projectId: string): WorkflowRow {
+	const database = getDb();
+	// Check if project has a custom workflow
+	const project = database
+		.prepare("SELECT workflow_id FROM projects WHERE id = ?")
+		.get(projectId) as { workflow_id: string | null } | undefined;
+	if (project?.workflow_id) {
+		const workflow = getWorkflow(project.workflow_id);
+		if (workflow) return workflow;
+	}
+	// Check for project-specific workflow
+	const projectWorkflow = database
+		.prepare(
+			"SELECT * FROM workflows WHERE project_id = ? ORDER BY created_at DESC LIMIT 1",
+		)
+		.get(projectId) as WorkflowRow | undefined;
+	if (projectWorkflow) return projectWorkflow;
+
+	return getDefaultWorkflow();
+}
+
+export function listWorkflows(projectId?: string): WorkflowRow[] {
+	const database = getDb();
+	if (projectId) {
+		return database
+			.prepare(
+				"SELECT * FROM workflows WHERE project_id = ? OR project_id IS NULL ORDER BY is_default DESC, created_at ASC",
+			)
+			.all(projectId) as WorkflowRow[];
+	}
+	return database
+		.prepare("SELECT * FROM workflows ORDER BY is_default DESC, created_at ASC")
+		.all() as WorkflowRow[];
+}
+
+export function createWorkflow(input: {
+	id: string;
+	projectId?: string | null;
+	name: string;
+	description?: string | null;
+	steps: WorkflowStep[];
+}): WorkflowRow {
+	const database = getDb();
+	database
+		.prepare(
+			`INSERT INTO workflows (id, project_id, name, description, steps_json, is_default)
+		 VALUES (?, ?, ?, ?, ?, 0)`,
+		)
+		.run(
+			input.id,
+			input.projectId ?? null,
+			input.name,
+			input.description ?? null,
+			JSON.stringify(input.steps),
+		);
+	return getWorkflow(input.id)!;
+}
+
+export function updateWorkflow(
+	id: string,
+	input: {
+		name?: string;
+		description?: string | null;
+		steps?: WorkflowStep[];
+	},
+): WorkflowRow | null {
+	const database = getDb();
+	const existing = getWorkflow(id);
+	if (!existing) return null;
+
+	const updates: string[] = [];
+	const values: unknown[] = [];
+
+	if (input.name !== undefined) {
+		updates.push("name = ?");
+		values.push(input.name);
+	}
+	if (input.description !== undefined) {
+		updates.push("description = ?");
+		values.push(input.description);
+	}
+	if (input.steps !== undefined) {
+		updates.push("steps_json = ?");
+		values.push(JSON.stringify(input.steps));
+	}
+
+	if (updates.length === 0) return existing;
+
+	updates.push("updated_at = datetime('now')");
+	values.push(id);
+
+	database
+		.prepare(`UPDATE workflows SET ${updates.join(", ")} WHERE id = ?`)
+		.run(...values);
+	return getWorkflow(id);
+}
+
+export function deleteWorkflow(id: string): boolean {
+	const database = getDb();
+	const existing = getWorkflow(id);
+	if (!existing || existing.is_default) return false; // Can't delete default
+	database.prepare("DELETE FROM workflows WHERE id = ?").run(id);
+	return true;
+}
+
+export function parseWorkflowSteps(workflow: WorkflowRow): WorkflowStep[] {
+	try {
+		return JSON.parse(workflow.steps_json) as WorkflowStep[];
+	} catch {
+		return DEFAULT_WORKFLOW_STEPS;
+	}
+}
+
+export function setProjectWorkflow(
+	projectId: string,
+	workflowId: string,
+): void {
+	const database = getDb();
+	database
+		.prepare(
+			"UPDATE projects SET workflow_id = ?, updated_at = datetime('now') WHERE id = ?",
+		)
+		.run(workflowId, projectId);
 }

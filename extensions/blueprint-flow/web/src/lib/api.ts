@@ -7,6 +7,8 @@ import type {
 	Memory,
 	Project,
 	Step,
+	Workflow,
+	WorkflowStep,
 } from "../store";
 
 export interface CreateProjectPayload {
@@ -306,5 +308,45 @@ export const api = {
 
 	bridge: {
 		status: () => request<{ status: BridgeStatus }>("/api/bridge/status"),
+	},
+
+	workflows: {
+		list: (projectId?: string) => {
+			const qs = projectId ? `?projectId=${projectId}` : "";
+			return request<Workflow[]>(`/api/workflows${qs}`);
+		},
+		get: (id: string) => request<Workflow>(`/api/workflows/${id}`),
+		getProjectWorkflow: (projectId: string) =>
+			request<Workflow>(`/api/projects/${projectId}/workflow`),
+		create: (data: {
+			projectId?: string;
+			name: string;
+			description?: string;
+			steps: WorkflowStep[];
+		}) =>
+			request<Workflow>("/api/workflows", {
+				method: "POST",
+				body: JSON.stringify(data),
+			}),
+		update: (
+			id: string,
+			data: { name?: string; description?: string; steps?: WorkflowStep[] },
+		) =>
+			request<Workflow>(`/api/workflows/${id}`, {
+				method: "PATCH",
+				body: JSON.stringify(data),
+			}),
+		delete: (id: string) =>
+			request<{ success: boolean }>(`/api/workflows/${id}`, {
+				method: "DELETE",
+			}),
+		assignToProject: (projectId: string, workflowId: string) =>
+			request<{ success: boolean; workflowId: string }>(
+				`/api/projects/${projectId}/workflow`,
+				{
+					method: "POST",
+					body: JSON.stringify({ workflowId }),
+				},
+			),
 	},
 };

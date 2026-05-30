@@ -9,6 +9,7 @@ import { InterviewPanel } from "./components/InterviewPanel";
 import { MemoryPanel } from "./components/MemoryPanel";
 import { ProjectSidebar } from "./components/ProjectSidebar";
 import { VerticalKanban } from "./components/VerticalKanban";
+import { WorkflowEditor } from "./components/WorkflowEditor";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { useStore } from "./store";
 
@@ -110,6 +111,7 @@ export function App() {
 			{activeModal === "create_project" && <CreateProjectModal />}
 			{activeModal === "create_feature" && <CreateFeatureModal />}
 			{activeModal === "import_project" && <ImportProjectModal />}
+			{activeModal === "workflow_editor" && <WorkflowEditor />}
 		</div>
 	);
 }

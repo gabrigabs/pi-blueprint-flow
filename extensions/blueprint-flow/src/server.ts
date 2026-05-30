@@ -11,6 +11,7 @@ import { registerConfigRoutes } from "./routes/config.js";
 import { registerFeatureRoutes } from "./routes/features.js";
 import { registerImportRoutes } from "./routes/import.js";
 import { registerProjectRoutes } from "./routes/projects.js";
+import { registerWorkflowRoutes } from "./routes/workflows.js";
 
 let server: FastifyInstance | null = null;
 const wsClients = new Set<WebSocket>();
@@ -295,6 +296,7 @@ export async function startServer(
 	registerArtifactRoutes(server);
 	registerImportRoutes(server);
 	registerConfigRoutes(server);
+	registerWorkflowRoutes(server);
 
 	// --- SPA Fallback / Not Found Handler ---
 

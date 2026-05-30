@@ -3,7 +3,12 @@ import { nanoid } from "nanoid";
 import type { FlowStep, StepStatus } from "../config.js";
 import { FLOW_STEPS, STEP_LABELS } from "../config.js";
 import type { Feature, Step } from "../db.js";
-import { getDb } from "../db.js";
+import {
+	getDb,
+	getProjectWorkflow,
+	getWorkflow,
+	parseWorkflowSteps,
+} from "../db.js";
 import { bus } from "../events.js";
 import { getPiBridge } from "../pi-bridge.js";
 import type { ActionType, AgentRunSettings } from "../types.js";
@@ -25,7 +30,9 @@ export function registerActionRoutes(app: FastifyInstance): void {
 					.send({ error: "not_found", message: "Feature not found" });
 			}
 
-			const currentIdx = FLOW_STEPS.indexOf(feature.current_step as FlowStep);
+			// Resolve workflow steps for this feature
+			const workflowSteps = getFeatureWorkflowStepNames(feature);
+			const currentIdx = workflowSteps.indexOf(feature.current_step);
 			if (currentIdx === -1) {
 				return reply
 					.code(400)
@@ -36,7 +43,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 				"UPDATE steps SET status = 'done', completed_at = datetime('now') WHERE feature_id = ? AND name = ?",
 			).run(id, feature.current_step);
 
-			if (currentIdx === FLOW_STEPS.length - 1) {
+			if (currentIdx === workflowSteps.length - 1) {
 				db.prepare(
 					"UPDATE features SET status = 'done', updated_at = datetime('now') WHERE id = ?",
 				).run(id);
@@ -52,7 +59,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 				return reply.send({ feature: updated, completed: true });
 			}
 
-			const nextStep = FLOW_STEPS[currentIdx + 1];
+			const nextStep = workflowSteps[currentIdx + 1];
 
 			db.prepare(
 				"UPDATE features SET current_step = ?, updated_at = datetime('now') WHERE id = ?",
@@ -91,14 +98,15 @@ export function registerActionRoutes(app: FastifyInstance): void {
 					.send({ error: "not_found", message: "Feature not found" });
 			}
 
-			const currentIdx = FLOW_STEPS.indexOf(feature.current_step as FlowStep);
+			const workflowSteps = getFeatureWorkflowStepNames(feature);
+			const currentIdx = workflowSteps.indexOf(feature.current_step);
 			if (currentIdx <= 0) {
 				return reply
 					.code(400)
 					.send({ error: "invalid_state", message: "Already at first step" });
 			}
 
-			const prevStep = FLOW_STEPS[currentIdx - 1];
+			const prevStep = workflowSteps[currentIdx - 1];
 
 			db.prepare(
 				"UPDATE steps SET status = 'pending', started_at = NULL, completed_at = NULL WHERE feature_id = ? AND name = ?",
@@ -254,6 +262,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 		});
 
 		const statusCode = result.status === "not_connected" ? 503 : 200;
+		const stepLabel = getStepLabel(feature);
 		return reply.code(statusCode).send({
 			featureId: id,
 			step: feature.current_step,
@@ -263,8 +272,8 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			actionStatus: result.status,
 			message:
 				result.status === "not_connected"
-					? `Pi agent not connected. Step "${STEP_LABELS[feature.current_step as FlowStep]}" cannot be executed.`
-					: `Step "${STEP_LABELS[feature.current_step as FlowStep]}" enqueued for execution (effort: ${settings.effortLevel})`,
+					? `Pi agent not connected. Step "${stepLabel}" cannot be executed.`
+					: `Step "${stepLabel}" enqueued for execution (effort: ${settings.effortLevel})`,
 		});
 	});
 
@@ -322,4 +331,39 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			actionStatus: result.status,
 		});
 	});
+}
+
+// --- Helpers ---
+
+interface FeatureWithWorkflow {
+	project_id: string;
+	current_step: string;
+	workflow_id?: string | null;
+}
+
+/** Get the ordered step names for a feature's workflow */
+function getFeatureWorkflowStepNames(feature: FeatureWithWorkflow): string[] {
+	if (feature.workflow_id) {
+		const workflow = getWorkflow(feature.workflow_id);
+		if (workflow) {
+			return parseWorkflowSteps(workflow).map((s) => s.name);
+		}
+	}
+	// Fallback: use project workflow or default
+	const workflow = getProjectWorkflow(feature.project_id);
+	return parseWorkflowSteps(workflow).map((s) => s.name);
+}
+
+/** Get a human-readable label for the feature's current step */
+function getStepLabel(feature: FeatureWithWorkflow): string {
+	if (feature.workflow_id) {
+		const workflow = getWorkflow(feature.workflow_id);
+		if (workflow) {
+			const steps = parseWorkflowSteps(workflow);
+			const step = steps.find((s) => s.name === feature.current_step);
+			if (step) return step.label;
+		}
+	}
+	// Fallback to hardcoded labels
+	return STEP_LABELS[feature.current_step as FlowStep] ?? feature.current_step;
 }
