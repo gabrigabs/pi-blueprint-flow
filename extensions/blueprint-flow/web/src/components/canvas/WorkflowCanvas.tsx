@@ -2,28 +2,51 @@ import {
 	Background,
 	BackgroundVariant,
 	Controls,
+	type Edge,
 	MiniMap,
+	type Node,
 	ReactFlow,
 	ReactFlowProvider,
 	useEdgesState,
 	useNodesState,
 	useReactFlow,
-	type Edge,
-	type Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../../store";
 import { ArtifactSatelliteNode } from "./ArtifactSatellite";
 import { CanvasToolbar } from "./CanvasToolbar";
+import { DropZoneEdge } from "./DropZoneEdge";
+import { EditModeSaveBar } from "./EditModeSaveBar";
 import { FeatureKnowledgePanel } from "./FeatureKnowledgePanel";
-import { autoLayout, NODE_HEIGHT, NODE_HEIGHT_EXPANDED, NODE_WIDTH, stepsToEdges, stepsToNodes, stepsToSatelliteEdges, stepsToSatelliteNodes, type LayoutDirection, type StepNodeData } from "./layout";
+import {
+	autoLayout,
+	editStepsToEdges,
+	editStepsToNodes,
+	type LayoutDirection,
+	NODE_HEIGHT,
+	NODE_HEIGHT_EXPANDED,
+	NODE_WIDTH,
+	type StepNodeData,
+	stepsToEdges,
+	stepsToNodes,
+	stepsToSatelliteEdges,
+	stepsToSatelliteNodes,
+} from "./layout";
 import { StepDetailDrawer } from "./StepDetailDrawer";
-import { WorkflowStepNode } from "./WorkflowStepNode";
+import { EditModeNode, WorkflowStepNode } from "./WorkflowStepNode";
 
 type StepNode = Node<StepNodeData>;
 
-const nodeTypes = { workflowStep: WorkflowStepNode, artifactSatellite: ArtifactSatelliteNode };
+const nodeTypes = {
+	workflowStep: WorkflowStepNode,
+	editModeNode: EditModeNode,
+	artifactSatellite: ArtifactSatelliteNode,
+};
+
+const edgeTypes = {
+	dropZone: DropZoneEdge,
+};
 
 function WorkflowCanvasInner() {
 	const steps = useStore((s) => s.steps);
@@ -32,6 +55,8 @@ function WorkflowCanvasInner() {
 	const actionRuns = useStore((s) => s.actionRuns);
 	const selectedNodeId = useStore((s) => s.selectedNodeId);
 	const selectNode = useStore((s) => s.selectNode);
+	const canvasEditMode = useStore((s) => s.canvasEditMode);
+	const editModeSteps = useStore((s) => s.editModeSteps);
 
 	const [direction, setDirection] = useState<LayoutDirection>("vertical");
 	const [showKnowledge, setShowKnowledge] = useState(false);
@@ -43,10 +68,7 @@ function WorkflowCanvasInner() {
 	const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
 	const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-	const structureKey = useMemo(
-		() => steps.map((s) => s.id).join(","),
-		[steps],
-	);
+	const structureKey = useMemo(() => steps.map((s) => s.id).join(","), [steps]);
 	const statusKey = useMemo(
 		() => steps.map((s) => `${s.id}:${s.status}`).join(","),
 		[steps],
@@ -55,22 +77,38 @@ function WorkflowCanvasInner() {
 	const hasNodesRef = useRef(false);
 
 	useEffect(() => {
+		if (canvasEditMode) return;
 		if (steps.length === 0) return;
 
-		const n = stepsToNodes(steps, artifacts, interviews, actionRuns, selectedNodeId);
+		const n = stepsToNodes(
+			steps,
+			artifacts,
+			interviews,
+			actionRuns,
+			selectedNodeId,
+		);
 		const e = stepsToEdges(steps);
 
 		const structureChanged = prevStructureRef.current !== structureKey;
 		prevStructureRef.current = structureKey;
 
 		if (structureChanged || !hasNodesRef.current) {
-			autoLayout(n, e, direction, selectedNodeId).then(({ nodes: layouted }) => {
-				const sats = stepsToSatelliteNodes(steps, artifacts, interviews, actionRuns, hoveredNodeId, layouted);
-				const satEdges = stepsToSatelliteEdges(hoveredNodeId, sats);
-				setNodes([...layouted, ...sats] as StepNode[]);
-				setEdges([...e, ...satEdges]);
-				hasNodesRef.current = true;
-			});
+			autoLayout(n, e, direction, selectedNodeId).then(
+				({ nodes: layouted }) => {
+					const sats = stepsToSatelliteNodes(
+						steps,
+						artifacts,
+						interviews,
+						actionRuns,
+						hoveredNodeId,
+						layouted,
+					);
+					const satEdges = stepsToSatelliteEdges(hoveredNodeId, sats);
+					setNodes([...layouted, ...sats] as StepNode[]);
+					setEdges([...e, ...satEdges]);
+					hasNodesRef.current = true;
+				},
+			);
 		} else {
 			setNodes((prev: StepNode[]) => {
 				const mainNodes = prev.filter((node) => !node.id.startsWith("sat-"));
@@ -79,61 +117,125 @@ function WorkflowCanvasInner() {
 					if (u) return { ...node, data: u.data };
 					return node;
 				});
-				const sats = stepsToSatelliteNodes(steps, artifacts, interviews, actionRuns, hoveredNodeId, updated);
+				const sats = stepsToSatelliteNodes(
+					steps,
+					artifacts,
+					interviews,
+					actionRuns,
+					hoveredNodeId,
+					updated,
+				);
 				const satEdges = stepsToSatelliteEdges(hoveredNodeId, sats);
 				setEdges([...e, ...satEdges]);
 				return [...updated, ...sats] as StepNode[];
 			});
 		}
-	}, [structureKey, statusKey, steps, artifacts, interviews, actionRuns, setEdges, setNodes, direction]);
+	}, [
+		structureKey,
+		statusKey,
+		steps,
+		artifacts,
+		interviews,
+		actionRuns,
+		setEdges,
+		setNodes,
+		direction,
+		canvasEditMode,
+	]);
 
 	useEffect(() => {
+		if (canvasEditMode) return;
 		if (steps.length === 0 || !hasNodesRef.current) return;
-		const n = stepsToNodes(steps, artifacts, interviews, actionRuns, selectedNodeId);
+		const n = stepsToNodes(
+			steps,
+			artifacts,
+			interviews,
+			actionRuns,
+			selectedNodeId,
+		);
 		const e = stepsToEdges(steps);
 		autoLayout(n, e, direction, selectedNodeId).then(({ nodes: layouted }) => {
-			const sats = stepsToSatelliteNodes(steps, artifacts, interviews, actionRuns, hoveredNodeId, layouted);
+			const sats = stepsToSatelliteNodes(
+				steps,
+				artifacts,
+				interviews,
+				actionRuns,
+				hoveredNodeId,
+				layouted,
+			);
 			const satEdges = stepsToSatelliteEdges(hoveredNodeId, sats);
 			setNodes([...layouted, ...sats] as StepNode[]);
 			setEdges([...e, ...satEdges]);
 		});
-	}, [direction]);
+	}, [direction, canvasEditMode]);
 
 	useEffect(() => {
+		if (canvasEditMode) return;
 		if (!hasNodesRef.current || steps.length === 0) return;
-		const n = stepsToNodes(steps, artifacts, interviews, actionRuns, selectedNodeId);
+		const n = stepsToNodes(
+			steps,
+			artifacts,
+			interviews,
+			actionRuns,
+			selectedNodeId,
+		);
 		const e = stepsToEdges(steps);
 		autoLayout(n, e, direction, selectedNodeId).then(({ nodes: layouted }) => {
-			const sats = stepsToSatelliteNodes(steps, artifacts, interviews, actionRuns, hoveredNodeId, layouted);
+			const sats = stepsToSatelliteNodes(
+				steps,
+				artifacts,
+				interviews,
+				actionRuns,
+				hoveredNodeId,
+				layouted,
+			);
 			const satEdges = stepsToSatelliteEdges(hoveredNodeId, sats);
 			setNodes([...layouted, ...sats] as StepNode[]);
 			setEdges([...e, ...satEdges]);
 		});
-	}, [selectedNodeId]);
+	}, [selectedNodeId, canvasEditMode]);
 
 	// Update satellites on hover without re-layout
 	useEffect(() => {
+		if (canvasEditMode) return;
 		if (!hasNodesRef.current || steps.length === 0) return;
 		setNodes((prev: StepNode[]) => {
 			const mainNodes = prev.filter((node) => !node.id.startsWith("sat-"));
-			const sats = stepsToSatelliteNodes(steps, artifacts, interviews, actionRuns, hoveredNodeId, mainNodes);
+			const sats = stepsToSatelliteNodes(
+				steps,
+				artifacts,
+				interviews,
+				actionRuns,
+				hoveredNodeId,
+				mainNodes,
+			);
 			const satEdges = stepsToSatelliteEdges(hoveredNodeId, sats);
 			const e = stepsToEdges(steps);
 			setEdges([...e, ...satEdges]);
 			return [...mainNodes, ...sats] as StepNode[];
 		});
-	}, [hoveredNodeId]);
+	}, [hoveredNodeId, canvasEditMode]);
+
+	// Edit mode layout
+	useEffect(() => {
+		if (!canvasEditMode || !editModeSteps) return;
+		const n = editStepsToNodes(editModeSteps, selectedNodeId);
+		const e = editStepsToEdges(editModeSteps);
+		autoLayout(n, e, direction, null).then(({ nodes: layouted }) => {
+			setNodes(layouted as unknown as StepNode[]);
+			setEdges(e);
+		});
+	}, [canvasEditMode, editModeSteps, direction]);
 
 	useEffect(() => {
 		if (selectedNodeId && hasNodesRef.current) {
 			const node = getNode(selectedNodeId);
 			if (node) {
 				const h = node.data?.isSelected ? NODE_HEIGHT_EXPANDED : NODE_HEIGHT;
-				setCenter(
-					node.position.x + NODE_WIDTH / 2,
-					node.position.y + h / 2,
-					{ zoom: 1, duration: 300 },
-				);
+				setCenter(node.position.x + NODE_WIDTH / 2, node.position.y + h / 2, {
+					zoom: 1,
+					duration: 300,
+				});
 			}
 		}
 	}, [selectedNodeId, getNode, setCenter]);
@@ -150,13 +252,10 @@ function WorkflowCanvasInner() {
 		selectNode(null);
 	}, [selectNode]);
 
-	const onNodeMouseEnter = useCallback(
-		(_: React.MouseEvent, node: Node) => {
-			if (node.id.startsWith("sat-")) return;
-			setHoveredNodeId(node.id);
-		},
-		[],
-	);
+	const onNodeMouseEnter = useCallback((_: React.MouseEvent, node: Node) => {
+		if (node.id.startsWith("sat-")) return;
+		setHoveredNodeId(node.id);
+	}, []);
 
 	const onNodeMouseLeave = useCallback(() => {
 		setHoveredNodeId(null);
@@ -198,9 +297,10 @@ function WorkflowCanvasInner() {
 				onNodesChange={onNodesChange}
 				onEdgesChange={onEdgesChange}
 				nodeTypes={nodeTypes}
+				edgeTypes={edgeTypes}
 				onNodeClick={onNodeClick}
-				onNodeMouseEnter={onNodeMouseEnter}
-				onNodeMouseLeave={onNodeMouseLeave}
+				onNodeMouseEnter={canvasEditMode ? undefined : onNodeMouseEnter}
+				onNodeMouseLeave={canvasEditMode ? undefined : onNodeMouseLeave}
 				onPaneClick={onPaneClick}
 				fitView
 				fitViewOptions={{ padding: 0.6 }}
@@ -241,8 +341,11 @@ function WorkflowCanvasInner() {
 				/>
 			</ReactFlow>
 
+			{/* Edit mode save bar */}
+			{canvasEditMode && <EditModeSaveBar />}
+
 			{/* Floating detail drawer */}
-			{selectedNodeId && <StepDetailDrawer />}
+			{!canvasEditMode && selectedNodeId && <StepDetailDrawer />}
 
 			{/* Knowledge panel */}
 			<FeatureKnowledgePanel

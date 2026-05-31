@@ -6,6 +6,7 @@ import {
 	Brain,
 	Loader2,
 	Maximize2,
+	Pencil,
 	Play,
 	Square,
 	Zap,
@@ -39,6 +40,10 @@ export function CanvasToolbar({
 	const actionRuns = useStore((s) => s.actionRuns);
 	const liveToolName = useStore((s) => s.liveToolName);
 	const unreadNotificationCount = useStore((s) => s.unreadNotificationCount);
+	const canvasEditMode = useStore((s) => s.canvasEditMode);
+	const setCanvasEditMode = useStore((s) => s.setCanvasEditMode);
+	const setEditModeSteps = useStore((s) => s.setEditModeSteps);
+	const activeWorkflow = useStore((s) => s.activeWorkflow);
 	const { getViewport } = useReactFlow();
 	const [zoom, setZoom] = useState(100);
 	const [showNotifications, setShowNotifications] = useState(false);
@@ -81,120 +86,155 @@ export function CanvasToolbar({
 		} catch {}
 	}
 
+	function handleToggleEditMode() {
+		if (canvasEditMode) {
+			setEditModeSteps(null);
+			setCanvasEditMode(false);
+		} else {
+			const steps = activeWorkflow?.steps ?? [];
+			setEditModeSteps(steps);
+			setCanvasEditMode(true);
+		}
+	}
+
 	return (
 		<div
 			className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 rounded-xl border px-3 py-2"
 			style={{
 				background: "var(--bg-elevated)",
-				borderColor: "var(--border-default)",
-				boxShadow: "0 4px 24px rgba(0, 0, 0, 0.3)",
+				borderColor: canvasEditMode
+					? "var(--cyan-400)"
+					: "var(--border-default)",
+				boxShadow: canvasEditMode
+					? "0 4px 24px rgba(91, 155, 213, 0.15), 0 0 0 1px rgba(91, 155, 213, 0.2)"
+					: "0 4px 24px rgba(0, 0, 0, 0.3)",
 			}}
 		>
+			{/* Edit mode toggle */}
+			<button
+				type="button"
+				onClick={handleToggleEditMode}
+				disabled={isRunning}
+				title={canvasEditMode ? "Exit edit mode" : "Edit workflow"}
+				className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors disabled:opacity-40"
+				style={{
+					color: canvasEditMode ? "var(--cyan-400)" : "var(--text-tertiary)",
+					background: canvasEditMode ? "var(--cyan-glow)" : "transparent",
+				}}
+			>
+				<Pencil size={12} />
+				{canvasEditMode && <span>Editing</span>}
+			</button>
+
 			{/* Progress dots */}
-			<div
-				className="flex items-center gap-2 pr-3 border-r"
-				style={{ borderColor: "var(--border-subtle)" }}
-			>
-				<div className="flex items-center gap-1">
-					{steps.map((s) => (
-						<div
-							key={s.id}
-							className="h-2 w-2 rounded-full transition-all duration-300"
-							style={{
-								background:
-									s.status === "done"
-										? "var(--accent-success)"
-										: s.status === "running"
-											? "var(--accent-primary)"
-											: s.status === "needs_user"
-												? "var(--amber-400)"
-												: "var(--border-default)",
-								boxShadow:
-									s.status === "running"
-										? "0 0 6px var(--accent-primary)"
-										: "none",
-							}}
-						/>
-					))}
-				</div>
-				<span
-					className="font-mono text-[10px]"
-					style={{ color: "var(--text-muted)" }}
-				>
-					{doneSteps}/{steps.length}
-				</span>
-			</div>
-
-			{/* Run / Progress state */}
-			{isRunning ? (
-				<div className="flex items-center gap-1.5 px-2.5 py-1.5">
-					<Loader2
-						size={11}
-						className="animate-spin"
-						style={{ color: "var(--accent-primary)" }}
-					/>
-					{liveToolName && (
+			{!canvasEditMode && (
+				<>
+					<div
+						className="flex items-center gap-2 pr-3 border-r"
+						style={{ borderColor: "var(--border-subtle)" }}
+					>
+						<div className="flex items-center gap-1">
+							{steps.map((s) => (
+								<div
+									key={s.id}
+									className="h-2 w-2 rounded-full transition-all duration-300"
+									style={{
+										background:
+											s.status === "done"
+												? "var(--accent-success)"
+												: s.status === "running"
+													? "var(--accent-primary)"
+													: s.status === "needs_user"
+														? "var(--amber-400)"
+														: "var(--border-default)",
+										boxShadow:
+											s.status === "running"
+												? "0 0 6px var(--accent-primary)"
+												: "none",
+									}}
+								/>
+							))}
+						</div>
 						<span
-							className="text-[10px] font-mono truncate max-w-[80px]"
-							style={{ color: "var(--cyan-400)" }}
+							className="font-mono text-[10px]"
+							style={{ color: "var(--text-muted)" }}
 						>
-							{liveToolName}
+							{doneSteps}/{steps.length}
 						</span>
-					)}
-					{activeRun?.started_at && (
-						<ElapsedTime startedAt={activeRun.started_at} />
-					)}
-					<button
-						type="button"
-						onClick={handleStop}
-						className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
-						style={{ color: "var(--rose-400)" }}
-					>
-						<Square size={9} /> Stop
-					</button>
-				</div>
-			) : (
-				currentStep &&
-				currentStep.status !== "running" && (
-					<button
-						type="button"
-						onClick={handleRunCurrent}
-						className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
-						style={{ color: "var(--accent-primary)" }}
-					>
-						<Play size={11} /> Run
-					</button>
-				)
-			)}
+					</div>
 
-			{/* Execution mode selector */}
-			<div
-				className="flex items-center rounded-lg border"
-				style={{ borderColor: "var(--border-subtle)" }}
-			>
-				{(["supervised", "autonomous", "draft"] as const).map((mode) => (
-					<button
-						type="button"
-						key={mode}
-						onClick={() => setExecutionMode(mode)}
-						title={
-							mode === "supervised"
-								? "Pause between steps"
-								: mode === "autonomous"
-									? "Auto-advance + skip optional"
-									: "Generate artifacts only"
-						}
-						className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium transition-colors first:rounded-l-lg last:rounded-r-lg ${
-							executionMode === mode
-								? "bg-[var(--cyan-glow)] text-[var(--accent-primary)]"
-								: "text-[var(--text-tertiary)] hover:bg-[var(--bg-surface-hover)]"
-						}`}
+					{/* Run / Progress state */}
+					{isRunning ? (
+						<div className="flex items-center gap-1.5 px-2.5 py-1.5">
+							<Loader2
+								size={11}
+								className="animate-spin"
+								style={{ color: "var(--accent-primary)" }}
+							/>
+							{liveToolName && (
+								<span
+									className="text-[10px] font-mono truncate max-w-[80px]"
+									style={{ color: "var(--cyan-400)" }}
+								>
+									{liveToolName}
+								</span>
+							)}
+							{activeRun?.started_at && (
+								<ElapsedTime startedAt={activeRun.started_at} />
+							)}
+							<button
+								type="button"
+								onClick={handleStop}
+								className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
+								style={{ color: "var(--rose-400)" }}
+							>
+								<Square size={9} /> Stop
+							</button>
+						</div>
+					) : (
+						currentStep &&
+						currentStep.status !== "running" && (
+							<button
+								type="button"
+								onClick={handleRunCurrent}
+								className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
+								style={{ color: "var(--accent-primary)" }}
+							>
+								<Play size={11} /> Run
+							</button>
+						)
+					)}
+
+					{/* Execution mode selector */}
+					<div
+						className="flex items-center rounded-lg border"
+						style={{ borderColor: "var(--border-subtle)" }}
 					>
-						{mode === "autonomous" && <Zap size={10} />}
-						{mode.charAt(0).toUpperCase() + mode.slice(1)}
-					</button>
-				))}
-			</div>
+						{(["supervised", "autonomous", "draft"] as const).map((mode) => (
+							<button
+								type="button"
+								key={mode}
+								onClick={() => setExecutionMode(mode)}
+								title={
+									mode === "supervised"
+										? "Pause between steps"
+										: mode === "autonomous"
+											? "Auto-advance + skip optional"
+											: "Generate artifacts only"
+								}
+								className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium transition-colors first:rounded-l-lg last:rounded-r-lg ${
+									executionMode === mode
+										? "bg-[var(--cyan-glow)] text-[var(--accent-primary)]"
+										: "text-[var(--text-tertiary)] hover:bg-[var(--bg-surface-hover)]"
+								}`}
+							>
+								{mode === "autonomous" && <Zap size={10} />}
+								{mode.charAt(0).toUpperCase() + mode.slice(1)}
+							</button>
+						))}
+					</div>
+				</>
+			)}
 
 			{/* Knowledge toggle */}
 			<button
@@ -284,7 +324,7 @@ export function CanvasToolbar({
 			</span>
 
 			{/* Running step breadcrumb */}
-			{runningStep && (
+			{runningStep && !canvasEditMode && (
 				<div
 					className="flex items-center gap-1.5 pl-2 border-l"
 					style={{ borderColor: "var(--border-subtle)" }}

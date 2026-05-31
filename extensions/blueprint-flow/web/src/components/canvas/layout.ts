@@ -1,7 +1,13 @@
 import type { Edge, Node } from "@xyflow/react";
 import ELK from "elkjs/lib/elk.bundled.js";
 import { STEP_LABELS } from "../../constants/steps";
-import type { ActionRun, Artifact, Interview, Step } from "../../store";
+import type {
+	ActionRun,
+	Artifact,
+	Interview,
+	Step,
+	WorkflowStep,
+} from "../../store";
 
 const elk = new ELK();
 
@@ -102,12 +108,14 @@ export function stepsToEdges(steps: Step[]): Edge[] {
 	}));
 }
 
-export async function autoLayout(
-	nodes: Node<StepNodeData>[],
+export async function autoLayout<
+	T extends Record<string, unknown> = StepNodeData,
+>(
+	nodes: Node<T>[],
 	edges: Edge[],
 	direction: LayoutDirection = "vertical",
 	selectedNodeId?: string | null,
-): Promise<{ nodes: Node<StepNodeData>[] }> {
+): Promise<{ nodes: Node<T>[] }> {
 	const elkDirection = direction === "horizontal" ? "RIGHT" : "DOWN";
 
 	const graph = {
@@ -124,7 +132,12 @@ export async function autoLayout(
 		children: nodes.map((n) => ({
 			id: n.id,
 			width: NODE_WIDTH,
-			height: n.id === selectedNodeId ? NODE_HEIGHT_EXPANDED : NODE_HEIGHT,
+			height:
+				n.id === selectedNodeId
+					? NODE_HEIGHT_EXPANDED
+					: n.id.startsWith("edit-")
+						? EDIT_NODE_HEIGHT
+						: NODE_HEIGHT,
 		})),
 		edges: edges.map((e) => ({
 			id: e.id,
@@ -304,5 +317,49 @@ export function stepsToSatelliteEdges(
 			strokeWidth: 1.5,
 			strokeDasharray: "4 4",
 		},
+	}));
+}
+
+// --- Edit Mode Layout ---
+
+export const EDIT_NODE_HEIGHT = 72;
+
+export interface EditStepNodeData {
+	label: string;
+	stepName: string;
+	stepType: "agent" | "manual" | "hybrid";
+	actionType?: string;
+	index: number;
+	isSelected: boolean;
+	[key: string]: unknown;
+}
+
+export function editStepsToNodes(
+	steps: WorkflowStep[],
+	selectedNodeId?: string | null,
+): Node<EditStepNodeData>[] {
+	return steps.map((step, index) => ({
+		id: `edit-${index}-${step.name}`,
+		type: "editModeNode",
+		position: { x: 0, y: index * 100 },
+		data: {
+			label: step.label,
+			stepName: step.name,
+			stepType: step.type ?? "agent",
+			actionType: step.actionType,
+			index,
+			isSelected: `edit-${index}-${step.name}` === selectedNodeId,
+		},
+	}));
+}
+
+export function editStepsToEdges(steps: WorkflowStep[]): Edge[] {
+	if (steps.length < 2) return [];
+	return steps.slice(0, -1).map((step, i) => ({
+		id: `edit-e-${i}`,
+		source: `edit-${i}-${step.name}`,
+		target: `edit-${i + 1}-${steps[i + 1].name}`,
+		type: "dropZone",
+		data: { index: i + 1 },
 	}));
 }

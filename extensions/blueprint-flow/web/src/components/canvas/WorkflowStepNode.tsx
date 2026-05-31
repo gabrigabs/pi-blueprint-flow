@@ -2,12 +2,14 @@ import { Handle, type NodeProps, Position } from "@xyflow/react";
 import {
 	ArrowLeft,
 	BookOpen,
+	Bot,
 	Brain,
 	CheckCircle,
 	CircleDot,
 	Code2,
 	FileSearch,
 	FileText,
+	Hand,
 	Layers,
 	Loader2,
 	type LucideIcon,
@@ -20,13 +22,14 @@ import {
 	SkipForward,
 	Sparkles,
 	Square,
+	X,
 	Zap,
 } from "lucide-react";
 import { type MouseEvent, memo, useEffect, useState } from "react";
 import { api, mapExecutionMode } from "../../lib/api";
 import { useStore } from "../../store";
 import { ArtifactChip } from "./ArtifactChip";
-import type { StepNodeData } from "./layout";
+import type { EditStepNodeData, StepNodeData } from "./layout";
 import { NODE_HEIGHT, NODE_HEIGHT_EXPANDED, NODE_WIDTH } from "./layout";
 
 const STEP_ICONS: Record<string, LucideIcon> = {
@@ -604,3 +607,101 @@ function NodeElapsedTime({ startedAt }: { startedAt: string }) {
 }
 
 export const WorkflowStepNode = memo(WorkflowStepNodeComponent);
+
+const EDIT_NODE_WIDTH = 340;
+const EDIT_NODE_HEIGHT = 72;
+
+const TYPE_CONFIG = {
+	agent: { icon: Bot, color: "var(--cyan-400)", label: "Agent" },
+	manual: { icon: Hand, color: "var(--emerald-400)", label: "Manual" },
+	hybrid: { icon: Sparkles, color: "var(--amber-400)", label: "Hybrid" },
+} as const;
+
+function EditModeNodeComponent({
+	data,
+}: NodeProps & { data: EditStepNodeData }) {
+	const { label, stepName, stepType, index } = data;
+	const removeEditStep = useStore((s) => s.removeEditStep);
+	const config = TYPE_CONFIG[stepType] ?? TYPE_CONFIG.agent;
+	const TypeIcon = config.icon;
+
+	function handleDelete(e: MouseEvent) {
+		e.stopPropagation();
+		removeEditStep(index);
+	}
+
+	return (
+		<div
+			className="relative rounded-2xl border transition-all duration-200 group"
+			style={{
+				width: EDIT_NODE_WIDTH,
+				height: EDIT_NODE_HEIGHT,
+				background: "var(--bg-surface)",
+				borderColor: "var(--border-default)",
+			}}
+		>
+			<Handle
+				type="target"
+				position={Position.Top}
+				className="!bg-transparent !w-3 !h-3 !border-2 !border-[var(--border-default)] !-top-1.5"
+			/>
+
+			<div className="px-5 py-3.5 flex items-center justify-between gap-3">
+				<div className="flex items-center gap-3 min-w-0">
+					<div
+						className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+						style={{
+							background: `color-mix(in srgb, ${config.color} 12%, transparent)`,
+							border: `1.5px solid color-mix(in srgb, ${config.color} 30%, transparent)`,
+						}}
+					>
+						<TypeIcon size={16} style={{ color: config.color }} />
+					</div>
+					<div className="min-w-0">
+						<p
+							className="text-[13px] font-medium truncate leading-tight"
+							style={{ color: "var(--text-primary)" }}
+						>
+							{label}
+						</p>
+						<p
+							className="text-[10px] font-mono mt-0.5"
+							style={{ color: "var(--text-muted)" }}
+						>
+							{stepName}
+						</p>
+					</div>
+				</div>
+
+				<div className="flex items-center gap-2 shrink-0">
+					<span
+						className="rounded-md px-1.5 py-0.5 text-[10px] font-medium"
+						style={{
+							background: `color-mix(in srgb, ${config.color} 10%, transparent)`,
+							color: config.color,
+						}}
+					>
+						{config.label}
+					</span>
+					<button
+						type="button"
+						onClick={handleDelete}
+						className="flex h-6 w-6 items-center justify-center rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[var(--bg-surface-hover)]"
+						style={{ color: "var(--rose-400)" }}
+						title="Remove step"
+					>
+						<X size={12} />
+					</button>
+				</div>
+			</div>
+
+			<Handle
+				type="source"
+				position={Position.Bottom}
+				className="!bg-transparent !w-3 !h-3 !border-2 !border-[var(--border-default)] !-bottom-1.5"
+			/>
+		</div>
+	);
+}
+
+export const EditModeNode = memo(EditModeNodeComponent);

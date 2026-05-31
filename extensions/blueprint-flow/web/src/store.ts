@@ -182,6 +182,10 @@ interface BlueprintStore {
 	runModelId: string | null;
 	runThinkingLevel: string;
 
+	// Canvas edit mode
+	canvasEditMode: boolean;
+	editModeSteps: WorkflowStep[] | null;
+
 	setWorkspaces: (workspaces: Workspace[]) => void;
 	setFlows: (flows: Flow[]) => void;
 	setSteps: (steps: Step[]) => void;
@@ -212,6 +216,14 @@ interface BlueprintStore {
 	// Run settings
 	setRunModelId: (modelId: string | null) => void;
 	setRunThinkingLevel: (level: string) => void;
+
+	// Canvas edit mode actions
+	setCanvasEditMode: (editing: boolean) => void;
+	setEditModeSteps: (steps: WorkflowStep[] | null) => void;
+	addEditStep: (index: number, step: WorkflowStep) => void;
+	removeEditStep: (index: number) => void;
+	updateEditStep: (index: number, updates: Partial<WorkflowStep>) => void;
+	reorderEditStep: (fromIndex: number, toIndex: number) => void;
 
 	// Live activity setters
 	setLiveActivity: (
@@ -269,6 +281,9 @@ export const useStore = create<BlueprintStore>((set) => ({
 	runModelId: null,
 	runThinkingLevel: "medium",
 
+	canvasEditMode: false,
+	editModeSteps: null,
+
 	setWorkspaces: (workspaces) => set({ workspaces }),
 	setFlows: (flows) => set({ flows }),
 	setSteps: (steps) => set({ steps }),
@@ -318,6 +333,38 @@ export const useStore = create<BlueprintStore>((set) => ({
 
 	setRunModelId: (modelId) => set({ runModelId: modelId }),
 	setRunThinkingLevel: (level) => set({ runThinkingLevel: level }),
+
+	setCanvasEditMode: (editing) => set({ canvasEditMode: editing }),
+	setEditModeSteps: (steps) => set({ editModeSteps: steps }),
+	addEditStep: (index, step) =>
+		set((state) => {
+			if (!state.editModeSteps) return {};
+			const steps = [...state.editModeSteps];
+			steps.splice(index, 0, step);
+			return { editModeSteps: steps };
+		}),
+	removeEditStep: (index) =>
+		set((state) => {
+			if (!state.editModeSteps) return {};
+			const steps = state.editModeSteps.filter((_, i) => i !== index);
+			return { editModeSteps: steps };
+		}),
+	updateEditStep: (index, updates) =>
+		set((state) => {
+			if (!state.editModeSteps) return {};
+			const steps = state.editModeSteps.map((s, i) =>
+				i === index ? { ...s, ...updates } : s,
+			);
+			return { editModeSteps: steps };
+		}),
+	reorderEditStep: (fromIndex, toIndex) =>
+		set((state) => {
+			if (!state.editModeSteps) return {};
+			const steps = [...state.editModeSteps];
+			const [moved] = steps.splice(fromIndex, 1);
+			steps.splice(toIndex, 0, moved);
+			return { editModeSteps: steps };
+		}),
 
 	setLiveActivity: (actionRunId, toolName) =>
 		set((state) => ({
