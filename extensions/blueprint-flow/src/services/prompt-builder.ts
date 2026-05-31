@@ -1,4 +1,4 @@
-import type { ActionRunRow, Feature, Memory, Interview } from "../db.js";
+import type { ActionRunRow, Flow, Interview, Memory } from "../db.js";
 import { getDb } from "../db.js";
 import type { ActionType } from "../types.js";
 
@@ -68,7 +68,8 @@ Save a comprehensive project profile as findings.`,
 export function buildPrompt(ctx: PromptContext): string {
 	const { actionRun } = ctx;
 	const tag = `[blueprint-action:${actionRun.id}]`;
-	const instructions = ACTION_INSTRUCTIONS[actionRun.action_type] ?? ACTION_INSTRUCTIONS.run_step;
+	const instructions =
+		ACTION_INSTRUCTIONS[actionRun.action_type] ?? ACTION_INSTRUCTIONS.run_step;
 
 	const lines: string[] = [
 		tag,
@@ -98,7 +99,7 @@ export function buildPrompt(ctx: PromptContext): string {
 	}
 
 	if (ctx.featureDescription) {
-		lines.push("", "## Feature Description", "", ctx.featureDescription);
+		lines.push("", "## Flow Description", "", ctx.featureDescription);
 	}
 
 	if (ctx.memories && ctx.memories.length > 0) {
@@ -123,7 +124,12 @@ export function buildPrompt(ctx: PromptContext): string {
 	}
 
 	if (ctx.extraContext && Object.keys(ctx.extraContext).length > 0) {
-		lines.push("", "## Additional Context", "", JSON.stringify(ctx.extraContext, null, 2));
+		lines.push(
+			"",
+			"## Additional Context",
+			"",
+			JSON.stringify(ctx.extraContext, null, 2),
+		);
 	}
 
 	lines.push("", "## Instructions", "", instructions);
@@ -150,8 +156,10 @@ export function gatherPromptContext(actionRun: ActionRunRow): PromptContext {
 	}
 
 	// Get feature info
-	if (actionRun.feature_id) {
-		const feature = db.prepare("SELECT * FROM features WHERE id = ?").get(actionRun.feature_id) as Feature | undefined;
+	if (actionRun.flow_id) {
+		const feature = db
+			.prepare("SELECT * FROM features WHERE id = ?")
+			.get(actionRun.flow_id) as Flow | undefined;
 		if (feature) {
 			ctx.featureTitle = feature.title;
 			ctx.featureDescription = feature.description ?? undefined;
@@ -159,8 +167,12 @@ export function gatherPromptContext(actionRun: ActionRunRow): PromptContext {
 	}
 
 	// Get project info
-	if (actionRun.project_id) {
-		const project = db.prepare("SELECT * FROM projects WHERE id = ?").get(actionRun.project_id) as { name: string; stack: string } | undefined;
+	if (actionRun.workspace_id) {
+		const project = db
+			.prepare("SELECT * FROM projects WHERE id = ?")
+			.get(actionRun.workspace_id) as
+			| { name: string; stack: string }
+			| undefined;
 		if (project) {
 			ctx.projectName = project.name;
 			ctx.projectStack = project.stack;
@@ -168,32 +180,43 @@ export function gatherPromptContext(actionRun: ActionRunRow): PromptContext {
 	}
 
 	// Get memories (last 10 for the project)
-	if (actionRun.project_id) {
-		const memories = db.prepare(
-			"SELECT content FROM memories WHERE project_id = ? ORDER BY created_at DESC LIMIT 10"
-		).all(actionRun.project_id) as Array<{ content: string }>;
+	if (actionRun.workspace_id) {
+		const memories = db
+			.prepare(
+				"SELECT content FROM memories WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 10",
+			)
+			.all(actionRun.workspace_id) as Array<{ content: string }>;
 		if (memories.length > 0) {
 			ctx.memories = memories.map((m) => m.content);
 		}
 	}
 
 	// Get interview answers for the feature
-	if (actionRun.feature_id) {
-		const interviews = db.prepare(
-			"SELECT question, answer FROM interviews WHERE feature_id = ? AND answer IS NOT NULL ORDER BY created_at ASC"
-		).all(actionRun.feature_id) as Array<{ question: string; answer: string }>;
+	if (actionRun.flow_id) {
+		const interviews = db
+			.prepare(
+				"SELECT question, answer FROM interviews WHERE flow_id = ? AND answer IS NOT NULL ORDER BY created_at ASC",
+			)
+			.all(actionRun.flow_id) as Array<{ question: string; answer: string }>;
 		if (interviews.length > 0) {
 			ctx.interviewAnswers = interviews;
 		}
 	}
 
 	// Get existing artifacts for the current step
-	if (actionRun.feature_id && actionRun.step_name) {
-		const artifacts = db.prepare(
-			"SELECT filename, type FROM artifacts WHERE feature_id = ? AND step_name = ? ORDER BY created_at DESC"
-		).all(actionRun.feature_id, actionRun.step_name) as Array<{ filename: string; type: string }>;
+	if (actionRun.flow_id && actionRun.step_name) {
+		const artifacts = db
+			.prepare(
+				"SELECT filename, type FROM artifacts WHERE flow_id = ? AND step_name = ? ORDER BY created_at DESC",
+			)
+			.all(actionRun.flow_id, actionRun.step_name) as Array<{
+			filename: string;
+			type: string;
+		}>;
 		if (artifacts.length > 0) {
-			ctx.currentStepArtifacts = artifacts.map((a) => `${a.filename} (${a.type})`);
+			ctx.currentStepArtifacts = artifacts.map(
+				(a) => `${a.filename} (${a.type})`,
+			);
 		}
 	}
 

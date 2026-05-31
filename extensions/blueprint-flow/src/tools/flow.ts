@@ -1,7 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import type { FlowStep, StepStatus } from "../config.js";
 import { FLOW_STEPS, STEP_LABELS } from "../config.js";
-import type { Feature, Step } from "../db.js";
+import type { Flow, Step } from "../db.js";
 import { getDb } from "../db.js";
 import { bus } from "../events.js";
 
@@ -11,21 +11,21 @@ export const getFlowStateTool = {
 	description:
 		"Get the current flow state for a feature, showing all steps and their statuses.",
 	parameters: Type.Object({
-		feature_id: Type.String({ description: "Feature ID" }),
+		flow_id: Type.String({ description: "Flow ID" }),
 	}),
-	execute: async (_toolCallId: string, params: { feature_id: string }) => {
+	execute: async (_toolCallId: string, params: { flow_id: string }) => {
 		const db = getDb();
 
 		const feature = db
 			.prepare("SELECT * FROM features WHERE id = ?")
-			.get(params.feature_id) as Feature | undefined;
+			.get(params.flow_id) as Flow | undefined;
 
 		if (!feature) {
 			return {
 				content: [
 					{
 						type: "text" as const,
-						text: `Feature "${params.feature_id}" not found.`,
+						text: `Flow "${params.flow_id}" not found.`,
 					},
 				],
 				details: { error: "feature_not_found" },
@@ -33,8 +33,8 @@ export const getFlowStateTool = {
 		}
 
 		const steps = db
-			.prepare("SELECT * FROM steps WHERE feature_id = ? ORDER BY rowid")
-			.all(params.feature_id) as Step[];
+			.prepare("SELECT * FROM steps WHERE flow_id = ? ORDER BY rowid")
+			.all(params.flow_id) as Step[];
 
 		const statusIcon: Record<StepStatus, string> = {
 			pending: "○",
@@ -69,7 +69,7 @@ export const advanceStepTool = {
 	description:
 		"Mark the current step as done and advance to the next step in the flow. Only call this when the current step's work is complete.",
 	parameters: Type.Object({
-		feature_id: Type.String({ description: "Feature ID" }),
+		flow_id: Type.String({ description: "Flow ID" }),
 		summary: Type.Optional(
 			Type.String({
 				description: "Brief summary of what was accomplished in this step",
@@ -78,20 +78,20 @@ export const advanceStepTool = {
 	}),
 	execute: async (
 		_toolCallId: string,
-		params: { feature_id: string; summary?: string },
+		params: { flow_id: string; summary?: string },
 	) => {
 		const db = getDb();
 
 		const feature = db
 			.prepare("SELECT * FROM features WHERE id = ?")
-			.get(params.feature_id) as Feature | undefined;
+			.get(params.flow_id) as Flow | undefined;
 
 		if (!feature) {
 			return {
 				content: [
 					{
 						type: "text" as const,
-						text: `Feature "${params.feature_id}" not found.`,
+						text: `Flow "${params.flow_id}" not found.`,
 					},
 				],
 				details: { error: "feature_not_found" },
@@ -113,17 +113,17 @@ export const advanceStepTool = {
 
 		// Mark current step as done
 		db.prepare(
-			"UPDATE steps SET status = 'done', completed_at = datetime('now') WHERE feature_id = ? AND name = ?",
-		).run(params.feature_id, feature.current_step);
+			"UPDATE steps SET status = 'done', completed_at = datetime('now') WHERE flow_id = ? AND name = ?",
+		).run(params.flow_id, feature.current_step);
 
 		// Check if this was the last step
 		if (currentIdx === FLOW_STEPS.length - 1) {
 			db.prepare(
 				"UPDATE features SET status = 'done', updated_at = datetime('now') WHERE id = ?",
-			).run(params.feature_id);
+			).run(params.flow_id);
 
-			bus.emit("feature:updated", {
-				id: params.feature_id,
+			bus.emit("flow:updated", {
+				id: params.flow_id,
 				step: feature.current_step,
 				status: "done",
 			});
@@ -132,10 +132,10 @@ export const advanceStepTool = {
 				content: [
 					{
 						type: "text" as const,
-						text: `Feature "${feature.title}" is complete! All steps finished.`,
+						text: `Flow "${feature.title}" is complete! All steps finished.`,
 					},
 				],
-				details: { featureId: params.feature_id, status: "done" },
+				details: { flowId: params.flow_id, status: "done" },
 			};
 		}
 
@@ -144,14 +144,14 @@ export const advanceStepTool = {
 
 		db.prepare(
 			"UPDATE features SET current_step = ?, updated_at = datetime('now') WHERE id = ?",
-		).run(nextStep, params.feature_id);
+		).run(nextStep, params.flow_id);
 
 		db.prepare(
-			"UPDATE steps SET status = 'current', started_at = datetime('now') WHERE feature_id = ? AND name = ?",
-		).run(params.feature_id, nextStep);
+			"UPDATE steps SET status = 'current', started_at = datetime('now') WHERE flow_id = ? AND name = ?",
+		).run(params.flow_id, nextStep);
 
 		bus.emit("step:advanced", {
-			featureId: params.feature_id,
+			flowId: params.flow_id,
 			from: feature.current_step,
 			to: nextStep,
 		});
@@ -165,7 +165,7 @@ export const advanceStepTool = {
 				},
 			],
 			details: {
-				featureId: params.feature_id,
+				flowId: params.flow_id,
 				previousStep: feature.current_step,
 				currentStep: nextStep,
 			},
@@ -179,27 +179,27 @@ export const resetStepTool = {
 	description:
 		"Reset a feature back to a specific step. All subsequent steps will be marked as pending.",
 	parameters: Type.Object({
-		feature_id: Type.String({ description: "Feature ID" }),
+		flow_id: Type.String({ description: "Flow ID" }),
 		target_step: Type.String({
 			description: "Step name to reset to (e.g. 'research', 'spec')",
 		}),
 	}),
 	execute: async (
 		_toolCallId: string,
-		params: { feature_id: string; target_step: string },
+		params: { flow_id: string; target_step: string },
 	) => {
 		const db = getDb();
 
 		const feature = db
 			.prepare("SELECT * FROM features WHERE id = ?")
-			.get(params.feature_id) as Feature | undefined;
+			.get(params.flow_id) as Flow | undefined;
 
 		if (!feature) {
 			return {
 				content: [
 					{
 						type: "text" as const,
-						text: `Feature "${params.feature_id}" not found.`,
+						text: `Flow "${params.flow_id}" not found.`,
 					},
 				],
 				details: { error: "feature_not_found" },
@@ -225,25 +225,25 @@ export const resetStepTool = {
 				const status = i === targetIdx ? "current" : "pending";
 				const startedAt = i === targetIdx ? "datetime('now')" : null;
 				db.prepare(
-					`UPDATE steps SET status = ?, started_at = ${i === targetIdx ? "datetime('now')" : "NULL"}, completed_at = NULL WHERE feature_id = ? AND name = ?`,
-				).run(status, params.feature_id, FLOW_STEPS[i]);
+					`UPDATE steps SET status = ?, started_at = ${i === targetIdx ? "datetime('now')" : "NULL"}, completed_at = NULL WHERE flow_id = ? AND name = ?`,
+				).run(status, params.flow_id, FLOW_STEPS[i]);
 			}
 		});
 		resetSteps();
 
 		db.prepare(
 			"UPDATE features SET current_step = ?, status = 'in_progress', updated_at = datetime('now') WHERE id = ?",
-		).run(params.target_step, params.feature_id);
+		).run(params.target_step, params.flow_id);
 
 		const label = STEP_LABELS[params.target_step as FlowStep];
 		return {
 			content: [
 				{
 					type: "text" as const,
-					text: `Feature reset to step: **${label}** (${params.target_step}). All subsequent steps cleared.`,
+					text: `Flow reset to step: **${label}** (${params.target_step}). All subsequent steps cleared.`,
 				},
 			],
-			details: { featureId: params.feature_id, resetTo: params.target_step },
+			details: { flowId: params.flow_id, resetTo: params.target_step },
 		};
 	},
 };

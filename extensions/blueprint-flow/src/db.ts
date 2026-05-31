@@ -1,20 +1,21 @@
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import Database from "better-sqlite3";
-import type { FeatureStatus, FlowStep, StepStatus } from "./config.js";
+import type { FlowStep, StepStatus } from "./config.js";
 import type {
 	ActionRunStatus,
 	ActionType,
 	EffortLevel,
 	ExecutionMode,
-	FeatureType,
+	FlowType,
 	ImportMode,
 	PriorityLevel,
 	ReviewStrictness,
 	RiskLevel,
+	StepType,
 } from "./types.js";
 
-export interface Project {
+export interface Workspace {
 	id: string;
 	name: string;
 	description: string | null;
@@ -25,23 +26,23 @@ export interface Project {
 	updated_at: string;
 }
 
-export interface Feature {
+export interface Flow {
 	id: string;
-	project_id: string;
+	workspace_id: string;
 	title: string;
 	description: string | null;
-	type: FeatureType;
+	type: FlowType;
 	risk_level: RiskLevel;
 	priority: PriorityLevel;
 	current_step: FlowStep;
-	status: FeatureStatus;
+	status: string;
 	created_at: string;
 	updated_at: string;
 }
 
 export interface Step {
 	id: string;
-	feature_id: string;
+	flow_id: string;
 	name: FlowStep;
 	status: StepStatus;
 	started_at: string | null;
@@ -50,7 +51,7 @@ export interface Step {
 
 export interface Artifact {
 	id: string;
-	feature_id: string;
+	flow_id: string;
 	step_name: FlowStep;
 	type: string;
 	filename: string;
@@ -60,16 +61,16 @@ export interface Artifact {
 
 export interface Memory {
 	id: string;
-	project_id: string;
+	workspace_id: string;
 	category: string;
 	content: string;
-	source_feature_id: string | null;
+	source_flow_id: string | null;
 	created_at: string;
 }
 
 export interface Interview {
 	id: string;
-	feature_id: string;
+	flow_id: string;
 	question: string;
 	answer: string | null;
 	type: string;
@@ -82,7 +83,7 @@ export interface Interview {
 
 export interface AgentRunSettingsRow {
 	id: string;
-	feature_id: string | null;
+	flow_id: string | null;
 	step_name: string | null;
 	model_id: string | null;
 	agent_profile: string | null;
@@ -99,7 +100,7 @@ export interface AgentRunSettingsRow {
 
 export interface ImportReport {
 	id: string;
-	project_id: string | null;
+	workspace_id: string | null;
 	repo_path: string;
 	mode: ImportMode;
 	status: string;
@@ -113,8 +114,8 @@ export interface ImportReport {
 
 export interface ActionRunRow {
 	id: string;
-	project_id: string | null;
-	feature_id: string | null;
+	workspace_id: string | null;
+	flow_id: string | null;
 	action_type: ActionType;
 	step_name: string | null;
 	status: ActionRunStatus;
@@ -142,7 +143,7 @@ export interface ActionRunEventRow {
 
 export interface WorkflowRow {
 	id: string;
-	project_id: string | null;
+	workspace_id: string | null;
 	name: string;
 	description: string | null;
 	steps_json: string;
@@ -153,7 +154,7 @@ export interface WorkflowRow {
 
 export interface WikiPage {
 	id: string;
-	project_id: string;
+	workspace_id: string;
 	slug: string;
 	title: string;
 	category: string;
@@ -164,7 +165,7 @@ export interface WikiPage {
 
 export interface MemoryFact {
 	id: string;
-	project_id: string;
+	workspace_id: string;
 	page_id: string | null;
 	category: string;
 	fact: string;
@@ -177,14 +178,14 @@ export interface MemoryFact {
 
 export interface MemoryLink {
 	id: string;
-	project_id: string;
+	workspace_id: string;
 	from_page_id: string;
 	to_page_id: string;
 	relation: string | null;
 }
 
 const SCHEMA = `
-CREATE TABLE IF NOT EXISTS projects (
+CREATE TABLE IF NOT EXISTS workspaces (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
@@ -195,9 +196,9 @@ CREATE TABLE IF NOT EXISTS projects (
   updated_at TEXT DEFAULT (datetime('now'))
 );
 
-CREATE TABLE IF NOT EXISTS features (
+CREATE TABLE IF NOT EXISTS flows (
   id TEXT PRIMARY KEY,
-  project_id TEXT NOT NULL REFERENCES projects(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   title TEXT NOT NULL,
   description TEXT,
   type TEXT DEFAULT 'feature',
@@ -211,7 +212,7 @@ CREATE TABLE IF NOT EXISTS features (
 
 CREATE TABLE IF NOT EXISTS steps (
   id TEXT PRIMARY KEY,
-  feature_id TEXT NOT NULL REFERENCES features(id),
+  flow_id TEXT NOT NULL REFERENCES flows(id),
   name TEXT NOT NULL,
   status TEXT DEFAULT 'pending',
   started_at TEXT,
@@ -220,7 +221,7 @@ CREATE TABLE IF NOT EXISTS steps (
 
 CREATE TABLE IF NOT EXISTS artifacts (
   id TEXT PRIMARY KEY,
-  feature_id TEXT NOT NULL REFERENCES features(id),
+  flow_id TEXT NOT NULL REFERENCES flows(id),
   step_name TEXT NOT NULL,
   type TEXT NOT NULL,
   filename TEXT NOT NULL,
@@ -230,10 +231,10 @@ CREATE TABLE IF NOT EXISTS artifacts (
 
 CREATE TABLE IF NOT EXISTS memories (
   id TEXT PRIMARY KEY,
-  project_id TEXT NOT NULL REFERENCES projects(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   category TEXT NOT NULL,
   content TEXT NOT NULL,
-  source_feature_id TEXT,
+  source_flow_id TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -245,7 +246,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
 
 CREATE TABLE IF NOT EXISTS interviews (
   id TEXT PRIMARY KEY,
-  feature_id TEXT NOT NULL REFERENCES features(id),
+  flow_id TEXT NOT NULL REFERENCES flows(id),
   question TEXT NOT NULL,
   answer TEXT,
   type TEXT NOT NULL,
@@ -256,7 +257,7 @@ CREATE TABLE IF NOT EXISTS interviews (
 
 CREATE TABLE IF NOT EXISTS agent_run_settings (
   id TEXT PRIMARY KEY,
-  feature_id TEXT REFERENCES features(id),
+  flow_id TEXT REFERENCES flows(id),
   step_name TEXT,
   model_id TEXT,
   agent_profile TEXT,
@@ -273,7 +274,7 @@ CREATE TABLE IF NOT EXISTS agent_run_settings (
 
 CREATE TABLE IF NOT EXISTS import_reports (
   id TEXT PRIMARY KEY,
-  project_id TEXT REFERENCES projects(id),
+  workspace_id TEXT REFERENCES workspaces(id),
   repo_path TEXT NOT NULL,
   mode TEXT NOT NULL,
   status TEXT DEFAULT 'pending',
@@ -287,8 +288,8 @@ CREATE TABLE IF NOT EXISTS import_reports (
 
 CREATE TABLE IF NOT EXISTS action_runs (
   id TEXT PRIMARY KEY,
-  project_id TEXT REFERENCES projects(id),
-  feature_id TEXT REFERENCES features(id),
+  workspace_id TEXT REFERENCES workspaces(id),
+  flow_id TEXT REFERENCES flows(id),
   action_type TEXT NOT NULL,
   step_name TEXT,
   status TEXT NOT NULL DEFAULT 'created',
@@ -315,7 +316,7 @@ CREATE TABLE IF NOT EXISTS action_run_events (
 
 CREATE TABLE IF NOT EXISTS workflows (
   id TEXT PRIMARY KEY,
-  project_id TEXT REFERENCES projects(id),
+  workspace_id TEXT REFERENCES workspaces(id),
   name TEXT NOT NULL,
   description TEXT,
   steps_json TEXT NOT NULL,
@@ -326,7 +327,7 @@ CREATE TABLE IF NOT EXISTS workflows (
 
 CREATE TABLE IF NOT EXISTS wiki_pages (
   id TEXT PRIMARY KEY,
-  project_id TEXT NOT NULL REFERENCES projects(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   slug TEXT NOT NULL,
   title TEXT NOT NULL,
   category TEXT NOT NULL,
@@ -337,7 +338,7 @@ CREATE TABLE IF NOT EXISTS wiki_pages (
 
 CREATE TABLE IF NOT EXISTS memory_facts (
   id TEXT PRIMARY KEY,
-  project_id TEXT NOT NULL REFERENCES projects(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   page_id TEXT REFERENCES wiki_pages(id),
   category TEXT NOT NULL,
   fact TEXT NOT NULL,
@@ -350,27 +351,27 @@ CREATE TABLE IF NOT EXISTS memory_facts (
 
 CREATE TABLE IF NOT EXISTS memory_links (
   id TEXT PRIMARY KEY,
-  project_id TEXT NOT NULL REFERENCES projects(id),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(id),
   from_page_id TEXT NOT NULL REFERENCES wiki_pages(id),
   to_page_id TEXT NOT NULL REFERENCES wiki_pages(id),
   relation TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_features_project ON features(project_id);
-CREATE INDEX IF NOT EXISTS idx_steps_feature ON steps(feature_id);
-CREATE INDEX IF NOT EXISTS idx_artifacts_feature ON artifacts(feature_id);
-CREATE INDEX IF NOT EXISTS idx_memories_project ON memories(project_id);
-CREATE INDEX IF NOT EXISTS idx_interviews_feature ON interviews(feature_id);
-CREATE INDEX IF NOT EXISTS idx_agent_run_settings_feature ON agent_run_settings(feature_id);
-CREATE INDEX IF NOT EXISTS idx_import_reports_project ON import_reports(project_id);
-CREATE INDEX IF NOT EXISTS idx_action_runs_feature ON action_runs(feature_id);
-CREATE INDEX IF NOT EXISTS idx_action_runs_project ON action_runs(project_id);
+CREATE INDEX IF NOT EXISTS idx_flows_workspace ON flows(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_steps_flow ON steps(flow_id);
+CREATE INDEX IF NOT EXISTS idx_artifacts_flow ON artifacts(flow_id);
+CREATE INDEX IF NOT EXISTS idx_memories_workspace ON memories(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_interviews_flow ON interviews(flow_id);
+CREATE INDEX IF NOT EXISTS idx_agent_run_settings_flow ON agent_run_settings(flow_id);
+CREATE INDEX IF NOT EXISTS idx_import_reports_workspace ON import_reports(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_action_runs_flow ON action_runs(flow_id);
+CREATE INDEX IF NOT EXISTS idx_action_runs_workspace ON action_runs(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_action_runs_status ON action_runs(status);
 CREATE INDEX IF NOT EXISTS idx_action_run_events_run ON action_run_events(action_run_id);
-CREATE INDEX IF NOT EXISTS idx_workflows_project ON workflows(project_id);
-CREATE INDEX IF NOT EXISTS idx_wiki_pages_project ON wiki_pages(project_id);
-CREATE INDEX IF NOT EXISTS idx_wiki_pages_slug ON wiki_pages(project_id, slug);
-CREATE INDEX IF NOT EXISTS idx_memory_facts_project ON memory_facts(project_id);
+CREATE INDEX IF NOT EXISTS idx_workflows_workspace ON workflows(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_workspace ON wiki_pages(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_wiki_pages_slug ON wiki_pages(workspace_id, slug);
+CREATE INDEX IF NOT EXISTS idx_memory_facts_workspace ON memory_facts(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_memory_facts_page ON memory_facts(page_id);
 CREATE INDEX IF NOT EXISTS idx_memory_links_from ON memory_links(from_page_id);
 CREATE INDEX IF NOT EXISTS idx_memory_links_to ON memory_links(to_page_id);
@@ -418,6 +419,26 @@ const MIGRATIONS = [
 	// v0.6.0: Thinking level per action run
 	`ALTER TABLE action_runs ADD COLUMN thinking_level TEXT`,
 	`ALTER TABLE action_runs ADD COLUMN extra_context_json TEXT`,
+	// v0.7.0: Rename projects→workspaces, features→flows
+	`ALTER TABLE projects RENAME TO workspaces`,
+	`ALTER TABLE features RENAME TO flows`,
+	`ALTER TABLE flows RENAME COLUMN project_id TO workspace_id`,
+	`ALTER TABLE workflows RENAME COLUMN project_id TO workspace_id`,
+	`ALTER TABLE memories RENAME COLUMN project_id TO workspace_id`,
+	`ALTER TABLE memories RENAME COLUMN source_feature_id TO source_flow_id`,
+	`ALTER TABLE action_runs RENAME COLUMN project_id TO workspace_id`,
+	`ALTER TABLE action_runs RENAME COLUMN feature_id TO flow_id`,
+	`ALTER TABLE steps RENAME COLUMN feature_id TO flow_id`,
+	`ALTER TABLE artifacts RENAME COLUMN feature_id TO flow_id`,
+	`ALTER TABLE interviews RENAME COLUMN feature_id TO flow_id`,
+	`ALTER TABLE agent_run_settings RENAME COLUMN feature_id TO flow_id`,
+	`ALTER TABLE design_variants RENAME COLUMN feature_id TO flow_id`,
+	`ALTER TABLE design_tokens RENAME COLUMN project_id TO workspace_id`,
+	`ALTER TABLE design_tokens RENAME COLUMN feature_id TO flow_id`,
+	`ALTER TABLE import_reports RENAME COLUMN project_id TO workspace_id`,
+	`ALTER TABLE wiki_pages RENAME COLUMN project_id TO workspace_id`,
+	`ALTER TABLE memory_facts RENAME COLUMN project_id TO workspace_id`,
+	`ALTER TABLE memory_links RENAME COLUMN project_id TO workspace_id`,
 ];
 
 let db: Database.Database | null = null;
@@ -483,8 +504,8 @@ export function migrateFromLegacyDb(
 		targetDb.exec(`ATTACH DATABASE '${legacyPath}' AS legacy`);
 
 		const tables = [
-			"projects",
-			"features",
+			"workspaces",
+			"flows",
 			"steps",
 			"artifacts",
 			"memories",
@@ -530,8 +551,8 @@ export function closeDb(): void {
 
 export function createActionRun(input: {
 	id: string;
-	projectId?: string | null;
-	featureId?: string | null;
+	workspaceId?: string | null;
+	flowId?: string | null;
 	actionType: ActionType;
 	stepName?: string | null;
 	prompt?: string | null;
@@ -543,13 +564,13 @@ export function createActionRun(input: {
 }): ActionRunRow {
 	const database = getDb();
 	const stmt = database.prepare(`
-		INSERT INTO action_runs (id, project_id, feature_id, action_type, step_name, status, prompt, model_id, effort_level, execution_mode, thinking_level, extra_context_json)
+		INSERT INTO action_runs (id, workspace_id, flow_id, action_type, step_name, status, prompt, model_id, effort_level, execution_mode, thinking_level, extra_context_json)
 		VALUES (?, ?, ?, ?, ?, 'created', ?, ?, ?, ?, ?, ?)
 	`);
 	stmt.run(
 		input.id,
-		input.projectId ?? null,
-		input.featureId ?? null,
+		input.workspaceId ?? null,
+		input.flowId ?? null,
 		input.actionType,
 		input.stepName ?? null,
 		input.prompt ?? null,
@@ -572,8 +593,8 @@ export function getActionRun(id: string): ActionRunRow | null {
 }
 
 export function listActionRuns(filters?: {
-	featureId?: string;
-	projectId?: string;
+	flowId?: string;
+	workspaceId?: string;
 	status?: ActionRunStatus;
 	limit?: number;
 }): ActionRunRow[] {
@@ -581,13 +602,13 @@ export function listActionRuns(filters?: {
 	const conditions: string[] = [];
 	const params: unknown[] = [];
 
-	if (filters?.featureId) {
-		conditions.push("feature_id = ?");
-		params.push(filters.featureId);
+	if (filters?.flowId) {
+		conditions.push("flow_id = ?");
+		params.push(filters.flowId);
 	}
-	if (filters?.projectId) {
-		conditions.push("project_id = ?");
-		params.push(filters.projectId);
+	if (filters?.workspaceId) {
+		conditions.push("workspace_id = ?");
+		params.push(filters.workspaceId);
 	}
 	if (filters?.status) {
 		conditions.push("status = ?");
@@ -706,6 +727,7 @@ export function getActiveActionRun(): ActionRunRow | null {
 export interface WorkflowStep {
 	name: string;
 	label: string;
+	type?: StepType;
 	actionType?: string;
 	optional?: boolean;
 	modelId?: string;
@@ -748,7 +770,7 @@ export function seedDefaultWorkflow(): void {
 	if (!existing) {
 		database
 			.prepare(
-				`INSERT INTO workflows (id, project_id, name, description, steps_json, is_default)
+				`INSERT INTO workflows (id, workspace_id, name, description, steps_json, is_default)
 			 VALUES (?, NULL, ?, ?, ?, 1)`,
 			)
 			.run(
@@ -784,35 +806,36 @@ export function getDefaultWorkflow(): WorkflowRow {
 	return row;
 }
 
-export function getProjectWorkflow(projectId: string): WorkflowRow {
+export function getWorkspaceWorkflow(workspaceId: string): WorkflowRow {
 	const database = getDb();
-	// Check if project has a custom workflow
-	const project = database
-		.prepare("SELECT workflow_id FROM projects WHERE id = ?")
-		.get(projectId) as { workflow_id: string | null } | undefined;
-	if (project?.workflow_id) {
-		const workflow = getWorkflow(project.workflow_id);
+	const workspace = database
+		.prepare("SELECT workflow_id FROM workspaces WHERE id = ?")
+		.get(workspaceId) as { workflow_id: string | null } | undefined;
+	if (workspace?.workflow_id) {
+		const workflow = getWorkflow(workspace.workflow_id);
 		if (workflow) return workflow;
 	}
-	// Check for project-specific workflow
-	const projectWorkflow = database
+	const workspaceWorkflow = database
 		.prepare(
-			"SELECT * FROM workflows WHERE project_id = ? ORDER BY created_at DESC LIMIT 1",
+			"SELECT * FROM workflows WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 1",
 		)
-		.get(projectId) as WorkflowRow | undefined;
-	if (projectWorkflow) return projectWorkflow;
+		.get(workspaceId) as WorkflowRow | undefined;
+	if (workspaceWorkflow) return workspaceWorkflow;
 
 	return getDefaultWorkflow();
 }
 
-export function listWorkflows(projectId?: string): WorkflowRow[] {
+/** @deprecated Use getWorkspaceWorkflow */
+export const getProjectWorkflow = getWorkspaceWorkflow;
+
+export function listWorkflows(workspaceId?: string): WorkflowRow[] {
 	const database = getDb();
-	if (projectId) {
+	if (workspaceId) {
 		return database
 			.prepare(
-				"SELECT * FROM workflows WHERE project_id = ? OR project_id IS NULL ORDER BY is_default DESC, created_at ASC",
+				"SELECT * FROM workflows WHERE workspace_id = ? OR workspace_id IS NULL ORDER BY is_default DESC, created_at ASC",
 			)
-			.all(projectId) as WorkflowRow[];
+			.all(workspaceId) as WorkflowRow[];
 	}
 	return database
 		.prepare("SELECT * FROM workflows ORDER BY is_default DESC, created_at ASC")
@@ -821,7 +844,7 @@ export function listWorkflows(projectId?: string): WorkflowRow[] {
 
 export function createWorkflow(input: {
 	id: string;
-	projectId?: string | null;
+	workspaceId?: string | null;
 	name: string;
 	description?: string | null;
 	steps: WorkflowStep[];
@@ -829,12 +852,12 @@ export function createWorkflow(input: {
 	const database = getDb();
 	database
 		.prepare(
-			`INSERT INTO workflows (id, project_id, name, description, steps_json, is_default)
+			`INSERT INTO workflows (id, workspace_id, name, description, steps_json, is_default)
 		 VALUES (?, ?, ?, ?, ?, 0)`,
 		)
 		.run(
 			input.id,
-			input.projectId ?? null,
+			input.workspaceId ?? null,
 			input.name,
 			input.description ?? null,
 			JSON.stringify(input.steps),
@@ -906,14 +929,17 @@ export function getWorkflowStepConfig(
 	return steps.find((s) => s.name === stepName) ?? null;
 }
 
-export function setProjectWorkflow(
-	projectId: string,
+export function setWorkspaceWorkflow(
+	workspaceId: string,
 	workflowId: string,
 ): void {
 	const database = getDb();
 	database
 		.prepare(
-			"UPDATE projects SET workflow_id = ?, updated_at = datetime('now') WHERE id = ?",
+			"UPDATE workspaces SET workflow_id = ?, updated_at = datetime('now') WHERE id = ?",
 		)
-		.run(workflowId, projectId);
+		.run(workflowId, workspaceId);
 }
+
+/** @deprecated Use setWorkspaceWorkflow */
+export const setProjectWorkflow = setWorkspaceWorkflow;

@@ -1,4 +1,4 @@
-export const FEATURE_TYPES = [
+export const FLOW_TYPES = [
 	"feature",
 	"bugfix",
 	"refactor",
@@ -7,7 +7,12 @@ export const FEATURE_TYPES = [
 	"maintenance",
 ] as const;
 
-export type FeatureType = (typeof FEATURE_TYPES)[number];
+export type FlowType = (typeof FLOW_TYPES)[number];
+
+/** @deprecated Use FlowType */
+export type FeatureType = FlowType;
+/** @deprecated Use FLOW_TYPES */
+export const FEATURE_TYPES = FLOW_TYPES;
 
 export const RISK_LEVELS = ["low", "medium", "high", "auto"] as const;
 export type RiskLevel = (typeof RISK_LEVELS)[number];
@@ -97,14 +102,14 @@ export function buildRunSettings(
 	};
 }
 
-export interface CreateProjectInput {
+export interface CreateWorkspaceInput {
 	name: string;
 	repoPath?: string;
 	description?: string;
 	stack?: string[];
 }
 
-export interface UpdateProjectInput {
+export interface UpdateWorkspaceInput {
 	name?: string;
 	description?: string;
 	repoPath?: string;
@@ -112,25 +117,25 @@ export interface UpdateProjectInput {
 	archived?: boolean;
 }
 
-export interface CreateFeatureInput {
-	projectId: string;
+export interface CreateFlowInput {
+	workspaceId: string;
 	title: string;
 	description?: string;
-	type?: FeatureType;
+	type?: FlowType;
 	riskLevel?: RiskLevel;
 	priority?: PriorityLevel;
 	agentRunSettings?: Partial<AgentRunSettings>;
 }
 
-export interface UpdateFeatureInput {
+export interface UpdateFlowInput {
 	title?: string;
 	description?: string;
-	type?: FeatureType;
+	type?: FlowType;
 	riskLevel?: RiskLevel;
 	priority?: PriorityLevel;
 }
 
-export interface ImportProjectInput {
+export interface ImportWorkspaceInput {
 	repoPath: string;
 	name?: string;
 	mode: ImportMode;
@@ -138,7 +143,7 @@ export interface ImportProjectInput {
 }
 
 export interface CreateArtifactInput {
-	featureId: string;
+	flowId: string;
 	stepName: string;
 	type: string;
 	filename: string;
@@ -149,6 +154,22 @@ export interface UpdateArtifactInput {
 	content?: string;
 	filename?: string;
 }
+
+// --- Step Types ---
+
+export const STEP_TYPES = ["agent", "manual", "hybrid"] as const;
+export type StepType = (typeof STEP_TYPES)[number];
+
+/** @deprecated Use CreateWorkspaceInput */
+export type CreateProjectInput = CreateWorkspaceInput;
+/** @deprecated Use UpdateWorkspaceInput */
+export type UpdateProjectInput = UpdateWorkspaceInput;
+/** @deprecated Use CreateFlowInput */
+export type CreateFeatureInput = CreateFlowInput;
+/** @deprecated Use UpdateFlowInput */
+export type UpdateFeatureInput = UpdateFlowInput;
+/** @deprecated Use ImportWorkspaceInput */
+export type ImportProjectInput = ImportWorkspaceInput;
 
 // --- Action Run Types ---
 
@@ -181,14 +202,18 @@ export const ACTION_TYPES = [
 	"review",
 	"memory_update",
 	"import_project_agent_analysis",
+	"generate",
+	"analyze",
+	"summarize",
+	"custom",
 ] as const;
 
 export type ActionType = (typeof ACTION_TYPES)[number];
 
 export interface ActionRun {
 	id: string;
-	project_id: string | null;
-	feature_id: string | null;
+	workspace_id: string | null;
+	flow_id: string | null;
 	action_type: ActionType;
 	step_name: string | null;
 	status: ActionRunStatus;
@@ -231,8 +256,8 @@ export const ACTION_EVENT_TYPES = [
 export type ActionEventType = (typeof ACTION_EVENT_TYPES)[number];
 
 export interface RunBlueprintActionInput {
-	projectId?: string;
-	featureId?: string;
+	workspaceId?: string;
+	flowId?: string;
 	actionType: ActionType;
 	stepName?: string;
 	modelId?: string;

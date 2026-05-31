@@ -20,16 +20,16 @@ export function registerActionRunRoutes(app: FastifyInstance): void {
 	// List action runs (with optional filters)
 	app.get<{
 		Querystring: {
-			featureId?: string;
-			projectId?: string;
+			flowId?: string;
+			workspaceId?: string;
 			status?: ActionRunStatus;
 			limit?: string;
 		};
 	}>("/api/action-runs", async (req, reply) => {
-		const { featureId, projectId, status, limit } = req.query;
+		const { flowId, workspaceId, status, limit } = req.query;
 		const runs = listActionRuns({
-			featureId,
-			projectId,
+			flowId,
+			workspaceId,
 			status,
 			limit: limit ? Number.parseInt(limit, 10) : undefined,
 		});
@@ -190,8 +190,8 @@ export function registerActionRunRoutes(app: FastifyInstance): void {
 
 		const bridge = getPiBridge();
 		const input: RunBlueprintActionInput = {
-			projectId: run.project_id ?? undefined,
-			featureId: run.feature_id ?? undefined,
+			workspaceId: run.workspace_id ?? undefined,
+			flowId: run.flow_id ?? undefined,
 			actionType: run.action_type as ActionType,
 			stepName: run.step_name ?? undefined,
 			modelId: run.model_id ?? undefined,

@@ -72,7 +72,7 @@ export const saveMemoryTool = {
 
 		bus.emit("memory:saved", {
 			id,
-			projectId: params.project_id,
+			workspaceId: params.project_id,
 			category: params.category,
 		});
 

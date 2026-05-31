@@ -1,88 +1,93 @@
-import type { FastifyInstance } from "fastify";
 import type { ThinkingLevel } from "@earendil-works/pi-coding-agent";
+import type { FastifyInstance } from "fastify";
 import {
-  findAvailablePiModel,
-  getAgentConfig,
-  getPiRef,
-  THINKING_LEVELS,
+	findAvailablePiModel,
+	getAgentConfig,
+	getPiRef,
+	THINKING_LEVELS,
 } from "../services/pi-config-reader.js";
 
 export function registerConfigRoutes(app: FastifyInstance): void {
-  app.get("/api/config/agent", async () => getAgentConfig());
+	app.get("/api/config/agent", async () => getAgentConfig());
 
-  app.post<{ Body: { level: ThinkingLevel } }>(
-    "/api/config/thinking-level",
-    async (req, reply) => {
-      const { level } = req.body;
+	app.post<{ Body: { level: ThinkingLevel } }>(
+		"/api/config/thinking-level",
+		async (req, reply) => {
+			const { level } = req.body;
 
-      if (!level || !THINKING_LEVELS.includes(level)) {
-        return reply.code(400).send({
-          error: "validation",
-          message: `Invalid thinking level. Must be one of: ${THINKING_LEVELS.join(", ")}`,
-        });
-      }
+			if (!level || !THINKING_LEVELS.includes(level)) {
+				return reply.code(400).send({
+					error: "validation",
+					message: `Invalid thinking level. Must be one of: ${THINKING_LEVELS.join(", ")}`,
+				});
+			}
 
-      const pi = getPiRef();
-      if (!pi) {
-        return reply.code(503).send({
-          error: "unavailable",
-          message: "Pi agent not connected",
-        });
-      }
+			const pi = getPiRef();
+			if (!pi) {
+				return reply.code(503).send({
+					error: "unavailable",
+					message: "Pi agent not connected",
+				});
+			}
 
-      try {
-        pi.setThinkingLevel(level);
-        return { success: true, level };
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Failed to set thinking level";
-        return reply.code(500).send({ error: "internal", message });
-      }
-    }
-  );
+			try {
+				pi.setThinkingLevel(level);
+				return { success: true, level };
+			} catch (err: unknown) {
+				const message =
+					err instanceof Error ? err.message : "Failed to set thinking level";
+				return reply.code(500).send({ error: "internal", message });
+			}
+		},
+	);
 
-  app.post<{ Body: { modelId: string; provider?: string } }>(
-    "/api/config/model",
-    async (req, reply) => {
-      const { modelId, provider } = req.body;
+	app.post<{ Body: { modelId: string; provider?: string } }>(
+		"/api/config/model",
+		async (req, reply) => {
+			const { modelId, provider } = req.body;
 
-      if (!modelId) {
-        return reply.code(400).send({
-          error: "validation",
-          message: "modelId is required",
-        });
-      }
+			if (!modelId) {
+				return reply.code(400).send({
+					error: "validation",
+					message: "modelId is required",
+				});
+			}
 
-      const pi = getPiRef();
-      if (!pi) {
-        return reply.code(503).send({
-          error: "unavailable",
-          message: "Pi agent not connected",
-        });
-      }
+			const pi = getPiRef();
+			if (!pi) {
+				return reply.code(503).send({
+					error: "unavailable",
+					message: "Pi agent not connected",
+				});
+			}
 
-      try {
-        const model = await findAvailablePiModel(modelId, provider);
+			try {
+				const model = await findAvailablePiModel(modelId, provider);
 
-        if (!model) {
-          return reply.code(404).send({
-            error: "not_found",
-            message: `Model "${modelId}" not found in available models`,
-          });
-        }
+				if (!model) {
+					return reply.code(404).send({
+						error: "not_found",
+						message: `Model "${modelId}" not found in available models`,
+					});
+				}
 
-        const success = await pi.setModel(model);
-        if (!success) {
-          return reply.code(400).send({
-            error: "no_api_key",
-            message: `No API key configured for model "${modelId}"`,
-          });
-        }
+				const success = await pi.setModel(model);
+				if (!success) {
+					return reply.code(400).send({
+						error: "no_api_key",
+						message: `No API key configured for model "${modelId}"`,
+					});
+				}
 
-        return { success: true, model: { id: model.id, name: model.name, provider: model.provider } };
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Failed to set model";
-        return reply.code(500).send({ error: "internal", message });
-      }
-    }
-  );
+				return {
+					success: true,
+					model: { id: model.id, name: model.name, provider: model.provider },
+				};
+			} catch (err: unknown) {
+				const message =
+					err instanceof Error ? err.message : "Failed to set model";
+				return reply.code(500).send({ error: "internal", message });
+			}
+		},
+	);
 }

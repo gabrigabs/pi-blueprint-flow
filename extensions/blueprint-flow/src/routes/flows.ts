@@ -1,20 +1,15 @@
 import type { FastifyInstance } from "fastify";
 import { nanoid } from "nanoid";
-import { getDb, getProjectWorkflow, parseWorkflowSteps } from "../db.js";
+import { getDb, getWorkspaceWorkflow, parseWorkflowSteps } from "../db.js";
 import { bus } from "../events.js";
-import type { CreateFeatureInput, UpdateFeatureInput } from "../types.js";
-import {
-	buildRunSettings,
-	FEATURE_TYPES,
-	PRIORITY_LEVELS,
-	RISK_LEVELS,
-} from "../types.js";
+import type { CreateFlowInput, UpdateFlowInput } from "../types.js";
+import { buildRunSettings, PRIORITY_LEVELS, RISK_LEVELS } from "../types.js";
 
-export function registerFeatureRoutes(app: FastifyInstance): void {
-	app.post<{ Params: { projectId: string }; Body: CreateFeatureInput }>(
-		"/api/projects/:projectId/features",
+export function registerFlowRoutes(app: FastifyInstance): void {
+	app.post<{ Params: { workspaceId: string }; Body: CreateFlowInput }>(
+		"/api/workspaces/:workspaceId/flows",
 		async (req, reply) => {
-			const { projectId } = req.params;
+			const { workspaceId } = req.params;
 			const {
 				title,
 				description,
@@ -28,13 +23,6 @@ export function registerFeatureRoutes(app: FastifyInstance): void {
 				return reply
 					.code(400)
 					.send({ error: "validation", message: "Title is required" });
-			}
-
-			if (type && !FEATURE_TYPES.includes(type)) {
-				return reply.code(400).send({
-					error: "validation",
-					message: `Invalid type. Must be one of: ${FEATURE_TYPES.join(", ")}`,
-				});
 			}
 
 			if (riskLevel && !RISK_LEVELS.includes(riskLevel)) {
@@ -53,28 +41,27 @@ export function registerFeatureRoutes(app: FastifyInstance): void {
 
 			const db = getDb();
 
-			const project = db
-				.prepare("SELECT id FROM projects WHERE id = ?")
-				.get(projectId);
-			if (!project) {
+			const workspace = db
+				.prepare("SELECT id FROM workspaces WHERE id = ?")
+				.get(workspaceId);
+			if (!workspace) {
 				return reply
 					.code(404)
-					.send({ error: "not_found", message: "Project not found" });
+					.send({ error: "not_found", message: "Workspace not found" });
 			}
 
-			const featureId = nanoid(12);
+			const flowId = nanoid(12);
 
-			// Get the project's workflow to determine steps
-			const workflow = getProjectWorkflow(projectId);
+			const workflow = getWorkspaceWorkflow(workspaceId);
 			const workflowSteps = parseWorkflowSteps(workflow);
 			const firstStepName = workflowSteps[0]?.name ?? "intake";
 
 			db.prepare(
-				`INSERT INTO features (id, project_id, title, description, type, risk_level, priority, current_step, status, workflow_id)
+				`INSERT INTO flows (id, workspace_id, title, description, type, risk_level, priority, current_step, status, workflow_id)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'in_progress', ?)`,
 			).run(
-				featureId,
-				projectId,
+				flowId,
+				workspaceId,
 				title.trim(),
 				description?.trim() ?? null,
 				type ?? "feature",
@@ -85,7 +72,7 @@ export function registerFeatureRoutes(app: FastifyInstance): void {
 			);
 
 			const insertStep = db.prepare(
-				"INSERT INTO steps (id, feature_id, name, status, started_at) VALUES (?, ?, ?, ?, ?)",
+				"INSERT INTO steps (id, flow_id, name, status, started_at) VALUES (?, ?, ?, ?, ?)",
 			);
 
 			const initSteps = db.transaction(() => {
@@ -94,7 +81,7 @@ export function registerFeatureRoutes(app: FastifyInstance): void {
 					const isFirst = i === 0;
 					insertStep.run(
 						nanoid(12),
-						featureId,
+						flowId,
 						step.name,
 						isFirst ? "current" : "pending",
 						isFirst
@@ -110,13 +97,13 @@ export function registerFeatureRoutes(app: FastifyInstance): void {
 				const settingsId = nanoid(12);
 				db.prepare(
 					`INSERT INTO agent_run_settings
-           (id, feature_id, effort_level, execution_mode, model_id, agent_profile,
+           (id, flow_id, effort_level, execution_mode, model_id, agent_profile,
             allow_web_research, allow_repo_scan, allow_memory_search,
             max_research_results, max_interview_questions, review_strictness)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				).run(
 					settingsId,
-					featureId,
+					flowId,
 					settings.effortLevel,
 					settings.executionMode,
 					settings.modelId ?? null,
@@ -130,33 +117,29 @@ export function registerFeatureRoutes(app: FastifyInstance): void {
 				);
 			}
 
-			bus.emit("feature:created", {
-				id: featureId,
-				projectId,
+			bus.emit("flow:created", {
+				id: flowId,
+				workspaceId,
 				title: title.trim(),
 			});
 
-			const feature = db
-				.prepare("SELECT * FROM features WHERE id = ?")
-				.get(featureId);
-			return reply.code(201).send(feature);
+			const flow = db.prepare("SELECT * FROM flows WHERE id = ?").get(flowId);
+			return reply.code(201).send(flow);
 		},
 	);
 
-	app.patch<{ Params: { id: string }; Body: UpdateFeatureInput }>(
-		"/api/features/:id",
+	app.patch<{ Params: { id: string }; Body: UpdateFlowInput }>(
+		"/api/flows/:id",
 		async (req, reply) => {
 			const { id } = req.params;
 			const { title, description, type, riskLevel, priority } = req.body;
 
 			const db = getDb();
-			const existing = db
-				.prepare("SELECT * FROM features WHERE id = ?")
-				.get(id);
+			const existing = db.prepare("SELECT * FROM flows WHERE id = ?").get(id);
 			if (!existing) {
 				return reply
 					.code(404)
-					.send({ error: "not_found", message: "Feature not found" });
+					.send({ error: "not_found", message: "Flow not found" });
 			}
 
 			const updates: string[] = [];
@@ -171,11 +154,6 @@ export function registerFeatureRoutes(app: FastifyInstance): void {
 				values.push(description?.trim() ?? null);
 			}
 			if (type !== undefined) {
-				if (!FEATURE_TYPES.includes(type)) {
-					return reply
-						.code(400)
-						.send({ error: "validation", message: "Invalid type" });
-				}
 				updates.push("type = ?");
 				values.push(type);
 			}
@@ -207,44 +185,42 @@ export function registerFeatureRoutes(app: FastifyInstance): void {
 			updates.push("updated_at = datetime('now')");
 			values.push(id);
 
-			db.prepare(`UPDATE features SET ${updates.join(", ")} WHERE id = ?`).run(
+			db.prepare(`UPDATE flows SET ${updates.join(", ")} WHERE id = ?`).run(
 				...values,
 			);
-			bus.emit("feature:updated", { id, step: "", status: "" });
+			bus.emit("flow:updated", { id, step: "", status: "" });
 
-			const updated = db.prepare("SELECT * FROM features WHERE id = ?").get(id);
+			const updated = db.prepare("SELECT * FROM flows WHERE id = ?").get(id);
 			return reply.send(updated);
 		},
 	);
 
 	app.delete<{ Params: { id: string } }>(
-		"/api/features/:id",
+		"/api/flows/:id",
 		async (req, reply) => {
 			const { id } = req.params;
 			const db = getDb();
 
-			const existing = db
-				.prepare("SELECT * FROM features WHERE id = ?")
-				.get(id);
+			const existing = db.prepare("SELECT * FROM flows WHERE id = ?").get(id);
 			if (!existing) {
 				return reply
 					.code(404)
-					.send({ error: "not_found", message: "Feature not found" });
+					.send({ error: "not_found", message: "Flow not found" });
 			}
 
 			const cascade = db.transaction(() => {
 				db.prepare(
-					"DELETE FROM action_run_events WHERE action_run_id IN (SELECT id FROM action_runs WHERE feature_id = ?)",
+					"DELETE FROM action_run_events WHERE action_run_id IN (SELECT id FROM action_runs WHERE flow_id = ?)",
 				).run(id);
-				db.prepare("DELETE FROM action_runs WHERE feature_id = ?").run(id);
-				db.prepare("DELETE FROM artifacts WHERE feature_id = ?").run(id);
-				db.prepare("DELETE FROM interviews WHERE feature_id = ?").run(id);
-				db.prepare("DELETE FROM steps WHERE feature_id = ?").run(id);
-				db.prepare("DELETE FROM features WHERE id = ?").run(id);
+				db.prepare("DELETE FROM action_runs WHERE flow_id = ?").run(id);
+				db.prepare("DELETE FROM artifacts WHERE flow_id = ?").run(id);
+				db.prepare("DELETE FROM interviews WHERE flow_id = ?").run(id);
+				db.prepare("DELETE FROM steps WHERE flow_id = ?").run(id);
+				db.prepare("DELETE FROM flows WHERE id = ?").run(id);
 			});
 			cascade();
 
-			bus.emit("feature:updated", { id, step: "", status: "" });
+			bus.emit("flow:updated", { id, step: "", status: "" });
 			return reply.code(204).send();
 		},
 	);

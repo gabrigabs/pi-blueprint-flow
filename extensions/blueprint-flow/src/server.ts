@@ -9,12 +9,12 @@ import { registerActionRoutes } from "./routes/actions.js";
 import { registerArtifactRoutes } from "./routes/artifacts.js";
 import { registerConfigRoutes } from "./routes/config.js";
 import { registerDesignRoutes } from "./routes/design.js";
-import { registerFeatureRoutes } from "./routes/features.js";
+import { registerFlowRoutes } from "./routes/flows.js";
 import { registerImportRoutes } from "./routes/import.js";
 import { registerInterviewRoutes } from "./routes/interviews.js";
-import { registerProjectRoutes } from "./routes/projects.js";
 import { registerWikiRoutes } from "./routes/wiki.js";
 import { registerWorkflowRoutes } from "./routes/workflows.js";
+import { registerWorkspaceRoutes } from "./routes/workspaces.js";
 
 let server: FastifyInstance | null = null;
 const wsClients = new Set<WebSocket>();
@@ -80,18 +80,20 @@ export async function startServer(
 
 	server.get("/api/status", async () => {
 		let dbInitialized = false;
-		let projectCount = 0;
-		let featureCount = 0;
+		let workspaceCount = 0;
+		let flowCount = 0;
 		try {
 			const database = getDb();
 			dbInitialized = true;
-			projectCount = (
+			workspaceCount = (
 				database
-					.prepare("SELECT COUNT(*) as count FROM projects WHERE archived = 0")
+					.prepare(
+						"SELECT COUNT(*) as count FROM workspaces WHERE archived = 0",
+					)
 					.get() as { count: number }
 			).count;
-			featureCount = (
-				database.prepare("SELECT COUNT(*) as count FROM features").get() as {
+			flowCount = (
+				database.prepare("SELECT COUNT(*) as count FROM flows").get() as {
 					count: number;
 				}
 			).count;
@@ -105,8 +107,8 @@ export async function startServer(
 			dbPath: resolveDbPath(),
 			webDistPath,
 			webUiFound,
-			projectCount,
-			featureCount,
+			workspaceCount,
+			flowCount,
 			version: "0.1.0",
 			env: {
 				BLUEPRINT_DATA_DIR: process.env.BLUEPRINT_DATA_DIR ?? null,
@@ -135,9 +137,9 @@ export async function startServer(
 
 		try {
 			const db = getDb();
-			const projects = db
+			const workspaces = db
 				.prepare(
-					"SELECT * FROM projects WHERE archived = 0 ORDER BY updated_at DESC",
+					"SELECT * FROM workspaces WHERE archived = 0 ORDER BY updated_at DESC",
 				)
 				.all();
 
@@ -148,12 +150,12 @@ export async function startServer(
 					socket.send(
 						JSON.stringify({
 							type: "init",
-							data: { projects, bridgeStatus: bridge.getStatus() },
+							data: { workspaces, bridgeStatus: bridge.getStatus() },
 						}),
 					);
 				})
 				.catch(() => {
-					socket.send(JSON.stringify({ type: "init", data: { projects } }));
+					socket.send(JSON.stringify({ type: "init", data: { workspaces } }));
 				});
 		} catch {
 			// DB might not be ready
@@ -172,11 +174,11 @@ export async function startServer(
 	};
 
 	const broadcastedEvents = [
-		"project:created",
-		"project:updated",
-		"project:archived",
-		"feature:created",
-		"feature:updated",
+		"workspace:created",
+		"workspace:updated",
+		"workspace:archived",
+		"flow:created",
+		"flow:updated",
 		"step:advanced",
 		"step:back",
 		"step:status_changed",
@@ -204,83 +206,83 @@ export async function startServer(
 
 	// --- REST API: Read endpoints ---
 
-	server.get("/api/projects", async () => {
+	server.get("/api/workspaces", async () => {
 		const db = getDb();
 		return db
 			.prepare(
-				`SELECT p.*, COUNT(f.id) as feature_count
-         FROM projects p
-         LEFT JOIN features f ON f.project_id = p.id
-         WHERE p.archived = 0
-         GROUP BY p.id
-         ORDER BY p.updated_at DESC`,
+				`SELECT w.*, COUNT(f.id) as flow_count
+         FROM workspaces w
+         LEFT JOIN flows f ON f.workspace_id = w.id
+         WHERE w.archived = 0
+         GROUP BY w.id
+         ORDER BY w.updated_at DESC`,
 			)
 			.all();
 	});
 
 	server.get<{ Params: { id: string } }>(
-		"/api/projects/:id",
+		"/api/workspaces/:id",
 		async (req, reply) => {
 			const db = getDb();
-			const project = db
-				.prepare("SELECT * FROM projects WHERE id = ?")
+			const workspace = db
+				.prepare("SELECT * FROM workspaces WHERE id = ?")
 				.get(req.params.id);
-			if (!project) {
+			if (!workspace) {
 				return reply
 					.code(404)
-					.send({ error: "not_found", message: "Project not found" });
+					.send({ error: "not_found", message: "Workspace not found" });
 			}
-			return project;
+			return workspace;
 		},
 	);
 
-	server.get<{ Params: { projectId: string } }>(
-		"/api/projects/:projectId/features",
+	server.get<{ Params: { workspaceId: string } }>(
+		"/api/workspaces/:workspaceId/flows",
 		async (req) => {
 			const db = getDb();
 			return db
 				.prepare(
-					"SELECT * FROM features WHERE project_id = ? ORDER BY updated_at DESC",
+					"SELECT * FROM flows WHERE workspace_id = ? ORDER BY updated_at DESC",
 				)
-				.all(req.params.projectId);
+				.all(req.params.workspaceId);
 		},
 	);
 
 	server.get<{ Params: { id: string } }>(
-		"/api/features/:id",
+		"/api/flows/:id",
 		async (req, reply) => {
 			const db = getDb();
-			const feature = db
-				.prepare("SELECT * FROM features WHERE id = ?")
+			const flow = db
+				.prepare("SELECT * FROM flows WHERE id = ?")
 				.get(req.params.id);
-			if (!feature) {
+			if (!flow) {
 				return reply
 					.code(404)
-					.send({ error: "not_found", message: "Feature not found" });
+					.send({ error: "not_found", message: "Flow not found" });
 			}
-			return feature;
+			return flow;
 		},
 	);
 
-	server.get<{ Params: { featureId: string } }>(
-		"/api/features/:featureId/steps",
+	server.get<{ Params: { flowId: string } }>(
+		"/api/flows/:flowId/steps",
 		async (req) => {
 			const db = getDb();
 			return db
-				.prepare("SELECT * FROM steps WHERE feature_id = ? ORDER BY rowid")
-				.all(req.params.featureId);
+				.prepare("SELECT * FROM steps WHERE flow_id = ? ORDER BY rowid")
+				.all(req.params.flowId);
 		},
 	);
 
-	server.get<{ Params: { featureId: string } }>(
-		"/api/features/:featureId/artifacts",
+	server.get<{ Params: { flowId: string } }>(
+		"/api/flows/:flowId/artifacts",
 		async (req) => {
 			const db = getDb();
 			return db
 				.prepare(
-					"SELECT id, feature_id, step_name, type, filename, created_at FROM artifacts WHERE feature_id = ? ORDER BY created_at DESC",
+					"SELECT id, flow_id, step_name, type, filename, created_at FROM artifacts WHERE flow_id = ? ORDER BY created_at DESC",
 				)
-				.all(req.params.featureId);
+				.all(req.params.flowId);
 		},
 	);
 
@@ -300,15 +302,15 @@ export async function startServer(
 		},
 	);
 
-	server.get<{ Params: { featureId: string } }>(
-		"/api/features/:featureId/interviews",
+	server.get<{ Params: { flowId: string } }>(
+		"/api/flows/:flowId/interviews",
 		async (req) => {
 			const db = getDb();
 			const rows = db
 				.prepare(
-					"SELECT * FROM interviews WHERE feature_id = ? ORDER BY created_at ASC",
+					"SELECT * FROM interviews WHERE flow_id = ? ORDER BY created_at ASC",
 				)
-				.all(req.params.featureId) as any[];
+				.all(req.params.flowId) as any[];
 
 			return rows.map((r) => ({
 				...r,
@@ -317,36 +319,36 @@ export async function startServer(
 		},
 	);
 
-	server.get<{ Params: { projectId: string } }>(
-		"/api/projects/:projectId/memories",
+	server.get<{ Params: { workspaceId: string } }>(
+		"/api/workspaces/:workspaceId/memories",
 		async (req) => {
 			const db = getDb();
 			return db
 				.prepare(
-					"SELECT * FROM memories WHERE project_id = ? ORDER BY created_at DESC LIMIT 50",
+					"SELECT * FROM memories WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 50",
 				)
-				.all(req.params.projectId);
+				.all(req.params.workspaceId);
 		},
 	);
 
-	server.get<{ Params: { featureId: string } }>(
-		"/api/features/:featureId/settings",
+	server.get<{ Params: { flowId: string } }>(
+		"/api/flows/:flowId/settings",
 		async (req) => {
 			const db = getDb();
 			return (
 				db
 					.prepare(
-						"SELECT * FROM agent_run_settings WHERE feature_id = ? ORDER BY created_at DESC LIMIT 1",
+						"SELECT * FROM agent_run_settings WHERE flow_id = ? ORDER BY created_at DESC LIMIT 1",
 					)
-					.get(req.params.featureId) ?? null
+					.get(req.params.flowId) ?? null
 			);
 		},
 	);
 
 	// --- REST API: Write endpoints ---
 
-	registerProjectRoutes(server);
-	registerFeatureRoutes(server);
+	registerWorkspaceRoutes(server);
+	registerFlowRoutes(server);
 	registerActionRoutes(server);
 	registerActionRunRoutes(server);
 	registerArtifactRoutes(server);

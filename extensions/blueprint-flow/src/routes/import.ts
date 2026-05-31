@@ -61,12 +61,12 @@ export function registerImportRoutes(app: FastifyInstance): void {
 			});
 
 			const db = getDb();
-			let projectId: string | null = null;
+			let workspaceId: string | null = null;
 
 			if (mode === "analyze_only") {
 				db.prepare(
 					`INSERT INTO import_reports
-         (id, project_id, repo_path, mode, status, detected_stack, detected_scripts, detected_agentic_files, project_profile)
+         (id, workspace_id, repo_path, mode, status, detected_stack, detected_scripts, detected_agentic_files, project_profile)
          VALUES (?, ?, ?, ?, 'completed', ?, ?, ?, ?)`,
 				).run(
 					reportId,
@@ -86,13 +86,13 @@ export function registerImportRoutes(app: FastifyInstance): void {
 					projectProfile,
 				);
 			} else {
-				projectId = nanoid(12);
+				workspaceId = nanoid(12);
 				const stackArray = [...stack.languages, ...stack.frameworks];
 
 				db.prepare(
 					"INSERT INTO projects (id, name, description, repo_path, stack) VALUES (?, ?, ?, ?, ?)",
 				).run(
-					projectId,
+					workspaceId,
 					projectName,
 					`Imported from ${resolvedPath}`,
 					resolvedPath,
@@ -101,11 +101,11 @@ export function registerImportRoutes(app: FastifyInstance): void {
 
 				db.prepare(
 					`INSERT INTO import_reports
-         (id, project_id, repo_path, mode, status, detected_stack, detected_scripts, detected_agentic_files, project_profile)
+         (id, workspace_id, repo_path, mode, status, detected_stack, detected_scripts, detected_agentic_files, project_profile)
          VALUES (?, ?, ?, ?, 'completed', ?, ?, ?, ?)`,
 				).run(
 					reportId,
-					projectId,
+					workspaceId,
 					resolvedPath,
 					mode,
 					JSON.stringify(stack),
@@ -126,7 +126,7 @@ export function registerImportRoutes(app: FastifyInstance): void {
 					const settingsId = nanoid(12);
 					db.prepare(
 						`INSERT INTO agent_run_settings
-           (id, feature_id, effort_level, execution_mode, model_id, agent_profile,
+           (id, flow_id, effort_level, execution_mode, model_id, agent_profile,
             allow_web_research, allow_repo_scan, allow_memory_search,
             max_research_results, max_interview_questions, review_strictness)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -146,22 +146,22 @@ export function registerImportRoutes(app: FastifyInstance): void {
 					);
 				}
 
-				bus.emit("project:created", { id: projectId, name: projectName });
+				bus.emit("workspace:created", { id: workspaceId, name: projectName });
 			}
 
-			bus.emit("import:completed", { id: reportId, projectId });
+			bus.emit("import:completed", { id: reportId, workspaceId });
 
 			// Trigger Pi agent analysis for migrate_with_review mode
 			let actionRunId: string | null = null;
 			let actionStatus: string | null = null;
 
-			if (mode === "migrate_with_review" && projectId) {
+			if (mode === "migrate_with_review" && workspaceId) {
 				const bridge = getPiBridge();
 				const settings = agentRunSettings
 					? buildRunSettings(agentRunSettings)
 					: buildRunSettings({});
 				const result = bridge.enqueue({
-					projectId,
+					workspaceId,
 					actionType: "import_project_agent_analysis",
 					modelId: settings.modelId,
 					effortLevel: settings.effortLevel,
@@ -184,7 +184,7 @@ export function registerImportRoutes(app: FastifyInstance): void {
 
 			return reply.code(201).send({
 				reportId,
-				projectId,
+				workspaceId,
 				projectName,
 				mode,
 				repoPath: resolvedPath,

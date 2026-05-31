@@ -1,42 +1,42 @@
 type EventHandler<T = unknown> = (data: T) => void;
 
 export interface BlueprintEvents {
-	"project:created": { id: string; name: string };
-	"project:updated": { id: string };
-	"project:archived": { id: string };
-	"feature:created": { id: string; projectId: string; title: string };
-	"feature:updated": { id: string; step: string; status: string };
-	"step:advanced": { featureId: string; from: string; to: string };
-	"step:back": { featureId: string; from: string; to: string };
+	"workspace:created": { id: string; name: string };
+	"workspace:updated": { id: string };
+	"workspace:archived": { id: string };
+	"flow:created": { id: string; workspaceId: string; title: string };
+	"flow:updated": { id: string; step: string; status: string };
+	"step:advanced": { flowId: string; from: string; to: string };
+	"step:back": { flowId: string; from: string; to: string };
 	"step:status_changed": {
-		featureId: string;
+		flowId: string;
 		stepName: string;
 		status: string;
 	};
 	"artifact:saved": {
 		id: string;
-		featureId: string;
+		flowId: string;
 		stepName?: string | null;
 		type: string;
 		filename?: string;
 	};
 	"artifact:updated": {
 		id: string;
-		featureId: string;
+		flowId: string;
 		type?: string;
 	};
-	"memory:saved": { id: string; projectId: string; category: string };
+	"memory:saved": { id: string; workspaceId: string; category: string };
 	"interview:asked": {
 		id: string;
-		featureId: string;
+		flowId: string;
 		question: string;
 		responseType?: string;
 		options?: string[];
 	};
 	"interview:answered": { id: string; answer: string };
 	"import:started": { id: string; repoPath: string };
-	"import:completed": { id: string; projectId: string | null };
-	"settings:saved": { id: string; featureId: string | null };
+	"import:completed": { id: string; workspaceId: string | null };
+	"settings:saved": { id: string; flowId: string | null };
 	"server:started": { port: number };
 	"server:stopped": {};
 	// Action Run events
@@ -44,8 +44,8 @@ export interface BlueprintEvents {
 		id: string;
 		actionType: string;
 		status: string;
-		featureId?: string;
-		projectId?: string;
+		flowId?: string;
+		workspaceId?: string;
 	};
 	"action:updated": { id: string; status: string; error?: string };
 	"action:event": {

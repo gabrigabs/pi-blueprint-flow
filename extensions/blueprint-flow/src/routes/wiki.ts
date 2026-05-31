@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { getDb } from "../db.js";
 import type { MemoryFact, WikiPage } from "../db.js";
+import { getDb } from "../db.js";
 
 export function registerWikiRoutes(app: FastifyInstance): void {
 	// List wiki pages for a project
@@ -22,9 +22,7 @@ export function registerWikiRoutes(app: FastifyInstance): void {
 		async (req, reply) => {
 			const db = getDb();
 			const page = db
-				.prepare(
-					"SELECT * FROM wiki_pages WHERE project_id = ? AND slug = ?",
-				)
+				.prepare("SELECT * FROM wiki_pages WHERE project_id = ? AND slug = ?")
 				.get(req.params.projectId, req.params.slug) as WikiPage | undefined;
 
 			if (!page) {

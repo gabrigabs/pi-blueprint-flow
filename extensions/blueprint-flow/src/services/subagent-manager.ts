@@ -1,11 +1,11 @@
 import { nanoid } from "nanoid";
-import { getPiRef } from "./pi-config-reader.js";
 import { bus } from "../events.js";
+import { getPiRef } from "./pi-config-reader.js";
 
 export interface SubagentConfig {
 	id: string;
-	featureId: string;
-	projectId: string;
+	flowId: string;
+	workspaceId: string;
 	stepName: string;
 	actionType: string;
 	profile: string;
@@ -29,7 +29,9 @@ export interface SubagentArtifact {
 	content: string;
 }
 
-export async function spawnSubagent(config: SubagentConfig): Promise<SubagentResult> {
+export async function spawnSubagent(
+	config: SubagentConfig,
+): Promise<SubagentResult> {
 	const pi = getPiRef();
 	if (!pi) {
 		return {
@@ -50,10 +52,12 @@ export async function spawnSubagent(config: SubagentConfig): Promise<SubagentRes
 
 	try {
 		const args = [
-			"--mode", "rpc",
+			"--mode",
+			"rpc",
 			"--no-session",
 			"--no-extensions",
-			"--extension", config.profile,
+			"--extension",
+			config.profile,
 		];
 
 		if (config.modelId) {
@@ -170,11 +174,15 @@ export function buildSubagentPrompt(context: {
 	sections.push(`## Project Stack\n${context.projectStack}`);
 
 	if (context.interviewAnswers.length > 0) {
-		sections.push(`## Interview Answers\n${context.interviewAnswers.join("\n")}`);
+		sections.push(
+			`## Interview Answers\n${context.interviewAnswers.join("\n")}`,
+		);
 	}
 
 	if (context.previousArtifacts.length > 0) {
-		sections.push(`## Previous Artifacts\n${context.previousArtifacts.join("\n---\n")}`);
+		sections.push(
+			`## Previous Artifacts\n${context.previousArtifacts.join("\n---\n")}`,
+		);
 	}
 
 	if (context.memories.length > 0) {

@@ -56,13 +56,16 @@ export function resolveWikiDir(): string {
 }
 
 /**
- * Returns the path to the projects directory.
+ * Returns the path to the workspaces directory.
  */
-export function resolveProjectsDir(): string {
-	const dir = join(resolveDataDir(), "projects");
+export function resolveWorkspacesDir(): string {
+	const dir = join(resolveDataDir(), "workspaces");
 	mkdirSync(dir, { recursive: true });
 	return dir;
 }
+
+/** @deprecated Use resolveWorkspacesDir */
+export const resolveProjectsDir = resolveWorkspacesDir;
 
 /**
  * Returns the path to the logs directory.
@@ -138,7 +141,10 @@ export type StepStatus =
 	| "done"
 	| "rejected";
 
-export type FeatureStatus = "pending" | "in_progress" | "done" | "archived";
+export type FlowStatus = "pending" | "in_progress" | "done" | "archived";
+
+/** @deprecated Use FlowStatus */
+export type FeatureStatus = FlowStatus;
 
 // --- Workflow Templates ---
 

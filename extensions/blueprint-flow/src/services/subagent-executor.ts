@@ -1,23 +1,27 @@
-import { nanoid } from "nanoid";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getDb } from "../db.js";
+import { nanoid } from "nanoid";
 import type { ActionRunRow } from "../db.js";
+import { getDb } from "../db.js";
 import { bus } from "../events.js";
-import {
-	buildSubagentPrompt,
-	spawnSubagent,
-	type SubagentConfig,
-} from "./subagent-manager.js";
 import {
 	notifyAgentEnd,
 	notifyAgentError,
 	notifyStatusChange,
 } from "../pi-bridge.js";
+import {
+	buildSubagentPrompt,
+	type SubagentConfig,
+	spawnSubagent,
+} from "./subagent-manager.js";
 
 const SUBAGENT_TIMEOUT_MS = 5 * 60 * 1000;
 
-const EXTENSION_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const EXTENSION_ROOT = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"..",
+	"..",
+);
 
 const STEP_TO_PROFILE: Record<string, string> = {
 	research: join(EXTENSION_ROOT, "skills", "agents", "research.md"),
@@ -29,12 +33,19 @@ const STEP_TO_PROFILE: Record<string, string> = {
 	memory_update: join(EXTENSION_ROOT, "skills", "agents", "memory.md"),
 };
 
-export async function executeViaSubagent(actionRun: ActionRunRow): Promise<void> {
+export async function executeViaSubagent(
+	actionRun: ActionRunRow,
+): Promise<void> {
 	const db = getDb();
-	const profile = STEP_TO_PROFILE[actionRun.step_name ?? ""] ?? STEP_TO_PROFILE[actionRun.action_type];
+	const profile =
+		STEP_TO_PROFILE[actionRun.step_name ?? ""] ??
+		STEP_TO_PROFILE[actionRun.action_type];
 
 	if (!profile) {
-		notifyAgentError(actionRun.id, `No agent profile for step "${actionRun.step_name}"`);
+		notifyAgentError(
+			actionRun.id,
+			`No agent profile for step "${actionRun.step_name}"`,
+		);
 		return;
 	}
 
@@ -45,8 +56,8 @@ export async function executeViaSubagent(actionRun: ActionRunRow): Promise<void>
 
 	const config: SubagentConfig = {
 		id: actionRun.id,
-		featureId: actionRun.feature_id ?? "",
-		projectId: actionRun.project_id ?? "",
+		flowId: actionRun.flow_id ?? "",
+		workspaceId: actionRun.workspace_id ?? "",
 		stepName: actionRun.step_name ?? "",
 		actionType: actionRun.action_type,
 		profile,
@@ -59,7 +70,7 @@ export async function executeViaSubagent(actionRun: ActionRunRow): Promise<void>
 	const result = await spawnSubagent(config);
 
 	if (result.success) {
-		if (!actionRun.feature_id || !actionRun.step_name) {
+		if (!actionRun.flow_id || !actionRun.step_name) {
 			notifyAgentError(
 				actionRun.id,
 				"Sub-agent returned artifacts for an action without a feature/step context",
@@ -70,10 +81,10 @@ export async function executeViaSubagent(actionRun: ActionRunRow): Promise<void>
 		for (const artifact of result.artifacts) {
 			const artifactId = nanoid(12);
 			db.prepare(
-				"INSERT INTO artifacts (id, feature_id, step_name, type, filename, content) VALUES (?, ?, ?, ?, ?, ?)",
+				"INSERT INTO artifacts (id, flow_id, step_name, type, filename, content) VALUES (?, ?, ?, ?, ?, ?)",
 			).run(
 				artifactId,
-				actionRun.feature_id,
+				actionRun.flow_id,
 				actionRun.step_name,
 				artifact.type,
 				artifact.filename,
@@ -82,7 +93,7 @@ export async function executeViaSubagent(actionRun: ActionRunRow): Promise<void>
 
 			bus.emit("artifact:saved", {
 				id: artifactId,
-				featureId: actionRun.feature_id,
+				flowId: actionRun.flow_id,
 				stepName: actionRun.step_name,
 				type: artifact.type,
 				filename: artifact.filename,
@@ -107,29 +118,35 @@ function gatherSubagentContext(actionRun: ActionRunRow) {
 
 	const feature = db
 		.prepare("SELECT * FROM features WHERE id = ?")
-		.get(actionRun.feature_id) as { title: string; description: string | null } | undefined;
+		.get(actionRun.flow_id) as
+		| { title: string; description: string | null }
+		| undefined;
 
 	const project = db
 		.prepare("SELECT * FROM projects WHERE id = ?")
-		.get(actionRun.project_id) as { stack: string } | undefined;
+		.get(actionRun.workspace_id) as { stack: string } | undefined;
 
 	const previousArtifacts = db
 		.prepare(
-			"SELECT type, filename, content FROM artifacts WHERE feature_id = ? ORDER BY created_at ASC",
+			"SELECT type, filename, content FROM artifacts WHERE flow_id = ? ORDER BY created_at ASC",
 		)
-		.all(actionRun.feature_id) as { type: string; filename: string; content: string }[];
+		.all(actionRun.flow_id) as {
+		type: string;
+		filename: string;
+		content: string;
+	}[];
 
 	const interviews = db
 		.prepare(
-			"SELECT question, answer FROM interviews WHERE feature_id = ? AND answer IS NOT NULL ORDER BY created_at ASC",
+			"SELECT question, answer FROM interviews WHERE flow_id = ? AND answer IS NOT NULL ORDER BY created_at ASC",
 		)
-		.all(actionRun.feature_id) as { question: string; answer: string }[];
+		.all(actionRun.flow_id) as { question: string; answer: string }[];
 
 	const memories = db
 		.prepare(
-			"SELECT content FROM memories WHERE project_id = ? ORDER BY created_at DESC LIMIT 20",
+			"SELECT content FROM memories WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 20",
 		)
-		.all(actionRun.project_id) as { content: string }[];
+		.all(actionRun.workspace_id) as { content: string }[];
 
 	return {
 		featureTitle: feature?.title ?? "Unknown",

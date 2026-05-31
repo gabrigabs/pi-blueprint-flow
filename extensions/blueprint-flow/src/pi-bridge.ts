@@ -90,8 +90,8 @@ function enqueue(input: RunBlueprintActionInput): {
 		// Create the run in DB with terminal not_connected status
 		createActionRun({
 			id,
-			projectId: input.projectId,
-			featureId: input.featureId,
+			workspaceId: input.workspaceId,
+			flowId: input.flowId,
 			actionType: input.actionType,
 			stepName: input.stepName,
 			modelId: input.modelId,
@@ -105,8 +105,8 @@ function enqueue(input: RunBlueprintActionInput): {
 			id,
 			actionType: input.actionType,
 			status: "not_connected",
-			featureId: input.featureId,
-			projectId: input.projectId,
+			flowId: input.flowId,
+			workspaceId: input.workspaceId,
 		});
 		return { actionRunId: id, status: "not_connected" };
 	}
@@ -114,8 +114,8 @@ function enqueue(input: RunBlueprintActionInput): {
 	// Create the run in DB
 	createActionRun({
 		id,
-		projectId: input.projectId,
-		featureId: input.featureId,
+		workspaceId: input.workspaceId,
+		flowId: input.flowId,
 		actionType: input.actionType,
 		stepName: input.stepName,
 		modelId: input.modelId,
@@ -129,8 +129,8 @@ function enqueue(input: RunBlueprintActionInput): {
 		id,
 		actionType: input.actionType,
 		status: "created",
-		featureId: input.featureId,
-		projectId: input.projectId,
+		flowId: input.flowId,
+		workspaceId: input.workspaceId,
 	});
 
 	// Queue it
@@ -277,15 +277,15 @@ async function attemptInjection(runId: string): Promise<void> {
 	try {
 		const targetModelId =
 			actionRun.model_id ??
-			(actionRun.project_id && actionRun.step_name
-				? getWorkflowStepConfig(actionRun.project_id, actionRun.step_name)
+			(actionRun.workspace_id && actionRun.step_name
+				? getWorkflowStepConfig(actionRun.workspace_id, actionRun.step_name)
 						?.modelId
 				: undefined) ??
 			null;
 		const targetThinking =
 			actionRun.thinking_level ??
-			(actionRun.project_id && actionRun.step_name
-				? getWorkflowStepConfig(actionRun.project_id, actionRun.step_name)
+			(actionRun.workspace_id && actionRun.step_name
+				? getWorkflowStepConfig(actionRun.workspace_id, actionRun.step_name)
 						?.thinkingLevel
 				: undefined) ??
 			null;
@@ -420,14 +420,14 @@ export function notifyAgentEnd(actionRunId: string): void {
 	const run = db
 		.prepare("SELECT * FROM action_runs WHERE id = ?")
 		.get(actionRunId) as
-		| { feature_id: string | null; step_name: string | null }
+		| { flow_id: string | null; step_name: string | null }
 		| undefined;
-	if (run?.feature_id && run?.step_name) {
+	if (run?.flow_id && run?.step_name) {
 		db.prepare(
-			"UPDATE steps SET status = 'current' WHERE feature_id = ? AND name = ? AND status = 'running'",
-		).run(run.feature_id, run.step_name);
+			"UPDATE steps SET status = 'current' WHERE flow_id = ? AND name = ? AND status = 'running'",
+		).run(run.flow_id, run.step_name);
 		bus.emit("step:status_changed", {
-			featureId: run.feature_id,
+			flowId: run.flow_id,
 			stepName: run.step_name,
 			status: "current",
 		});
@@ -449,14 +449,14 @@ export function notifyAgentError(actionRunId: string, error: string): void {
 	const run = db
 		.prepare("SELECT * FROM action_runs WHERE id = ?")
 		.get(actionRunId) as
-		| { feature_id: string | null; step_name: string | null }
+		| { flow_id: string | null; step_name: string | null }
 		| undefined;
-	if (run?.feature_id && run?.step_name) {
+	if (run?.flow_id && run?.step_name) {
 		db.prepare(
-			"UPDATE steps SET status = 'current' WHERE feature_id = ? AND name = ? AND status = 'running'",
-		).run(run.feature_id, run.step_name);
+			"UPDATE steps SET status = 'current' WHERE flow_id = ? AND name = ? AND status = 'running'",
+		).run(run.flow_id, run.step_name);
 		bus.emit("step:status_changed", {
-			featureId: run.feature_id,
+			flowId: run.flow_id,
 			stepName: run.step_name,
 			status: "current",
 		});

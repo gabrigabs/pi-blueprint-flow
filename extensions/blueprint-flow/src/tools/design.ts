@@ -9,19 +9,32 @@ export const designMockupTool = {
 	description:
 		"Generate and save an HTML/CSS mockup variant for A/B testing in the Blueprint UI.",
 	parameters: Type.Object({
-		feature_id: Type.String({ description: "Feature ID" }),
-		variant_label: Type.String({ description: "Label for this variant (e.g. 'A - Conservative', 'B - Bold')" }),
-		html_content: Type.String({ description: "Full HTML content for the mockup" }),
+		flow_id: Type.String({ description: "Feature ID" }),
+		variant_label: Type.String({
+			description:
+				"Label for this variant (e.g. 'A - Conservative', 'B - Bold')",
+		}),
+		html_content: Type.String({
+			description: "Full HTML content for the mockup",
+		}),
 		css_content: Type.String({ description: "CSS styles for the mockup" }),
-		js_content: Type.Optional(Type.String({ description: "Optional JavaScript for interactivity" })),
+		js_content: Type.Optional(
+			Type.String({ description: "Optional JavaScript for interactivity" }),
+		),
 		design_tokens: Type.Optional(
-			Type.Object({}, { additionalProperties: true, description: "Design tokens used in this variant" }),
+			Type.Object(
+				{},
+				{
+					additionalProperties: true,
+					description: "Design tokens used in this variant",
+				},
+			),
 		),
 	}),
 	execute: async (
 		_toolCallId: string,
 		params: {
-			feature_id: string;
+			flow_id: string;
 			variant_label: string;
 			html_content: string;
 			css_content: string;
@@ -33,11 +46,11 @@ export const designMockupTool = {
 		const variantId = nanoid(12);
 
 		db.prepare(
-			`INSERT INTO design_variants (id, feature_id, label, html_content, css_content, js_content, tokens_json)
+			`INSERT INTO design_variants (id, flow_id, label, html_content, css_content, js_content, tokens_json)
 			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		).run(
 			variantId,
-			params.feature_id,
+			params.flow_id,
 			params.variant_label,
 			params.html_content,
 			params.css_content,
@@ -45,29 +58,32 @@ export const designMockupTool = {
 			params.design_tokens ? JSON.stringify(params.design_tokens) : null,
 		);
 
-			const slug = params.variant_label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-			const artifactId = nanoid(12);
-			db.prepare(
-				`INSERT INTO artifacts (id, feature_id, step_name, type, filename, content)
+		const slug = params.variant_label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+		const artifactId = nanoid(12);
+		db.prepare(
+			`INSERT INTO artifacts (id, flow_id, step_name, type, filename, content)
 				 VALUES (?, ?, 'design', 'mockup', ?, ?)`,
-			).run(
-				artifactId,
-				params.feature_id,
-				`design-${slug}.html`,
-				params.html_content,
-			);
+		).run(
+			artifactId,
+			params.flow_id,
+			`design-${slug}.html`,
+			params.html_content,
+		);
 
-			bus.emit("artifact:saved", {
-				id: artifactId,
-				featureId: params.feature_id,
-				stepName: "design",
-				type: "mockup",
-				filename: `design-${slug}.html`,
-			});
+		bus.emit("artifact:saved", {
+			id: artifactId,
+			flowId: params.flow_id,
+			stepName: "design",
+			type: "mockup",
+			filename: `design-${slug}.html`,
+		});
 
 		return {
 			content: [
-				{ type: "text" as const, text: `Design variant "${params.variant_label}" saved (id: ${variantId}).` },
+				{
+					type: "text" as const,
+					text: `Design variant "${params.variant_label}" saved (id: ${variantId}).`,
+				},
 			],
 			details: { variantId, label: params.variant_label },
 		};
@@ -77,17 +93,21 @@ export const designMockupTool = {
 export const designSaveTokensTool = {
 	name: "blueprint_design_save_tokens",
 	label: "Blueprint: Save Design Tokens",
-	description: "Save extracted design tokens (colors, spacing, typography) for a project or feature.",
+	description:
+		"Save extracted design tokens (colors, spacing, typography) for a project or feature.",
 	parameters: Type.Object({
-		project_id: Type.Optional(Type.String({ description: "Project ID" })),
-		feature_id: Type.Optional(Type.String({ description: "Feature ID" })),
-		tokens: Type.Object({}, { additionalProperties: true, description: "Design tokens object" }),
+		workspace_id: Type.Optional(Type.String({ description: "Project ID" })),
+		flow_id: Type.Optional(Type.String({ description: "Feature ID" })),
+		tokens: Type.Object(
+			{},
+			{ additionalProperties: true, description: "Design tokens object" },
+		),
 	}),
 	execute: async (
 		_toolCallId: string,
 		params: {
-			project_id?: string;
-			feature_id?: string;
+			workspace_id?: string;
+			flow_id?: string;
 			tokens: Record<string, unknown>;
 		},
 	) => {
@@ -95,9 +115,14 @@ export const designSaveTokensTool = {
 		const id = nanoid(12);
 
 		db.prepare(
-			`INSERT INTO design_tokens (id, project_id, feature_id, tokens_json, source_step)
+			`INSERT INTO design_tokens (id, workspace_id, flow_id, tokens_json, source_step)
 			 VALUES (?, ?, ?, ?, 'design')`,
-		).run(id, params.project_id ?? null, params.feature_id ?? null, JSON.stringify(params.tokens));
+		).run(
+			id,
+			params.workspace_id ?? null,
+			params.flow_id ?? null,
+			JSON.stringify(params.tokens),
+		);
 
 		return {
 			content: [{ type: "text" as const, text: "Design tokens saved." }],

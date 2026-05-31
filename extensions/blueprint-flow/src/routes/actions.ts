@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { nanoid } from "nanoid";
 import type { FlowStep, StepStatus } from "../config.js";
 import { FLOW_STEPS, STEP_LABELS } from "../config.js";
-import type { Feature, Step } from "../db.js";
+import type { Flow, Step } from "../db.js";
 import {
 	getDb,
 	getProjectWorkflow,
@@ -21,17 +21,17 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			const { id } = req.params;
 			const db = getDb();
 
-			const feature = db
-				.prepare("SELECT * FROM features WHERE id = ?")
-				.get(id) as Feature | undefined;
+			const feature = db.prepare("SELECT * FROM flows WHERE id = ?").get(id) as
+				| Flow
+				| undefined;
 			if (!feature) {
 				return reply
 					.code(404)
-					.send({ error: "not_found", message: "Feature not found" });
+					.send({ error: "not_found", message: "Flow not found" });
 			}
 
 			// Resolve workflow steps for this feature
-			const workflowSteps = getFeatureWorkflowStepNames(feature);
+			const workflowSteps = getFlowWorkflowStepNames(feature);
 			const currentIdx = workflowSteps.indexOf(feature.current_step);
 			if (currentIdx === -1) {
 				return reply
@@ -40,7 +40,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			}
 
 			db.prepare(
-				"UPDATE steps SET status = 'done', completed_at = datetime('now') WHERE feature_id = ? AND name = ?",
+				"UPDATE steps SET status = 'done', completed_at = datetime('now') WHERE flow_id = ? AND name = ?",
 			).run(id, feature.current_step);
 
 			if (currentIdx === workflowSteps.length - 1) {
@@ -48,14 +48,12 @@ export function registerActionRoutes(app: FastifyInstance): void {
 					"UPDATE features SET status = 'done', updated_at = datetime('now') WHERE id = ?",
 				).run(id);
 
-				bus.emit("feature:updated", {
+				bus.emit("flow:updated", {
 					id,
 					step: feature.current_step,
 					status: "done",
 				});
-				const updated = db
-					.prepare("SELECT * FROM features WHERE id = ?")
-					.get(id);
+				const updated = db.prepare("SELECT * FROM flows WHERE id = ?").get(id);
 				return reply.send({ feature: updated, completed: true });
 			}
 
@@ -66,18 +64,18 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			).run(nextStep, id);
 
 			db.prepare(
-				"UPDATE steps SET status = 'current', started_at = datetime('now') WHERE feature_id = ? AND name = ?",
+				"UPDATE steps SET status = 'current', started_at = datetime('now') WHERE flow_id = ? AND name = ?",
 			).run(id, nextStep);
 
 			bus.emit("step:advanced", {
-				featureId: id,
+				flowId: id,
 				from: feature.current_step,
 				to: nextStep,
 			});
 
-			const updated = db.prepare("SELECT * FROM features WHERE id = ?").get(id);
+			const updated = db.prepare("SELECT * FROM flows WHERE id = ?").get(id);
 			const steps = db
-				.prepare("SELECT * FROM steps WHERE feature_id = ? ORDER BY rowid")
+				.prepare("SELECT * FROM steps WHERE flow_id = ? ORDER BY rowid")
 				.all(id);
 			return reply.send({ feature: updated, steps, completed: false });
 		},
@@ -89,16 +87,16 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			const { id } = req.params;
 			const db = getDb();
 
-			const feature = db
-				.prepare("SELECT * FROM features WHERE id = ?")
-				.get(id) as Feature | undefined;
+			const feature = db.prepare("SELECT * FROM flows WHERE id = ?").get(id) as
+				| Flow
+				| undefined;
 			if (!feature) {
 				return reply
 					.code(404)
-					.send({ error: "not_found", message: "Feature not found" });
+					.send({ error: "not_found", message: "Flow not found" });
 			}
 
-			const workflowSteps = getFeatureWorkflowStepNames(feature);
+			const workflowSteps = getFlowWorkflowStepNames(feature);
 			const currentIdx = workflowSteps.indexOf(feature.current_step);
 			if (currentIdx <= 0) {
 				return reply
@@ -109,11 +107,11 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			const prevStep = workflowSteps[currentIdx - 1];
 
 			db.prepare(
-				"UPDATE steps SET status = 'pending', started_at = NULL, completed_at = NULL WHERE feature_id = ? AND name = ?",
+				"UPDATE steps SET status = 'pending', started_at = NULL, completed_at = NULL WHERE flow_id = ? AND name = ?",
 			).run(id, feature.current_step);
 
 			db.prepare(
-				"UPDATE steps SET status = 'current', completed_at = NULL WHERE feature_id = ? AND name = ?",
+				"UPDATE steps SET status = 'current', completed_at = NULL WHERE flow_id = ? AND name = ?",
 			).run(id, prevStep);
 
 			db.prepare(
@@ -121,14 +119,14 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			).run(prevStep, id);
 
 			bus.emit("step:back", {
-				featureId: id,
+				flowId: id,
 				from: feature.current_step,
 				to: prevStep,
 			});
 
-			const updated = db.prepare("SELECT * FROM features WHERE id = ?").get(id);
+			const updated = db.prepare("SELECT * FROM flows WHERE id = ?").get(id);
 			const steps = db
-				.prepare("SELECT * FROM steps WHERE feature_id = ? ORDER BY rowid")
+				.prepare("SELECT * FROM steps WHERE flow_id = ? ORDER BY rowid")
 				.all(id);
 			return reply.send({ feature: updated, steps });
 		},
@@ -141,16 +139,16 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			const { stepName } = req.body;
 			const db = getDb();
 
-			const feature = db
-				.prepare("SELECT * FROM features WHERE id = ?")
-				.get(id) as Feature | undefined;
+			const feature = db.prepare("SELECT * FROM flows WHERE id = ?").get(id) as
+				| Flow
+				| undefined;
 			if (!feature) {
 				return reply
 					.code(404)
-					.send({ error: "not_found", message: "Feature not found" });
+					.send({ error: "not_found", message: "Flow not found" });
 			}
 
-			const workflowSteps = getFeatureWorkflowStepNames(feature);
+			const workflowSteps = getFlowWorkflowStepNames(feature);
 			const targetIdx = workflowSteps.indexOf(stepName as FlowStep);
 			if (targetIdx === -1) {
 				return reply
@@ -161,17 +159,17 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			const markDone = db.prepare(
 				`UPDATE steps
 				 SET status = 'done', completed_at = COALESCE(completed_at, datetime('now'))
-				 WHERE feature_id = ? AND name = ?`,
+				 WHERE flow_id = ? AND name = ?`,
 			);
 			const markCurrent = db.prepare(
 				`UPDATE steps
 				 SET status = 'current', started_at = COALESCE(started_at, datetime('now')), completed_at = NULL
-				 WHERE feature_id = ? AND name = ?`,
+				 WHERE flow_id = ? AND name = ?`,
 			);
 			const markPending = db.prepare(
 				`UPDATE steps
 				 SET status = 'pending', started_at = NULL, completed_at = NULL
-				 WHERE feature_id = ? AND name = ?`,
+				 WHERE flow_id = ? AND name = ?`,
 			);
 
 			for (const [idx, name] of workflowSteps.entries()) {
@@ -189,14 +187,14 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			).run(stepName, id);
 
 			bus.emit("step:status_changed", {
-				featureId: id,
+				flowId: id,
 				stepName,
 				status: "running",
 			});
 
-			const updated = db.prepare("SELECT * FROM features WHERE id = ?").get(id);
+			const updated = db.prepare("SELECT * FROM flows WHERE id = ?").get(id);
 			const steps = db
-				.prepare("SELECT * FROM steps WHERE feature_id = ? ORDER BY rowid")
+				.prepare("SELECT * FROM steps WHERE flow_id = ? ORDER BY rowid")
 				.all(id);
 			return reply.send({ feature: updated, steps });
 		},
@@ -240,7 +238,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			).run(status, id);
 
 			bus.emit("step:status_changed", {
-				featureId: step.feature_id,
+				flowId: step.flow_id,
 				stepName: step.name,
 				status,
 			});
@@ -260,13 +258,13 @@ export function registerActionRoutes(app: FastifyInstance): void {
 		const { agentRunSettings } = req.body;
 
 		const db = getDb();
-		const feature = db.prepare("SELECT * FROM features WHERE id = ?").get(id) as
-			| Feature
+		const feature = db.prepare("SELECT * FROM flows WHERE id = ?").get(id) as
+			| Flow
 			| undefined;
 		if (!feature) {
 			return reply
 				.code(404)
-				.send({ error: "not_found", message: "Feature not found" });
+				.send({ error: "not_found", message: "Flow not found" });
 		}
 
 		const settings = buildRunSettings(agentRunSettings ?? {});
@@ -275,7 +273,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 		const settingsId = nanoid(12);
 		db.prepare(
 			`INSERT INTO agent_run_settings
-         (id, feature_id, step_name, effort_level, execution_mode, model_id, agent_profile,
+         (id, flow_id, step_name, effort_level, execution_mode, model_id, agent_profile,
           allow_web_research, allow_repo_scan, allow_memory_search,
           max_research_results, max_interview_questions, review_strictness)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -295,7 +293,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			settings.reviewStrictness,
 		);
 
-		bus.emit("settings:saved", { id: settingsId, featureId: id });
+		bus.emit("settings:saved", { id: settingsId, flowId: id });
 
 		// Determine action type from current step
 		const stepToAction: Record<string, ActionType> = {
@@ -316,18 +314,18 @@ export function registerActionRoutes(app: FastifyInstance): void {
 
 		// Enqueue via PiBridge
 		db.prepare(
-			"UPDATE steps SET status = 'running', started_at = COALESCE(started_at, datetime('now')) WHERE feature_id = ? AND name = ?",
+			"UPDATE steps SET status = 'running', started_at = COALESCE(started_at, datetime('now')) WHERE flow_id = ? AND name = ?",
 		).run(id, feature.current_step);
 		bus.emit("step:status_changed", {
-			featureId: id,
+			flowId: id,
 			stepName: feature.current_step,
 			status: "running",
 		});
 
 		const bridge = getPiBridge();
 		const result = bridge.enqueue({
-			projectId: feature.project_id,
-			featureId: id,
+			workspaceId: feature.workspace_id,
+			flowId: id,
 			actionType,
 			stepName: feature.current_step,
 			modelId: settings.modelId,
@@ -345,7 +343,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 		const statusCode = result.status === "not_connected" ? 503 : 200;
 		const stepLabel = getStepLabel(feature);
 		return reply.code(statusCode).send({
-			featureId: id,
+			flowId: id,
 			step: feature.current_step,
 			settings,
 			settingsId,
@@ -370,13 +368,13 @@ export function registerActionRoutes(app: FastifyInstance): void {
 		const { actionType, agentRunSettings } = req.body;
 
 		const db = getDb();
-		const feature = db.prepare("SELECT * FROM features WHERE id = ?").get(id) as
-			| Feature
+		const feature = db.prepare("SELECT * FROM flows WHERE id = ?").get(id) as
+			| Flow
 			| undefined;
 		if (!feature) {
 			return reply
 				.code(404)
-				.send({ error: "not_found", message: "Feature not found" });
+				.send({ error: "not_found", message: "Flow not found" });
 		}
 
 		if (!actionType) {
@@ -389,8 +387,8 @@ export function registerActionRoutes(app: FastifyInstance): void {
 
 		const bridge = getPiBridge();
 		const result = bridge.enqueue({
-			projectId: feature.project_id,
-			featureId: id,
+			workspaceId: feature.workspace_id,
+			flowId: id,
 			actionType,
 			stepName: feature.current_step,
 			modelId: settings.modelId,
@@ -407,7 +405,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 
 		const statusCode = result.status === "not_connected" ? 503 : 201;
 		return reply.code(statusCode).send({
-			featureId: id,
+			flowId: id,
 			actionType,
 			actionRunId: result.actionRunId,
 			actionStatus: result.status,
@@ -417,14 +415,14 @@ export function registerActionRoutes(app: FastifyInstance): void {
 
 // --- Helpers ---
 
-interface FeatureWithWorkflow {
-	project_id: string;
+interface FlowWithWorkflow {
+	workspace_id: string;
 	current_step: string;
 	workflow_id?: string | null;
 }
 
 /** Get the ordered step names for a feature's workflow */
-function getFeatureWorkflowStepNames(feature: FeatureWithWorkflow): string[] {
+function getFlowWorkflowStepNames(feature: FlowWithWorkflow): string[] {
 	if (feature.workflow_id) {
 		const workflow = getWorkflow(feature.workflow_id);
 		if (workflow) {
@@ -432,12 +430,12 @@ function getFeatureWorkflowStepNames(feature: FeatureWithWorkflow): string[] {
 		}
 	}
 	// Fallback: use project workflow or default
-	const workflow = getProjectWorkflow(feature.project_id);
+	const workflow = getProjectWorkflow(feature.workspace_id);
 	return parseWorkflowSteps(workflow).map((s) => s.name);
 }
 
 /** Get a human-readable label for the feature's current step */
-function getStepLabel(feature: FeatureWithWorkflow): string {
+function getStepLabel(feature: FlowWithWorkflow): string {
 	if (feature.workflow_id) {
 		const workflow = getWorkflow(feature.workflow_id);
 		if (workflow) {

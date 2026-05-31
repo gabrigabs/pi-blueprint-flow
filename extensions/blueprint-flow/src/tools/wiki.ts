@@ -25,7 +25,8 @@ export const wikiUpsertPageTool = {
 	parameters: Type.Object({
 		project_id: Type.String({ description: "Project ID" }),
 		slug: Type.String({
-			description: "URL-friendly page identifier (e.g. 'architecture', 'auth-flow')",
+			description:
+				"URL-friendly page identifier (e.g. 'architecture', 'auth-flow')",
 		}),
 		title: Type.String({ description: "Human-readable page title" }),
 		category: Type.String({
@@ -54,9 +55,7 @@ export const wikiUpsertPageTool = {
 
 		// Check if page exists for this project+slug
 		const existing = db
-			.prepare(
-				"SELECT id FROM wiki_pages WHERE project_id = ? AND slug = ?",
-			)
+			.prepare("SELECT id FROM wiki_pages WHERE project_id = ? AND slug = ?")
 			.get(params.project_id, params.slug) as { id: string } | undefined;
 
 		let pageId: string;
@@ -91,7 +90,7 @@ export const wikiUpsertPageTool = {
 
 		bus.emit("memory:saved", {
 			id: pageId,
-			projectId: params.project_id,
+			workspaceId: params.project_id,
 			category: params.category,
 		});
 
@@ -102,7 +101,11 @@ export const wikiUpsertPageTool = {
 					text: `Wiki page ${existing ? "updated" : "created"}: "${params.title}" [${params.category}] (slug: ${params.slug})`,
 				},
 			],
-			details: { pageId, slug: params.slug, action: existing ? "updated" : "created" },
+			details: {
+				pageId,
+				slug: params.slug,
+				action: existing ? "updated" : "created",
+			},
 		};
 	},
 };
@@ -115,9 +118,7 @@ export const wikiSearchTool = {
 	parameters: Type.Object({
 		project_id: Type.String({ description: "Project ID" }),
 		query: Type.String({ description: "Search query" }),
-		category: Type.Optional(
-			Type.String({ description: "Filter by category" }),
-		),
+		category: Type.Optional(Type.String({ description: "Filter by category" })),
 		limit: Type.Optional(
 			Type.Number({ description: "Max results (default: 5)" }),
 		),
@@ -133,12 +134,22 @@ export const wikiSearchTool = {
 	) => {
 		const db = getDb();
 		const limit = params.limit ?? 5;
-		const results: Array<{ type: "page" | "fact"; content: string; category: string; relevance: string }> = [];
+		const results: Array<{
+			type: "page" | "fact";
+			content: string;
+			category: string;
+			relevance: string;
+		}> = [];
 
 		// Search wiki pages (title + content LIKE match)
 		const queryPattern = `%${params.query}%`;
 		let pageSql = `SELECT * FROM wiki_pages WHERE project_id = ? AND (title LIKE ? OR content_md LIKE ? OR summary LIKE ?)`;
-		const pageParams: (string | number)[] = [params.project_id, queryPattern, queryPattern, queryPattern];
+		const pageParams: (string | number)[] = [
+			params.project_id,
+			queryPattern,
+			queryPattern,
+			queryPattern,
+		];
 
 		if (params.category) {
 			pageSql += " AND category = ?";
@@ -190,7 +201,11 @@ export const wikiSearchTool = {
 		memorySql += " ORDER BY created_at DESC LIMIT ?";
 		memoryParams.push(limit);
 
-		const memories = db.prepare(memorySql).all(...memoryParams) as Array<{ id: string; category: string; content: string }>;
+		const memories = db.prepare(memorySql).all(...memoryParams) as Array<{
+			id: string;
+			category: string;
+			content: string;
+		}>;
 		for (const mem of memories) {
 			results.push({
 				type: "fact",
@@ -202,12 +217,19 @@ export const wikiSearchTool = {
 
 		if (results.length === 0) {
 			return {
-				content: [{ type: "text" as const, text: "No wiki pages or facts found matching the query." }],
+				content: [
+					{
+						type: "text" as const,
+						text: "No wiki pages or facts found matching the query.",
+					},
+				],
 				details: { results: [] },
 			};
 		}
 
-		const lines = results.map((r) => `- [${r.type}/${r.category}] ${r.content.slice(0, 150)}`);
+		const lines = results.map(
+			(r) => `- [${r.type}/${r.category}] ${r.content.slice(0, 150)}`,
+		);
 
 		return {
 			content: [
@@ -229,7 +251,8 @@ export const memoryAddFactTool = {
 	parameters: Type.Object({
 		project_id: Type.String({ description: "Project ID" }),
 		category: Type.String({
-			description: "Fact category: decision, pattern, constraint, learning, convention, architecture, domain",
+			description:
+				"Fact category: decision, pattern, constraint, learning, convention, architecture, domain",
 		}),
 		fact: Type.String({
 			description: "The fact to remember (specific and actionable)",
@@ -241,10 +264,14 @@ export const memoryAddFactTool = {
 			Type.Number({ description: "Confidence level 0-1 (default: 1.0)" }),
 		),
 		source_type: Type.Optional(
-			Type.String({ description: "Source type: feature, import, review, user, agent" }),
+			Type.String({
+				description: "Source type: feature, import, review, user, agent",
+			}),
 		),
 		source_id: Type.Optional(
-			Type.String({ description: "Source ID (feature ID, import report ID, etc.)" }),
+			Type.String({
+				description: "Source ID (feature ID, import report ID, etc.)",
+			}),
 		),
 	}),
 	execute: async (
@@ -287,7 +314,7 @@ export const memoryAddFactTool = {
 
 		bus.emit("memory:saved", {
 			id,
-			projectId: params.project_id,
+			workspaceId: params.project_id,
 			category: params.category,
 		});
 
@@ -311,13 +338,16 @@ export const memoryRetrieveContextTool = {
 	parameters: Type.Object({
 		project_id: Type.String({ description: "Project ID" }),
 		intent: Type.String({
-			description: "What you're trying to do (e.g. 'implement auth', 'write tests for payment')",
+			description:
+				"What you're trying to do (e.g. 'implement auth', 'write tests for payment')",
 		}),
 		step_name: Type.Optional(
 			Type.String({ description: "Current step name for filtering relevance" }),
 		),
 		max_tokens: Type.Optional(
-			Type.Number({ description: "Approximate max tokens to return (default: 2000)" }),
+			Type.Number({
+				description: "Approximate max tokens to return (default: 2000)",
+			}),
 		),
 	}),
 	execute: async (
@@ -333,7 +363,11 @@ export const memoryRetrieveContextTool = {
 		const maxTokens = params.max_tokens ?? 2000;
 
 		// Strategy: gather from multiple sources, prioritize by relevance
-		const context: Array<{ source: string; content: string; why_relevant: string }> = [];
+		const context: Array<{
+			source: string;
+			content: string;
+			why_relevant: string;
+		}> = [];
 		let approxTokens = 0;
 		const tokenBudget = maxTokens;
 
@@ -348,7 +382,12 @@ export const memoryRetrieveContextTool = {
 				 AND (title LIKE ? OR content_md LIKE ? OR category IN (${stepCategories.map(() => "?").join(",")}))
 				 ORDER BY updated_at DESC LIMIT 5`,
 			)
-			.all(params.project_id, queryPattern, queryPattern, ...stepCategories) as WikiPage[];
+			.all(
+				params.project_id,
+				queryPattern,
+				queryPattern,
+				...stepCategories,
+			) as WikiPage[];
 
 		for (const page of pages) {
 			if (approxTokens > tokenBudget) break;
@@ -385,7 +424,11 @@ export const memoryRetrieveContextTool = {
 				`SELECT * FROM memories WHERE project_id = ? AND content LIKE ?
 				 ORDER BY created_at DESC LIMIT 5`,
 			)
-			.all(params.project_id, queryPattern) as Array<{ id: string; category: string; content: string }>;
+			.all(params.project_id, queryPattern) as Array<{
+			id: string;
+			category: string;
+			content: string;
+		}>;
 
 		for (const mem of memories) {
 			if (approxTokens > tokenBudget) break;
@@ -399,7 +442,12 @@ export const memoryRetrieveContextTool = {
 
 		if (context.length === 0) {
 			return {
-				content: [{ type: "text" as const, text: "No relevant context found in project memory." }],
+				content: [
+					{
+						type: "text" as const,
+						text: "No relevant context found in project memory.",
+					},
+				],
 				details: { context: [], tokenEstimate: 0 },
 			};
 		}
