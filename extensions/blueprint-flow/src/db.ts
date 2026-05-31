@@ -473,13 +473,81 @@ const MIGRATIONS = [
 
 let db: Database.Database | null = null;
 
+/**
+ * Rebuilds tables whose REFERENCES clauses still point to old table names
+ * (projects/features) after a RENAME migration. SQLite RENAME doesn't update FK defs.
+ */
+function rebuildForeignKeys(database: Database.Database): void {
+	database.pragma("foreign_keys = OFF");
+	database.exec("BEGIN TRANSACTION");
+	try {
+		const tables = database
+			.prepare(
+				"SELECT name, sql FROM sqlite_master WHERE type='table' AND (sql LIKE '%REFERENCES projects%' OR sql LIKE '%REFERENCES features%')",
+			)
+			.all() as { name: string; sql: string }[];
+
+		for (const { name, sql } of tables) {
+			const fixedSql = sql
+				.replace(/REFERENCES projects\(id\)/g, "REFERENCES workspaces(id)")
+				.replace(/REFERENCES features\(id\)/g, "REFERENCES flows(id)")
+				.replace(
+					new RegExp(`CREATE TABLE (?:"?${name}"?)`, "i"),
+					`CREATE TABLE ${name}_fk_rebuild`,
+				);
+
+			database.exec(fixedSql);
+			database.exec(`INSERT INTO ${name}_fk_rebuild SELECT * FROM "${name}"`);
+			database.exec(`DROP TABLE "${name}"`);
+			database.exec(`ALTER TABLE ${name}_fk_rebuild RENAME TO "${name}"`);
+		}
+		database.exec("COMMIT");
+	} catch (e) {
+		database.exec("ROLLBACK");
+	}
+	database.pragma("foreign_keys = ON");
+}
+
 function runMigrations(database: Database.Database): void {
+	// If old tables (projects/features) still exist alongside new empty shells
+	// (workspaces/flows created by SCHEMA), drop the shells so RENAME succeeds.
+	try {
+		const hasProjects = database
+			.prepare(
+				"SELECT name FROM sqlite_master WHERE type='table' AND name='projects'",
+			)
+			.get();
+		if (hasProjects) {
+			database.pragma("foreign_keys = OFF");
+			database.exec("DROP TABLE IF EXISTS workspaces");
+			database.exec("DROP TABLE IF EXISTS flows");
+			database.pragma("foreign_keys = ON");
+		}
+	} catch {
+		// Non-critical — migrations will handle it
+	}
+
 	for (const migration of MIGRATIONS) {
 		try {
 			database.exec(migration);
 		} catch {
 			// Column/table already exists — safe to ignore
 		}
+	}
+
+	// After rename migrations, FK references still point to old table names.
+	// Rebuild affected tables so REFERENCES clauses are correct.
+	try {
+		const staleFK = database
+			.prepare(
+				"SELECT sql FROM sqlite_master WHERE type='table' AND sql LIKE '%REFERENCES projects%'",
+			)
+			.get();
+		if (staleFK) {
+			rebuildForeignKeys(database);
+		}
+	} catch {
+		// Non-critical
 	}
 }
 
