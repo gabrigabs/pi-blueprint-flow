@@ -444,6 +444,24 @@ export function notifyAgentError(actionRunId: string, error: string): void {
 	currentRunId = null;
 	updateActionRunStatus(actionRunId, "failed", error);
 	bus.emit("action:failed", { id: actionRunId, error });
+
+	const db = getDb();
+	const run = db
+		.prepare("SELECT * FROM action_runs WHERE id = ?")
+		.get(actionRunId) as
+		| { feature_id: string | null; step_name: string | null }
+		| undefined;
+	if (run?.feature_id && run?.step_name) {
+		db.prepare(
+			"UPDATE steps SET status = 'current' WHERE feature_id = ? AND name = ? AND status = 'running'",
+		).run(run.feature_id, run.step_name);
+		bus.emit("step:status_changed", {
+			featureId: run.feature_id,
+			stepName: run.step_name,
+			status: "current",
+		});
+	}
+
 	processNext();
 }
 

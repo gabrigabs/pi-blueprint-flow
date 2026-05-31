@@ -167,6 +167,10 @@ export const api = {
 				method: "POST",
 				body: JSON.stringify(data),
 			}),
+		delete: (id: string) =>
+			fetch(`/api/projects/${id}`, { method: "DELETE" }).then((res) => {
+				if (!res.ok) throw new Error("Failed to delete project");
+			}),
 	},
 
 	features: {
@@ -182,6 +186,10 @@ export const api = {
 			request<Feature>(`/api/features/${id}`, {
 				method: "PATCH",
 				body: JSON.stringify(data),
+			}),
+		delete: (id: string) =>
+			fetch(`/api/features/${id}`, { method: "DELETE" }).then((res) => {
+				if (!res.ok) throw new Error("Failed to delete feature");
 			}),
 		advance: (id: string) =>
 			request<{ feature: Feature; steps: Step[]; completed: boolean }>(

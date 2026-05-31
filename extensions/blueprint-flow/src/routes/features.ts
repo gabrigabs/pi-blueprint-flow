@@ -1,6 +1,5 @@
 import type { FastifyInstance } from "fastify";
 import { nanoid } from "nanoid";
-import { FLOW_STEPS } from "../config.js";
 import { getDb, getProjectWorkflow, parseWorkflowSteps } from "../db.js";
 import { bus } from "../events.js";
 import type { CreateFeatureInput, UpdateFeatureInput } from "../types.js";
@@ -97,7 +96,7 @@ export function registerFeatureRoutes(app: FastifyInstance): void {
 						nanoid(12),
 						featureId,
 						step.name,
-						isFirst ? "running" : "pending",
+						isFirst ? "current" : "pending",
 						isFirst
 							? new Date().toISOString().replace("T", " ").slice(0, 19)
 							: null,
@@ -215,6 +214,38 @@ export function registerFeatureRoutes(app: FastifyInstance): void {
 
 			const updated = db.prepare("SELECT * FROM features WHERE id = ?").get(id);
 			return reply.send(updated);
+		},
+	);
+
+	app.delete<{ Params: { id: string } }>(
+		"/api/features/:id",
+		async (req, reply) => {
+			const { id } = req.params;
+			const db = getDb();
+
+			const existing = db
+				.prepare("SELECT * FROM features WHERE id = ?")
+				.get(id);
+			if (!existing) {
+				return reply
+					.code(404)
+					.send({ error: "not_found", message: "Feature not found" });
+			}
+
+			const cascade = db.transaction(() => {
+				db.prepare(
+					"DELETE FROM action_events WHERE action_run_id IN (SELECT id FROM action_runs WHERE feature_id = ?)",
+				).run(id);
+				db.prepare("DELETE FROM action_runs WHERE feature_id = ?").run(id);
+				db.prepare("DELETE FROM artifacts WHERE feature_id = ?").run(id);
+				db.prepare("DELETE FROM interviews WHERE feature_id = ?").run(id);
+				db.prepare("DELETE FROM steps WHERE feature_id = ?").run(id);
+				db.prepare("DELETE FROM features WHERE id = ?").run(id);
+			});
+			cascade();
+
+			bus.emit("feature:updated", { id, step: "", status: "" });
+			return reply.code(204).send();
 		},
 	);
 }
