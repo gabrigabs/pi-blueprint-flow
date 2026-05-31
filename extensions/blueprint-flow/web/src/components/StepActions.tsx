@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import type { AgentRunSettingsPayload } from "../lib/api";
-import { api } from "../lib/api";
+import { api, mapExecutionMode } from "../lib/api";
 import { useStore } from "../store";
 import { AgentRunSettingsPanel } from "./AgentRunSettingsPanel";
 import { addToast } from "./Toasts";
@@ -33,14 +33,14 @@ export function StepActions({
 		setFeatures,
 		selectedProjectId,
 		runModelId,
-		runEffortLevel,
+		runThinkingLevel,
 		executionMode,
 		actionRuns,
 	} = useStore();
 	const [showRunPanel, setShowRunPanel] = useState(false);
 	const [loading, setLoading] = useState<string | null>(null);
 	const [settings, setSettings] = useState<AgentRunSettingsPayload>({
-		effortLevel: "balanced",
+		thinkingLevel: "medium",
 		executionMode: "supervised",
 	});
 
@@ -103,8 +103,10 @@ export function StepActions({
 			const mergedSettings: AgentRunSettingsPayload = {
 				...settings,
 				modelId: runModelId ?? settings.modelId,
-				effortLevel: runEffortLevel || settings.effortLevel,
-				executionMode: executionMode || settings.executionMode,
+				thinkingLevel: runThinkingLevel || settings.thinkingLevel,
+				executionMode: mapExecutionMode(
+					executionMode || settings.executionMode,
+				),
 			};
 			const result = (await api.features.runStep(
 				featureId,

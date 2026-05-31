@@ -252,7 +252,9 @@ export function registerActionRoutes(app: FastifyInstance): void {
 
 	app.post<{
 		Params: { id: string };
-		Body: { agentRunSettings?: Partial<AgentRunSettings> };
+		Body: {
+			agentRunSettings?: Partial<AgentRunSettings> & { thinkingLevel?: string };
+		};
 	}>("/api/features/:id/run-step", async (req, reply) => {
 		const { id } = req.params;
 		const { agentRunSettings } = req.body;
@@ -329,6 +331,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			actionType,
 			stepName: feature.current_step,
 			modelId: settings.modelId,
+			thinkingLevel: agentRunSettings?.thinkingLevel,
 			effortLevel: settings.effortLevel,
 			executionMode: settings.executionMode,
 			allowRepoScan: settings.allowRepoScan,
@@ -360,7 +363,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 		Params: { id: string };
 		Body: {
 			actionType: ActionType;
-			agentRunSettings?: Partial<AgentRunSettings>;
+			agentRunSettings?: Partial<AgentRunSettings> & { thinkingLevel?: string };
 		};
 	}>("/api/features/:id/run-action", async (req, reply) => {
 		const { id } = req.params;
@@ -391,6 +394,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			actionType,
 			stepName: feature.current_step,
 			modelId: settings.modelId,
+			thinkingLevel: agentRunSettings?.thinkingLevel,
 			effortLevel: settings.effortLevel,
 			executionMode: settings.executionMode,
 			allowRepoScan: settings.allowRepoScan,

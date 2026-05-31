@@ -3,11 +3,11 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import {
 	AuthStorage,
-	ModelRegistry as ModelRegistryFactory,
-	type AuthStorage as PiAuthStorage,
 	type ExtensionAPI,
 	type Model,
 	type ModelRegistry,
+	ModelRegistry as ModelRegistryFactory,
+	type AuthStorage as PiAuthStorage,
 	type ThinkingLevel,
 } from "@earendil-works/pi-coding-agent";
 import { bus } from "../events.js";
@@ -49,6 +49,7 @@ export interface AgentModelInfo {
 	contextWindow: number;
 	maxTokens: number;
 	cost: { input: number; output: number };
+	supportedThinkingLevels: ThinkingLevel[];
 }
 
 /** Shared references to Pi runtime services, set from index.ts */
@@ -92,6 +93,9 @@ function toAgentModelInfo(model: Model): AgentModelInfo {
 		contextWindow: model.contextWindow,
 		maxTokens: model.maxTokens,
 		cost: { input: model.cost.input, output: model.cost.output },
+		supportedThinkingLevels: model.reasoning
+			? THINKING_LEVELS
+			: (["off"] as ThinkingLevel[]),
 	};
 }
 
@@ -141,7 +145,8 @@ export async function findAvailablePiModel(
 ): Promise<Model | undefined> {
 	const models = await getAvailablePiModels();
 	const availableModel = models.find(
-		(model) => model.id === modelId && (!provider || model.provider === provider),
+		(model) =>
+			model.id === modelId && (!provider || model.provider === provider),
 	);
 	if (availableModel) return availableModel;
 
@@ -163,7 +168,10 @@ export async function getAgentConfig(): Promise<AgentConfig> {
 		availableModels.length === 0 &&
 		settings?.defaultProvider &&
 		settings.defaultModel
-			? getModelRegistry()?.find(settings.defaultProvider, settings.defaultModel)
+			? getModelRegistry()?.find(
+					settings.defaultProvider,
+					settings.defaultModel,
+				)
 			: undefined;
 	const models = (
 		fallbackDefaultModel ? [fallbackDefaultModel] : availableModels

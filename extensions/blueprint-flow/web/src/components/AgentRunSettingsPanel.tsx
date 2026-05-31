@@ -1,10 +1,9 @@
-import { Brain, Cpu, Flame, Loader2, Scale, Zap } from "lucide-react";
+import { Cpu, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type {
 	AgentConfigResponse,
 	AgentModelInfo,
 	AgentRunSettingsPayload,
-	ThinkingLevel,
 } from "../lib/api";
 import { api } from "../lib/api";
 import { ModelBadges } from "./ModelBadges";
@@ -14,33 +13,6 @@ interface Props {
 	onChange: (settings: AgentRunSettingsPayload) => void;
 	compact?: boolean;
 }
-
-const EFFORT_OPTIONS = [
-	{
-		value: "fast",
-		label: "Fast",
-		icon: Zap,
-		description: "3 research results, 2 questions, light review",
-	},
-	{
-		value: "balanced",
-		label: "Balanced",
-		icon: Scale,
-		description: "5 results, 5 questions, normal review",
-	},
-	{
-		value: "deep",
-		label: "Deep",
-		icon: Brain,
-		description: "10 results, 8 questions, strict review",
-	},
-	{
-		value: "max",
-		label: "Max",
-		icon: Flame,
-		description: "15 results, 12 questions, strict + review mode",
-	},
-] as const;
 
 const MODE_OPTIONS = [
 	{
@@ -69,6 +41,7 @@ const FALLBACK_MODELS: AgentModelInfo[] = [
 		contextWindow: 200000,
 		maxTokens: 8192,
 		cost: { input: 0.8, output: 4 },
+		supportedThinkingLevels: ["off"],
 	},
 	{
 		id: "claude-sonnet-4-6-20250514",
@@ -78,6 +51,14 @@ const FALLBACK_MODELS: AgentModelInfo[] = [
 		contextWindow: 200000,
 		maxTokens: 16384,
 		cost: { input: 3, output: 15 },
+		supportedThinkingLevels: [
+			"off",
+			"minimal",
+			"low",
+			"medium",
+			"high",
+			"xhigh",
+		],
 	},
 	{
 		id: "claude-opus-4-7-20250219",
@@ -87,6 +68,14 @@ const FALLBACK_MODELS: AgentModelInfo[] = [
 		contextWindow: 200000,
 		maxTokens: 32768,
 		cost: { input: 15, output: 75 },
+		supportedThinkingLevels: [
+			"off",
+			"minimal",
+			"low",
+			"medium",
+			"high",
+			"xhigh",
+		],
 	},
 ];
 
@@ -200,31 +189,55 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 					})()}
 			</div>
 
-			{/* Effort Level */}
+			{/* Thinking Level */}
 			<div>
 				<label className="mb-1.5 block text-xs font-medium text-gray-400">
-					Effort
+					Thinking Level
 				</label>
-				<div className="grid grid-cols-4 gap-1">
-					{EFFORT_OPTIONS.map(
-						({ value: v, label, icon: Icon, description }) => (
-							<button
-								key={v}
-								type="button"
-								onClick={() => update({ effortLevel: v })}
-								title={description}
-								className={`flex flex-col items-center gap-0.5 rounded px-2 py-1.5 text-xs transition-colors ${
-									value.effortLevel === v
-										? "bg-blue-600/30 text-blue-300 ring-1 ring-blue-500/50"
-										: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
-								}`}
-							>
-								<Icon size={12} />
-								<span>{label}</span>
-							</button>
-						),
-					)}
-				</div>
+				{(() => {
+					const selectedModel = displayModels.find(
+						(m) => m.id === value.modelId,
+					);
+					const levels: string[] = selectedModel?.supportedThinkingLevels ??
+						agentConfig?.thinkingLevels ?? [
+							"off",
+							"minimal",
+							"low",
+							"medium",
+							"high",
+							"xhigh",
+						];
+					const displayLevels = levels.filter((l) => l !== "off");
+					const modelSupportsThinking =
+						!selectedModel || selectedModel.reasoning !== false;
+
+					if (!modelSupportsThinking) {
+						return (
+							<p className="text-xs italic text-gray-500">
+								Not supported for this model
+							</p>
+						);
+					}
+
+					return (
+						<div className="grid grid-cols-5 gap-1">
+							{displayLevels.map((level) => (
+								<button
+									key={level}
+									type="button"
+									onClick={() => update({ thinkingLevel: level })}
+									className={`rounded px-1.5 py-1 text-xs capitalize transition-colors ${
+										value.thinkingLevel === level
+											? "bg-violet-600/30 text-violet-300 ring-1 ring-violet-500/50"
+											: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
+									}`}
+								>
+									{level === "xhigh" ? "max" : level}
+								</button>
+							))}
+						</div>
+					);
+				})()}
 			</div>
 
 			{/* Execution Mode */}
@@ -245,20 +258,11 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 									: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
 							}`}
 						>
-							{v === "autonomous" && <Zap size={11} />}
 							<span>{label}</span>
 						</button>
 					))}
 				</div>
 			</div>
-
-			{/* Thinking Level (only if Pi agent connected) */}
-			{agentConfig && agentConfig.thinkingLevels.length > 0 && !compact && (
-				<ThinkingLevelSelector
-					levels={agentConfig.thinkingLevels}
-					current={agentConfig.currentThinkingLevel}
-				/>
-			)}
 
 			{/* Options */}
 			{!compact && (
@@ -355,55 +359,6 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 					</div>
 				</div>
 			)}
-		</div>
-	);
-}
-
-function ThinkingLevelSelector({
-	levels,
-	current,
-}: {
-	levels: ThinkingLevel[];
-	current: ThinkingLevel | null;
-}) {
-	const [active, setActive] = useState<ThinkingLevel | null>(current);
-	const [updating, setUpdating] = useState(false);
-
-	function handleChange(level: ThinkingLevel) {
-		setActive(level);
-		setUpdating(true);
-		api.config
-			.setThinkingLevel(level)
-			.then(() => setActive(level))
-			.catch(() => setActive(current))
-			.finally(() => setUpdating(false));
-	}
-
-	const displayLevels = levels.filter((l) => l !== "off");
-
-	return (
-		<div>
-			<label className="mb-1.5 block text-xs font-medium text-gray-400">
-				Thinking Level
-				{updating && <Loader2 size={9} className="ml-1 inline animate-spin" />}
-			</label>
-			<div className="grid grid-cols-5 gap-1">
-				{displayLevels.map((level) => (
-					<button
-						key={level}
-						type="button"
-						disabled={updating}
-						onClick={() => handleChange(level)}
-						className={`rounded px-1.5 py-1 text-xs capitalize transition-colors ${
-							active === level
-								? "bg-violet-600/30 text-violet-300 ring-1 ring-violet-500/50"
-								: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
-						} disabled:opacity-50`}
-					>
-						{level === "xhigh" ? "max" : level}
-					</button>
-				))}
-			</div>
 		</div>
 	);
 }

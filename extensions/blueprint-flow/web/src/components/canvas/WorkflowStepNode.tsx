@@ -23,7 +23,7 @@ import {
 	Zap,
 } from "lucide-react";
 import { type MouseEvent, memo } from "react";
-import { api } from "../../lib/api";
+import { api, mapExecutionMode } from "../../lib/api";
 import { useStore } from "../../store";
 import { ArtifactChip } from "./ArtifactChip";
 import type { StepNodeData } from "./layout";
@@ -68,10 +68,10 @@ const statusConfig: Record<
 		glow: "0 0 20px -6px rgba(107, 207, 127, 0.15)",
 	},
 	current: {
-		bg: "rgba(91, 155, 213, 0.03)",
-		border: "rgba(91, 155, 213, 0.25)",
+		bg: "rgba(91, 155, 213, 0.06)",
+		border: "rgba(91, 155, 213, 0.35)",
 		text: "var(--accent-primary)",
-		glow: "0 0 16px -6px rgba(91, 155, 213, 0.1)",
+		glow: "0 0 20px -6px rgba(91, 155, 213, 0.15)",
 	},
 	running: {
 		bg: "rgba(91, 155, 213, 0.05)",
@@ -154,12 +154,12 @@ function WorkflowStepNodeComponent({
 	async function handleRun(event: MouseEvent) {
 		stopNodeClick(event);
 		if (!selectedFeatureId) return;
-		const { runModelId, runEffortLevel, executionMode } = useStore.getState();
+		const { runModelId, runThinkingLevel, executionMode } = useStore.getState();
 		try {
 			await api.features.runStep(selectedFeatureId, {
 				modelId: runModelId ?? undefined,
-				effortLevel: runEffortLevel || undefined,
-				executionMode: executionMode || undefined,
+				thinkingLevel: runThinkingLevel || undefined,
+				executionMode: mapExecutionMode(executionMode) || undefined,
 			});
 		} catch {}
 	}
@@ -243,6 +243,11 @@ function WorkflowStepNodeComponent({
 									className="animate-spin"
 									style={{ color: config.text }}
 								/>
+							) : status === "current" ? (
+								<div className="relative">
+									<StepIcon size={16} style={{ color: config.text }} />
+									<span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[var(--accent-primary)] animate-pulse" />
+								</div>
 							) : (
 								<StepIcon
 									size={16}
@@ -282,6 +287,19 @@ function WorkflowStepNodeComponent({
 								>
 									{liveMessagePreview.slice(-60)}
 								</p>
+							) : activeRun && !isLive ? (
+								<p
+									className="text-[10px] font-mono mt-0.5 truncate"
+									style={{ color: "var(--amber-400)" }}
+								>
+									{activeRun.status === "queued"
+										? "Queued..."
+										: activeRun.status === "waiting_for_pi"
+											? "Waiting for Pi..."
+											: activeRun.status === "injected"
+												? "Starting..."
+												: activeRun.status}
+								</p>
 							) : (
 								<p
 									className="text-[10px] font-mono mt-0.5"
@@ -295,6 +313,40 @@ function WorkflowStepNodeComponent({
 
 					{/* Badges */}
 					<div className="flex items-center gap-1.5 shrink-0">
+						{status === "current" && data.hasCompletedRuns && !activeRun && (
+							<div
+								className="flex items-center gap-1 rounded-md px-1.5 py-0.5"
+								style={{
+									background: "rgba(107, 207, 127, 0.08)",
+									border: "1px solid rgba(107, 207, 127, 0.2)",
+								}}
+							>
+								<CheckCircle size={8} style={{ color: "var(--emerald-400)" }} />
+								<span
+									className="text-[10px] font-medium"
+									style={{ color: "var(--emerald-400)" }}
+								>
+									Review
+								</span>
+							</div>
+						)}
+						{status === "current" && !data.hasCompletedRuns && !activeRun && (
+							<div
+								className="flex items-center gap-1 rounded-md px-1.5 py-0.5"
+								style={{
+									background: "rgba(91, 155, 213, 0.08)",
+									border: "1px solid rgba(91, 155, 213, 0.2)",
+								}}
+							>
+								<Play size={8} style={{ color: "var(--accent-primary)" }} />
+								<span
+									className="text-[10px] font-medium"
+									style={{ color: "var(--accent-primary)" }}
+								>
+									Next
+								</span>
+							</div>
+						)}
 						{artifactCount > 0 && (
 							<div
 								className="flex items-center gap-1 rounded-md px-1.5 py-0.5"

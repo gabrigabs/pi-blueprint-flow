@@ -156,7 +156,7 @@ interface BlueprintStore {
 
 	// Run settings (shared between drawer and canvas node actions)
 	runModelId: string | null;
-	runEffortLevel: string;
+	runThinkingLevel: string;
 
 	setProjects: (projects: Project[]) => void;
 	setFeatures: (features: Feature[]) => void;
@@ -187,7 +187,7 @@ interface BlueprintStore {
 
 	// Run settings
 	setRunModelId: (modelId: string | null) => void;
-	setRunEffortLevel: (level: string) => void;
+	setRunThinkingLevel: (level: string) => void;
 
 	// Live activity setters
 	setLiveActivity: (
@@ -234,7 +234,7 @@ export const useStore = create<BlueprintStore>((set) => ({
 	executionMode: "supervised",
 
 	runModelId: null,
-	runEffortLevel: "balanced",
+	runThinkingLevel: "medium",
 
 	setProjects: (projects) => set({ projects }),
 	setFeatures: (features) => set({ features }),
@@ -284,7 +284,7 @@ export const useStore = create<BlueprintStore>((set) => ({
 	setExecutionMode: (mode) => set({ executionMode: mode }),
 
 	setRunModelId: (modelId) => set({ runModelId: modelId }),
-	setRunEffortLevel: (level) => set({ runEffortLevel: level }),
+	setRunThinkingLevel: (level) => set({ runThinkingLevel: level }),
 
 	setLiveActivity: (actionRunId, toolName) =>
 		set((state) => ({

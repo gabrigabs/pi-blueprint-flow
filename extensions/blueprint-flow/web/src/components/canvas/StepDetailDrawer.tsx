@@ -1,13 +1,4 @@
-import {
-	Brain,
-	Cpu,
-	FileText,
-	Flame,
-	Loader2,
-	Scale,
-	X,
-	Zap,
-} from "lucide-react";
+import { Cpu, FileText, Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { STEP_LABELS } from "../../constants/steps";
 import {
@@ -390,13 +381,6 @@ function ArtifactsTab({
 	);
 }
 
-const EFFORT_OPTIONS = [
-	{ value: "fast", label: "Fast", icon: Zap },
-	{ value: "balanced", label: "Balanced", icon: Scale },
-	{ value: "deep", label: "Deep", icon: Brain },
-	{ value: "max", label: "Max", icon: Flame },
-] as const;
-
 const FALLBACK_MODELS: AgentModelInfo[] = [
 	{
 		id: "claude-haiku-4-5-20251001",
@@ -406,6 +390,7 @@ const FALLBACK_MODELS: AgentModelInfo[] = [
 		contextWindow: 200000,
 		maxTokens: 8192,
 		cost: { input: 0.8, output: 4 },
+		supportedThinkingLevels: ["off"],
 	},
 	{
 		id: "claude-sonnet-4-6-20250514",
@@ -415,6 +400,14 @@ const FALLBACK_MODELS: AgentModelInfo[] = [
 		contextWindow: 200000,
 		maxTokens: 16384,
 		cost: { input: 3, output: 15 },
+		supportedThinkingLevels: [
+			"off",
+			"minimal",
+			"low",
+			"medium",
+			"high",
+			"xhigh",
+		],
 	},
 	{
 		id: "claude-opus-4-7-20250219",
@@ -424,13 +417,21 @@ const FALLBACK_MODELS: AgentModelInfo[] = [
 		contextWindow: 200000,
 		maxTokens: 32768,
 		cost: { input: 15, output: 75 },
+		supportedThinkingLevels: [
+			"off",
+			"minimal",
+			"low",
+			"medium",
+			"high",
+			"xhigh",
+		],
 	},
 ];
 
 function DrawerRunSettings() {
 	const [config, setConfig] = useState<AgentConfigResponse | null>(null);
 	const [loading, setLoading] = useState(true);
-	const { runModelId, runEffortLevel, setRunModelId, setRunEffortLevel } =
+	const { runModelId, runThinkingLevel, setRunModelId, setRunThinkingLevel } =
 		useStore();
 
 	useEffect(() => {
@@ -507,38 +508,66 @@ function DrawerRunSettings() {
 				)}
 			</div>
 
-			{/* Effort */}
+			{/* Thinking Level */}
 			<div>
 				<label
 					className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide"
 					style={{ color: "var(--text-muted)" }}
 				>
-					Effort
+					Thinking
 				</label>
-				<div className="grid grid-cols-4 gap-1">
-					{EFFORT_OPTIONS.map(({ value: v, label, icon: Icon }) => (
-						<button
-							key={v}
-							type="button"
-							onClick={() => setRunEffortLevel(v)}
-							className="flex flex-col items-center gap-0.5 rounded-lg px-1.5 py-1.5 text-[10px] font-medium transition-all"
-							style={{
-								background:
-									runEffortLevel === v
-										? "var(--cyan-glow)"
-										: "rgba(255,255,255,0.02)",
-								border: `1px solid ${runEffortLevel === v ? "rgba(91, 155, 213, 0.3)" : "var(--border-subtle)"}`,
-								color:
-									runEffortLevel === v
-										? "var(--cyan-400)"
-										: "var(--text-tertiary)",
-							}}
-						>
-							<Icon size={10} />
-							{label}
-						</button>
-					))}
-				</div>
+				{(() => {
+					const selectedModel = displayModels.find((m) => m.id === runModelId);
+					const levels = selectedModel?.supportedThinkingLevels ??
+						config?.thinkingLevels ?? [
+							"off",
+							"minimal",
+							"low",
+							"medium",
+							"high",
+							"xhigh",
+						];
+					const displayLevels = levels.filter((l) => l !== "off");
+					const modelSupportsThinking =
+						!selectedModel || selectedModel.reasoning !== false;
+
+					if (!modelSupportsThinking) {
+						return (
+							<p
+								className="text-[10px] italic"
+								style={{ color: "var(--text-muted)" }}
+							>
+								Not supported for this model
+							</p>
+						);
+					}
+
+					return (
+						<div className="grid grid-cols-5 gap-1">
+							{displayLevels.map((level) => (
+								<button
+									key={level}
+									type="button"
+									onClick={() => setRunThinkingLevel(level)}
+									className="flex flex-col items-center gap-0.5 rounded-lg px-1.5 py-1.5 text-[10px] font-medium capitalize transition-all"
+									style={{
+										background:
+											runThinkingLevel === level
+												? "var(--cyan-glow)"
+												: "rgba(255,255,255,0.02)",
+										border: `1px solid ${runThinkingLevel === level ? "rgba(91, 155, 213, 0.3)" : "var(--border-subtle)"}`,
+										color:
+											runThinkingLevel === level
+												? "var(--cyan-400)"
+												: "var(--text-tertiary)",
+									}}
+								>
+									{level === "xhigh" ? "max" : level}
+								</button>
+							))}
+						</div>
+					);
+				})()}
 			</div>
 		</div>
 	);

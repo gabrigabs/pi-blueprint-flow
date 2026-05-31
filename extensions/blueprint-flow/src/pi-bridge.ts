@@ -4,7 +4,6 @@ import {
 	createActionRun,
 	createActionRunEvent,
 	getActionRun,
-	getActiveActionRun,
 	getDb,
 	getWorkflowStepConfig,
 	updateActionRunStatus,
@@ -12,11 +11,7 @@ import {
 import { bus } from "./events.js";
 import { findAvailablePiModel, getPiRef } from "./services/pi-config-reader.js";
 import { buildPrompt, gatherPromptContext } from "./services/prompt-builder.js";
-import type {
-	ActionRunStatus,
-	ActionType,
-	RunBlueprintActionInput,
-} from "./types.js";
+import type { ActionRunStatus, RunBlueprintActionInput } from "./types.js";
 
 export type BridgeStatus = "idle" | "busy" | "not_connected";
 
@@ -102,6 +97,7 @@ function enqueue(input: RunBlueprintActionInput): {
 			modelId: input.modelId,
 			effortLevel: input.effortLevel,
 			executionMode: input.executionMode,
+			thinkingLevel: input.thinkingLevel,
 			extraContext: input.extraContext,
 		});
 		updateActionRunStatus(id, "not_connected");
@@ -125,6 +121,7 @@ function enqueue(input: RunBlueprintActionInput): {
 		modelId: input.modelId,
 		effortLevel: input.effortLevel,
 		executionMode: input.executionMode,
+		thinkingLevel: input.thinkingLevel,
 		extraContext: input.extraContext,
 	});
 
@@ -293,12 +290,18 @@ async function attemptInjection(runId: string): Promise<void> {
 				: undefined) ??
 			null;
 
+		let resolvedModel:
+			| Awaited<ReturnType<typeof findAvailablePiModel>>
+			| undefined;
 		if (targetModelId) {
-			const model = await findAvailablePiModel(targetModelId);
-			if (model) await pi.setModel(model);
+			resolvedModel = await findAvailablePiModel(targetModelId);
+			if (resolvedModel) await pi.setModel(resolvedModel);
 		}
 		if (targetThinking) {
-			pi.setThinkingLevel(targetThinking as any);
+			const modelSupportsReasoning = resolvedModel?.reasoning ?? true;
+			if (modelSupportsReasoning) {
+				pi.setThinkingLevel(targetThinking as any);
+			}
 		}
 	} catch {
 		// Non-critical — model/thinking setup is best-effort

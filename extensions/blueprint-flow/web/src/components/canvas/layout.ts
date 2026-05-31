@@ -25,6 +25,7 @@ export interface StepNodeData {
 	activityCount: number;
 	isCurrentStep: boolean;
 	isSelected: boolean;
+	hasCompletedRuns: boolean;
 	[key: string]: unknown;
 }
 
@@ -44,6 +45,9 @@ export function stepsToNodes(
 				? (interviews?.filter((i) => !i.answer) ?? [])
 				: [];
 		const isSelected = step.id === selectedNodeId;
+		const hasCompletedRuns = stepActivities.some(
+			(r) => r.status === "completed",
+		);
 
 		return {
 			id: step.id,
@@ -66,6 +70,7 @@ export function stepsToNodes(
 					step.status === "running" ||
 					step.status === "needs_user",
 				isSelected,
+				hasCompletedRuns,
 			},
 		};
 	});

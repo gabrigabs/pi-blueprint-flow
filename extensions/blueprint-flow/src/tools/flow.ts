@@ -147,7 +147,7 @@ export const advanceStepTool = {
 		).run(nextStep, params.feature_id);
 
 		db.prepare(
-			"UPDATE steps SET status = 'running', started_at = datetime('now') WHERE feature_id = ? AND name = ?",
+			"UPDATE steps SET status = 'current', started_at = datetime('now') WHERE feature_id = ? AND name = ?",
 		).run(params.feature_id, nextStep);
 
 		bus.emit("step:advanced", {
@@ -222,7 +222,7 @@ export const resetStepTool = {
 		// Reset all steps from target onwards
 		const resetSteps = db.transaction(() => {
 			for (let i = targetIdx; i < FLOW_STEPS.length; i++) {
-				const status = i === targetIdx ? "running" : "pending";
+				const status = i === targetIdx ? "current" : "pending";
 				const startedAt = i === targetIdx ? "datetime('now')" : null;
 				db.prepare(
 					`UPDATE steps SET status = ?, started_at = ${i === targetIdx ? "datetime('now')" : "NULL"}, completed_at = NULL WHERE feature_id = ? AND name = ?`,

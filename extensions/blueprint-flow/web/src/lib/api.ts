@@ -38,6 +38,7 @@ export interface CreateFeaturePayload {
 export interface AgentRunSettingsPayload {
 	modelId?: string;
 	agentProfile?: string;
+	thinkingLevel?: string;
 	effortLevel?: string;
 	executionMode?: string;
 	allowWebResearch?: boolean;
@@ -61,6 +62,7 @@ export interface RunActionPayload {
 	actionType: string;
 	stepName?: string;
 	modelId?: string;
+	thinkingLevel?: string;
 	effortLevel?: string;
 	executionMode?: string;
 	allowRepoScan?: boolean;
@@ -80,6 +82,7 @@ export interface AgentModelInfo {
 	contextWindow: number;
 	maxTokens: number;
 	cost: { input: number; output: number };
+	supportedThinkingLevels: string[];
 }
 
 export type ThinkingLevel =
@@ -122,6 +125,12 @@ export interface ImportResult {
 		rules: string[];
 	}[];
 	projectProfile: string;
+}
+
+export function mapExecutionMode(frontendMode?: string): string | undefined {
+	if (!frontendMode) return undefined;
+	if (frontendMode === "draft") return "draft";
+	return "apply";
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {

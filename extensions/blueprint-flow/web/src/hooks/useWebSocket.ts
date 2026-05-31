@@ -253,7 +253,7 @@ export function useWebSocket() {
 							completedStepName === "interview";
 
 						if (!shouldPause) {
-							const { runModelId, runEffortLevel, executionMode } = store;
+							const { runModelId, runThinkingLevel, executionMode } = store;
 							fetch(`/api/features/${featureId}/advance`, {
 								method: "POST",
 								headers: { "Content-Type": "application/json" },
@@ -268,8 +268,8 @@ export function useWebSocket() {
 										body: JSON.stringify({
 											agentRunSettings: {
 												modelId: runModelId ?? undefined,
-												effortLevel: runEffortLevel || undefined,
-												executionMode: executionMode || undefined,
+												thinkingLevel: runThinkingLevel || undefined,
+												executionMode: "apply",
 											},
 										}),
 									}).catch(() => {});
