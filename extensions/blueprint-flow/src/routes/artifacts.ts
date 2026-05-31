@@ -21,12 +21,12 @@ export function registerArtifactRoutes(app: FastifyInstance): void {
 			const db = getDb();
 
 			const feature = db
-				.prepare("SELECT id FROM features WHERE id = ?")
+				.prepare("SELECT id FROM flows WHERE id = ?")
 				.get(flowId);
 			if (!feature) {
 				return reply
 					.code(404)
-					.send({ error: "not_found", message: "Feature not found" });
+					.send({ error: "not_found", message: "Flow not found" });
 			}
 
 			const id = nanoid(12);

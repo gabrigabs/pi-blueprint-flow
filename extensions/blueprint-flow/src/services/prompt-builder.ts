@@ -158,7 +158,7 @@ export function gatherPromptContext(actionRun: ActionRunRow): PromptContext {
 	// Get feature info
 	if (actionRun.flow_id) {
 		const feature = db
-			.prepare("SELECT * FROM features WHERE id = ?")
+			.prepare("SELECT * FROM flows WHERE id = ?")
 			.get(actionRun.flow_id) as Flow | undefined;
 		if (feature) {
 			ctx.featureTitle = feature.title;
@@ -169,7 +169,7 @@ export function gatherPromptContext(actionRun: ActionRunRow): PromptContext {
 	// Get project info
 	if (actionRun.workspace_id) {
 		const project = db
-			.prepare("SELECT * FROM projects WHERE id = ?")
+			.prepare("SELECT * FROM workspaces WHERE id = ?")
 			.get(actionRun.workspace_id) as
 			| { name: string; stack: string }
 			| undefined;

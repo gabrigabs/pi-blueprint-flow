@@ -17,7 +17,7 @@ export const getFlowStateTool = {
 		const db = getDb();
 
 		const feature = db
-			.prepare("SELECT * FROM features WHERE id = ?")
+			.prepare("SELECT * FROM flows WHERE id = ?")
 			.get(params.flow_id) as Flow | undefined;
 
 		if (!feature) {
@@ -83,7 +83,7 @@ export const advanceStepTool = {
 		const db = getDb();
 
 		const feature = db
-			.prepare("SELECT * FROM features WHERE id = ?")
+			.prepare("SELECT * FROM flows WHERE id = ?")
 			.get(params.flow_id) as Flow | undefined;
 
 		if (!feature) {
@@ -119,7 +119,7 @@ export const advanceStepTool = {
 		// Check if this was the last step
 		if (currentIdx === FLOW_STEPS.length - 1) {
 			db.prepare(
-				"UPDATE features SET status = 'done', updated_at = datetime('now') WHERE id = ?",
+				"UPDATE flows SET status = 'done', updated_at = datetime('now') WHERE id = ?",
 			).run(params.flow_id);
 
 			bus.emit("flow:updated", {
@@ -143,7 +143,7 @@ export const advanceStepTool = {
 		const nextStep = FLOW_STEPS[currentIdx + 1];
 
 		db.prepare(
-			"UPDATE features SET current_step = ?, updated_at = datetime('now') WHERE id = ?",
+			"UPDATE flows SET current_step = ?, updated_at = datetime('now') WHERE id = ?",
 		).run(nextStep, params.flow_id);
 
 		db.prepare(
@@ -191,7 +191,7 @@ export const resetStepTool = {
 		const db = getDb();
 
 		const feature = db
-			.prepare("SELECT * FROM features WHERE id = ?")
+			.prepare("SELECT * FROM flows WHERE id = ?")
 			.get(params.flow_id) as Flow | undefined;
 
 		if (!feature) {
@@ -232,7 +232,7 @@ export const resetStepTool = {
 		resetSteps();
 
 		db.prepare(
-			"UPDATE features SET current_step = ?, status = 'in_progress', updated_at = datetime('now') WHERE id = ?",
+			"UPDATE flows SET current_step = ?, status = 'in_progress', updated_at = datetime('now') WHERE id = ?",
 		).run(params.target_step, params.flow_id);
 
 		const label = STEP_LABELS[params.target_step as FlowStep];

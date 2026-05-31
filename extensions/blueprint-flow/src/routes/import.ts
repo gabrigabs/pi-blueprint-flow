@@ -90,7 +90,7 @@ export function registerImportRoutes(app: FastifyInstance): void {
 				const stackArray = [...stack.languages, ...stack.frameworks];
 
 				db.prepare(
-					"INSERT INTO projects (id, name, description, repo_path, stack) VALUES (?, ?, ?, ?, ?)",
+					"INSERT INTO workspaces (id, name, description, repo_path, stack) VALUES (?, ?, ?, ?, ?)",
 				).run(
 					workspaceId,
 					projectName,

@@ -192,6 +192,8 @@ CREATE TABLE IF NOT EXISTS workspaces (
   repo_path TEXT,
   stack TEXT DEFAULT '[]',
   archived INTEGER DEFAULT 0,
+  workflow_id TEXT,
+  scope TEXT DEFAULT 'app',
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -206,6 +208,7 @@ CREATE TABLE IF NOT EXISTS flows (
   priority TEXT DEFAULT 'medium',
   current_step TEXT DEFAULT 'intake',
   status TEXT DEFAULT 'pending',
+  workflow_id TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -252,6 +255,8 @@ CREATE TABLE IF NOT EXISTS interviews (
   type TEXT NOT NULL,
   required INTEGER DEFAULT 0,
   why TEXT,
+  response_type TEXT DEFAULT 'free_text',
+  options TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -297,6 +302,7 @@ CREATE TABLE IF NOT EXISTS action_runs (
   model_id TEXT,
   effort_level TEXT,
   execution_mode TEXT,
+  thinking_level TEXT,
   extra_context_json TEXT,
   error TEXT,
   started_at TEXT,
@@ -357,6 +363,28 @@ CREATE TABLE IF NOT EXISTS memory_links (
   relation TEXT
 );
 
+CREATE TABLE IF NOT EXISTS design_variants (
+  id TEXT PRIMARY KEY,
+  flow_id TEXT NOT NULL REFERENCES flows(id),
+  label TEXT NOT NULL,
+  html_content TEXT NOT NULL,
+  css_content TEXT NOT NULL,
+  js_content TEXT,
+  tokens_json TEXT,
+  feedback TEXT,
+  selected INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS design_tokens (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT REFERENCES workspaces(id),
+  flow_id TEXT REFERENCES flows(id),
+  tokens_json TEXT NOT NULL,
+  source_step TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_flows_workspace ON flows(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_steps_flow ON steps(flow_id);
 CREATE INDEX IF NOT EXISTS idx_artifacts_flow ON artifacts(flow_id);
@@ -375,6 +403,8 @@ CREATE INDEX IF NOT EXISTS idx_memory_facts_workspace ON memory_facts(workspace_
 CREATE INDEX IF NOT EXISTS idx_memory_facts_page ON memory_facts(page_id);
 CREATE INDEX IF NOT EXISTS idx_memory_links_from ON memory_links(from_page_id);
 CREATE INDEX IF NOT EXISTS idx_memory_links_to ON memory_links(to_page_id);
+CREATE INDEX IF NOT EXISTS idx_design_variants_flow ON design_variants(flow_id);
+CREATE INDEX IF NOT EXISTS idx_design_tokens_workspace ON design_tokens(workspace_id);
 `;
 
 /** Incremental migrations for existing databases */

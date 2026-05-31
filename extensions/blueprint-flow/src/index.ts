@@ -288,12 +288,12 @@ export default function (pi: ExtensionAPI) {
 				projectCount = (
 					database
 						.prepare(
-							"SELECT COUNT(*) as count FROM projects WHERE archived = 0",
+							"SELECT COUNT(*) as count FROM workspaces WHERE archived = 0",
 						)
 						.get() as { count: number }
 				).count;
 				featureCount = (
-					database.prepare("SELECT COUNT(*) as count FROM features").get() as {
+					database.prepare("SELECT COUNT(*) as count FROM flows").get() as {
 						count: number;
 					}
 				).count;

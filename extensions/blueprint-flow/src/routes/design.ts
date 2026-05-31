@@ -4,7 +4,7 @@ import { bus } from "../events.js";
 
 export function registerDesignRoutes(app: FastifyInstance): void {
 	app.get<{ Params: { flowId: string } }>(
-		"/api/features/:flowId/design/variants",
+		"/api/flows/:flowId/design/variants",
 		async (req) => {
 			const db = getDb();
 			const variants = db
@@ -67,7 +67,7 @@ export function registerDesignRoutes(app: FastifyInstance): void {
 	});
 
 	app.get<{ Params: { workspaceId: string } }>(
-		"/api/projects/:workspaceId/design/tokens",
+		"/api/workspaces/:workspaceId/design/tokens",
 		async (req) => {
 			const db = getDb();
 			const row = db
@@ -82,7 +82,7 @@ export function registerDesignRoutes(app: FastifyInstance): void {
 	);
 
 	app.get<{ Params: { flowId: string } }>(
-		"/api/features/:flowId/design/tokens",
+		"/api/flows/:flowId/design/tokens",
 		async (req) => {
 			const db = getDb();
 			const row = db

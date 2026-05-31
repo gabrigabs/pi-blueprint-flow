@@ -16,7 +16,7 @@ import { buildRunSettings } from "../types.js";
 
 export function registerActionRoutes(app: FastifyInstance): void {
 	app.post<{ Params: { id: string }; Body: { summary?: string } }>(
-		"/api/features/:id/advance",
+		"/api/flows/:id/advance",
 		async (req, reply) => {
 			const { id } = req.params;
 			const db = getDb();
@@ -45,7 +45,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 
 			if (currentIdx === workflowSteps.length - 1) {
 				db.prepare(
-					"UPDATE features SET status = 'done', updated_at = datetime('now') WHERE id = ?",
+					"UPDATE flows SET status = 'done', updated_at = datetime('now') WHERE id = ?",
 				).run(id);
 
 				bus.emit("flow:updated", {
@@ -60,7 +60,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			const nextStep = workflowSteps[currentIdx + 1];
 
 			db.prepare(
-				"UPDATE features SET current_step = ?, updated_at = datetime('now') WHERE id = ?",
+				"UPDATE flows SET current_step = ?, updated_at = datetime('now') WHERE id = ?",
 			).run(nextStep, id);
 
 			db.prepare(
@@ -82,7 +82,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 	);
 
 	app.post<{ Params: { id: string } }>(
-		"/api/features/:id/back",
+		"/api/flows/:id/back",
 		async (req, reply) => {
 			const { id } = req.params;
 			const db = getDb();
@@ -115,7 +115,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			).run(id, prevStep);
 
 			db.prepare(
-				"UPDATE features SET current_step = ?, updated_at = datetime('now') WHERE id = ?",
+				"UPDATE flows SET current_step = ?, updated_at = datetime('now') WHERE id = ?",
 			).run(prevStep, id);
 
 			bus.emit("step:back", {
@@ -133,7 +133,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 	);
 
 	app.post<{ Params: { id: string }; Body: { stepName: string } }>(
-		"/api/features/:id/focus-step",
+		"/api/flows/:id/focus-step",
 		async (req, reply) => {
 			const { id } = req.params;
 			const { stepName } = req.body;
@@ -183,7 +183,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			}
 
 			db.prepare(
-				"UPDATE features SET current_step = ?, status = 'in_progress', updated_at = datetime('now') WHERE id = ?",
+				"UPDATE flows SET current_step = ?, status = 'in_progress', updated_at = datetime('now') WHERE id = ?",
 			).run(stepName, id);
 
 			bus.emit("step:status_changed", {
@@ -253,7 +253,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 		Body: {
 			agentRunSettings?: Partial<AgentRunSettings> & { thinkingLevel?: string };
 		};
-	}>("/api/features/:id/run-step", async (req, reply) => {
+	}>("/api/flows/:id/run-step", async (req, reply) => {
 		const { id } = req.params;
 		const { agentRunSettings } = req.body;
 
@@ -363,7 +363,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			actionType: ActionType;
 			agentRunSettings?: Partial<AgentRunSettings> & { thinkingLevel?: string };
 		};
-	}>("/api/features/:id/run-action", async (req, reply) => {
+	}>("/api/flows/:id/run-action", async (req, reply) => {
 		const { id } = req.params;
 		const { actionType, agentRunSettings } = req.body;
 

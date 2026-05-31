@@ -52,7 +52,7 @@ function generateInterviewArtifact(flowId: string): void {
 export function registerInterviewRoutes(app: FastifyInstance): void {
 	// Get pending (unanswered) interviews for a feature
 	app.get<{ Params: { flowId: string } }>(
-		"/api/features/:flowId/interviews/pending",
+		"/api/flows/:flowId/interviews/pending",
 		async (req) => {
 			const db = getDb();
 			const rows = db

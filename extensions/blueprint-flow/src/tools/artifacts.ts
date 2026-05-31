@@ -41,7 +41,7 @@ export const saveArtifactTool = {
 
 		// Verify feature exists
 		const feature = db
-			.prepare("SELECT id FROM features WHERE id = ?")
+			.prepare("SELECT id FROM flows WHERE id = ?")
 			.get(params.flow_id);
 		if (!feature) {
 			return {

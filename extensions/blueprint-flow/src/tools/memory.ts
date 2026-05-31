@@ -36,7 +36,7 @@ export const saveMemoryTool = {
 
 		// Verify project exists
 		const project = db
-			.prepare("SELECT id FROM projects WHERE id = ?")
+			.prepare("SELECT id FROM workspaces WHERE id = ?")
 			.get(params.project_id);
 		if (!project) {
 			return {
@@ -51,7 +51,7 @@ export const saveMemoryTool = {
 		}
 
 		db.prepare(
-			"INSERT INTO memories (id, project_id, category, content, source_feature_id) VALUES (?, ?, ?, ?, ?)",
+			"INSERT INTO memories (id, workspace_id, category, content, source_flow_id) VALUES (?, ?, ?, ?, ?)",
 		).run(
 			id,
 			params.project_id,
@@ -125,7 +125,7 @@ export const searchMemoryTool = {
 			let sql = `
         SELECT m.* FROM memories m
         JOIN memories_fts fts ON fts.rowid = m.rowid
-        WHERE fts.content MATCH ? AND m.project_id = ?
+        WHERE fts.content MATCH ? AND m.workspace_id = ?
       `;
 			const queryParams: (string | number)[] = [ftsQuery, params.project_id];
 
@@ -139,7 +139,7 @@ export const searchMemoryTool = {
 			memories = db.prepare(sql).all(...queryParams) as Memory[];
 		} else {
 			// No query — list recent
-			let sql = "SELECT * FROM memories WHERE project_id = ?";
+			let sql = "SELECT * FROM memories WHERE workspace_id = ?";
 			const queryParams: (string | number)[] = [params.project_id];
 
 			if (params.category) {

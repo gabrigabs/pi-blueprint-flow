@@ -117,13 +117,13 @@ function gatherSubagentContext(actionRun: ActionRunRow) {
 	const db = getDb();
 
 	const feature = db
-		.prepare("SELECT * FROM features WHERE id = ?")
+		.prepare("SELECT * FROM flows WHERE id = ?")
 		.get(actionRun.flow_id) as
 		| { title: string; description: string | null }
 		| undefined;
 
 	const project = db
-		.prepare("SELECT * FROM projects WHERE id = ?")
+		.prepare("SELECT * FROM workspaces WHERE id = ?")
 		.get(actionRun.workspace_id) as { stack: string } | undefined;
 
 	const previousArtifacts = db
