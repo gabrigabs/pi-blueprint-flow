@@ -35,8 +35,8 @@ const STEP_ICONS: Record<string, React.ReactNode> = {
 
 export function TimelineSidebar() {
 	const { steps, artifacts, selectedNodeId, selectNode } = useStore();
-	const currentFeature = useStore((s) =>
-		s.features.find((f) => f.id === s.selectedFeatureId),
+	const currentFlow = useStore((s) =>
+		s.flows.find((f) => f.id === s.selectedFlowId),
 	);
 	const [celebratingStep, setCelebratingStep] = useState<string | null>(null);
 	const prevStepsRef = useRef<typeof steps>([]);

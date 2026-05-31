@@ -16,15 +16,15 @@ type Tab = "artifacts" | "activity" | "output" | "interview";
 export function StepDetailDrawer() {
 	const {
 		selectedNodeId,
-		selectedFeatureId,
+		selectedFlowId,
 		selectNode,
 		steps,
 		artifacts,
 		actionRuns,
 		interviews,
-		features,
+		flows,
 	} = useStore();
-	const currentFeature = features.find((f) => f.id === selectedFeatureId);
+	const currentFlow = flows.find((f) => f.id === selectedFlowId);
 	const step = steps.find((s) => s.id === selectedNodeId);
 	const [activeTab, setActiveTab] = useState<Tab>("artifacts");
 	const [artifactContent, setArtifactContent] = useState<string>("");
@@ -64,7 +64,7 @@ export function StepDetailDrawer() {
 	const pendingInterviews = interviews.filter((i) => !i.answer);
 	const activeRun = actionRuns.find(
 		(r) =>
-			r.feature_id === selectedFeatureId &&
+			r.flow_id === selectedFlowId &&
 			r.step_name === step?.name &&
 			!["completed", "failed", "cancelled", "not_connected"].includes(r.status),
 	);
@@ -92,10 +92,10 @@ export function StepDetailDrawer() {
 		prevPendingCount.current = pendingInterviews.length;
 	}, [pendingInterviews.length]);
 
-	if (!step || !selectedFeatureId) return null;
+	if (!step || !selectedFlowId) return null;
 
 	const stepArtifacts = artifacts.filter((a) => a.step_name === step.name);
-	const isCurrentStep = currentFeature?.current_step === step.name;
+	const isCurrentStep = currentFlow?.current_step === step.name;
 	const isActive =
 		step.status === "current" ||
 		step.status === "running" ||
@@ -206,10 +206,7 @@ export function StepDetailDrawer() {
 					/>
 				)}
 				{activeTab === "activity" && (
-					<InlineActionRuns
-						stepName={step.name}
-						featureId={selectedFeatureId}
-					/>
+					<InlineActionRuns stepName={step.name} flowId={selectedFlowId} />
 				)}
 				{activeTab === "output" && (
 					<LiveOutputTab
@@ -220,7 +217,7 @@ export function StepDetailDrawer() {
 					/>
 				)}
 				{activeTab === "interview" && (
-					<InlineInterviewSection featureId={selectedFeatureId} />
+					<InlineInterviewSection flowId={selectedFlowId} />
 				)}
 			</div>
 

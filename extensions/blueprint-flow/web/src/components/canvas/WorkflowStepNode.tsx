@@ -117,7 +117,7 @@ function WorkflowStepNodeComponent({
 	const stepColor = STEP_COLORS[stepName] ?? "var(--accent-primary)";
 
 	const selectArtifact = useStore((s) => s.selectArtifact);
-	const selectedFeatureId = useStore((s) => s.selectedFeatureId);
+	const selectedFlowId = useStore((s) => s.selectedFlowId);
 	const actionRuns = useStore((s) => s.actionRuns);
 	const liveToolName = useStore((s) => s.liveToolName);
 	const liveActionRunId = useStore((s) => s.liveActionRunId);
@@ -127,12 +127,12 @@ function WorkflowStepNodeComponent({
 	const isCurrentStep = Boolean(data.isCurrentStep);
 	const activeRun = actionRuns.find(
 		(r) =>
-			r.feature_id === selectedFeatureId &&
+			r.flow_id === selectedFlowId &&
 			r.step_name === stepName &&
 			!["completed", "failed", "cancelled", "not_connected"].includes(r.status),
 	);
 	const canRunCurrent =
-		Boolean(selectedFeatureId) &&
+		Boolean(selectedFlowId) &&
 		isCurrentStep &&
 		!activeRun &&
 		(status === "current" ||
@@ -140,8 +140,8 @@ function WorkflowStepNodeComponent({
 			status === "needs_user" ||
 			status === "pending");
 	const canStop = Boolean(activeRun);
-	const canNavigateCurrent = Boolean(selectedFeatureId) && isCurrentStep;
-	const canReturnToStep = Boolean(selectedFeatureId) && status === "done";
+	const canNavigateCurrent = Boolean(selectedFlowId) && isCurrentStep;
+	const canReturnToStep = Boolean(selectedFlowId) && status === "done";
 
 	function handleArtifactClick(id: string) {
 		selectArtifact(id);
@@ -153,10 +153,10 @@ function WorkflowStepNodeComponent({
 
 	async function handleRun(event: MouseEvent) {
 		stopNodeClick(event);
-		if (!selectedFeatureId) return;
+		if (!selectedFlowId) return;
 		const { runModelId, runThinkingLevel, executionMode } = useStore.getState();
 		try {
-			await api.features.runStep(selectedFeatureId, {
+			await api.flows.runStep(selectedFlowId, {
 				modelId: runModelId ?? undefined,
 				thinkingLevel: runThinkingLevel || undefined,
 				executionMode: mapExecutionMode(executionMode) || undefined,
@@ -174,25 +174,25 @@ function WorkflowStepNodeComponent({
 
 	async function handleSkip(event: MouseEvent) {
 		stopNodeClick(event);
-		if (!selectedFeatureId) return;
+		if (!selectedFlowId) return;
 		try {
-			await api.features.advance(selectedFeatureId);
+			await api.flows.advance(selectedFlowId);
 		} catch {}
 	}
 
 	async function handleBack(event: MouseEvent) {
 		stopNodeClick(event);
-		if (!selectedFeatureId) return;
+		if (!selectedFlowId) return;
 		try {
-			await api.features.back(selectedFeatureId);
+			await api.flows.back(selectedFlowId);
 		} catch {}
 	}
 
 	async function handleReturn(event: MouseEvent) {
 		stopNodeClick(event);
-		if (!selectedFeatureId) return;
+		if (!selectedFlowId) return;
 		try {
-			await api.features.focusStep(selectedFeatureId, stepName);
+			await api.flows.focusStep(selectedFlowId, stepName);
 		} catch {}
 	}
 

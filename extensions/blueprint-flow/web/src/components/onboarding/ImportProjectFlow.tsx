@@ -13,7 +13,7 @@ interface Props {
 }
 
 export function ImportProjectFlow({ onBack }: Props) {
-	const { closeModal, setProjects, selectProject } = useStore();
+	const { closeModal, setWorkspaces, selectWorkspace } = useStore();
 	const [step, setStep] = useState<Step>("path");
 	const [repoPath, setRepoPath] = useState("");
 	const [result, setResult] = useState<ImportResult | null>(null);
@@ -27,17 +27,17 @@ export function ImportProjectFlow({ onBack }: Props) {
 		setError(null);
 
 		try {
-			const importResult = await api.projects.import({
+			const importResult = await api.workspaces.import({
 				repoPath: repoPath.trim(),
 				mode: "migrate_with_review",
 			});
 
 			setResult(importResult);
 
-			if (importResult.projectId) {
-				const projects = await api.projects.list();
-				setProjects(projects);
-				selectProject(importResult.projectId);
+			if (importResult.workspaceId) {
+				const workspaces = await api.workspaces.list();
+				setWorkspaces(workspaces);
+				selectWorkspace(importResult.workspaceId);
 			}
 
 			setStep("template");
@@ -48,16 +48,16 @@ export function ImportProjectFlow({ onBack }: Props) {
 	}
 
 	async function handleFinish() {
-		if (!result?.projectId || !selectedTemplate) return;
+		if (!result?.workspaceId || !selectedTemplate) return;
 
 		try {
 			const workflow = await api.workflows.create({
-				projectId: result.projectId,
+				workspaceId: result.workspaceId,
 				name: selectedTemplate.name,
 				description: selectedTemplate.description,
 				steps: selectedTemplate.steps,
 			});
-			await api.workflows.assignToProject(result.projectId, workflow.id);
+			await api.workflows.assignToWorkspace(result.workspaceId, workflow.id);
 		} catch {
 			// Non-critical — project already created
 		}
@@ -197,7 +197,7 @@ export function ImportProjectFlow({ onBack }: Props) {
 							Choose a workflow template
 						</h3>
 						<p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-							This defines the steps your features will follow.
+							This defines the steps your flows will follow.
 						</p>
 					</div>
 

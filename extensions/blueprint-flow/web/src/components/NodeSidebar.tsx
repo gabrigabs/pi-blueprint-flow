@@ -27,9 +27,9 @@ function StepStatusPill({ status }: { status: string }) {
 }
 
 export function NodeSidebar() {
-	const { selectedNodeId, selectedFeatureId, selectNode, steps, artifacts, actionRuns, interviews } = useStore();
-	const currentFeature = useStore((s) =>
-		s.features.find((f) => f.id === s.selectedFeatureId),
+	const { selectedNodeId, selectedFlowId, selectNode, steps, artifacts, actionRuns, interviews } = useStore();
+	const currentFlow = useStore((s) =>
+		s.flows.find((f) => f.id === s.selectedFlowId),
 	);
 
 	const step = steps.find((s) => s.id === selectedNodeId);
@@ -37,13 +37,13 @@ export function NodeSidebar() {
 
 	useEffect(() => { setActiveTab("actions"); }, [selectedNodeId]);
 
-	if (!step || !selectedFeatureId) return null;
+	if (!step || !selectedFlowId) return null;
 
 	const stepArtifacts = artifacts.filter((a) => a.step_name === step.name);
 	const stepRuns = actionRuns.filter(
-		(r) => r.step_name === step.name && r.feature_id === selectedFeatureId,
+		(r) => r.step_name === step.name && r.flow_id === selectedFlowId,
 	);
-	const isCurrentStep = currentFeature?.current_step === step.name;
+	const isCurrentStep = currentFlow?.current_step === step.name;
 	const isActive = step.status === "running" || step.status === "needs_user";
 	const showInterview = step.name === "interview";
 	const showDesign = step.name === "design";
@@ -93,20 +93,20 @@ export function NodeSidebar() {
 			{/* Tab content */}
 			<div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-3">
 				{activeTab === "actions" && (
-					<InlineActionRuns stepName={step.name} featureId={selectedFeatureId} />
+					<InlineActionRuns stepName={step.name} flowId={selectedFlowId} />
 				)}
 				{activeTab === "artifacts" && (
-					<InlineArtifactViewer stepName={step.name} featureId={selectedFeatureId} />
+					<InlineArtifactViewer stepName={step.name} flowId={selectedFlowId} />
 				)}
 				{activeTab === "interview" && showInterview && (
-					<InlineInterviewSection featureId={selectedFeatureId} />
+					<InlineInterviewSection flowId={selectedFlowId} />
 				)}
 			</div>
 
 			{/* Design canvas (if design step) */}
 			{showDesign && (
 				<div className="border-t px-4 py-3 shrink-0 max-h-[280px] overflow-hidden" style={{ borderColor: "var(--border-subtle)" }}>
-					<DesignCanvas featureId={selectedFeatureId} />
+					<DesignCanvas flowId={selectedFlowId} />
 				</div>
 			)}
 
@@ -117,7 +117,7 @@ export function NodeSidebar() {
 					style={{ borderColor: "var(--border-subtle)" }}
 				>
 					<StepActions
-						featureId={selectedFeatureId}
+						flowId={selectedFlowId}
 						stepId={step.id}
 						stepName={step.name}
 						stepStatus={step.status}

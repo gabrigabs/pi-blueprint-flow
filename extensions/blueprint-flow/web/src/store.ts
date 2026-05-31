@@ -1,20 +1,20 @@
 import { create } from "zustand";
 
-export interface Project {
+export interface Workspace {
 	id: string;
 	name: string;
 	description: string | null;
 	repo_path: string | null;
 	stack: string;
 	archived: number;
-	feature_count?: number;
+	flow_count?: number;
 	created_at: string;
 	updated_at: string;
 }
 
-export interface Feature {
+export interface Flow {
 	id: string;
-	project_id: string;
+	workspace_id: string;
 	title: string;
 	description: string | null;
 	type: string;
@@ -28,7 +28,7 @@ export interface Feature {
 
 export interface Step {
 	id: string;
-	feature_id: string;
+	flow_id: string;
 	name: string;
 	status: string;
 	started_at: string | null;
@@ -37,7 +37,7 @@ export interface Step {
 
 export interface Artifact {
 	id: string;
-	feature_id: string;
+	flow_id: string;
 	step_name: string;
 	type: string;
 	filename: string;
@@ -47,16 +47,16 @@ export interface Artifact {
 
 export interface Memory {
 	id: string;
-	project_id: string;
+	workspace_id: string;
 	category: string;
 	content: string;
-	source_feature_id: string | null;
+	source_flow_id: string | null;
 	created_at: string;
 }
 
 export interface Interview {
 	id: string;
-	feature_id: string;
+	flow_id: string;
 	question: string;
 	answer: string | null;
 	type: string;
@@ -69,8 +69,8 @@ export interface Interview {
 
 export interface ActionRun {
 	id: string;
-	project_id: string | null;
-	feature_id: string | null;
+	workspace_id: string | null;
+	flow_id: string | null;
 	action_type: string;
 	step_name: string | null;
 	status: string;
@@ -85,6 +85,11 @@ export interface ActionRun {
 	updated_at: string;
 }
 
+/** @deprecated Use Workspace */
+export type Project = Workspace;
+/** @deprecated Use Flow */
+export type Feature = Flow;
+
 export type BridgeStatus = "idle" | "busy" | "not_connected";
 
 export interface WorkflowStep {
@@ -98,7 +103,7 @@ export interface WorkflowStep {
 
 export interface Workflow {
 	id: string;
-	project_id: string | null;
+	workspace_id: string | null;
 	name: string;
 	description: string | null;
 	steps_json: string;
@@ -111,8 +116,8 @@ export interface Workflow {
 export type ConnectionState = "connected" | "reconnecting" | "disconnected";
 
 export type ModalType =
-	| "onboarding"
-	| "create_feature"
+	| "create_workspace"
+	| "create_flow"
 	| "agent_settings"
 	| "workflow_editor"
 	| "knowledge"
@@ -130,8 +135,8 @@ export interface NotificationEntry {
 }
 
 interface BlueprintStore {
-	projects: Project[];
-	features: Feature[];
+	workspaces: Workspace[];
+	flows: Flow[];
 	steps: Step[];
 	artifacts: Artifact[];
 	memories: Memory[];
@@ -140,8 +145,8 @@ interface BlueprintStore {
 	workflows: Workflow[];
 	activeWorkflow: Workflow | null;
 	bridgeStatus: BridgeStatus;
-	selectedProjectId: string | null;
-	selectedFeatureId: string | null;
+	selectedWorkspaceId: string | null;
+	selectedFlowId: string | null;
 	selectedArtifactId: string | null;
 	selectedNodeId: string | null;
 	connected: boolean;
@@ -174,8 +179,8 @@ interface BlueprintStore {
 	runModelId: string | null;
 	runThinkingLevel: string;
 
-	setProjects: (projects: Project[]) => void;
-	setFeatures: (features: Feature[]) => void;
+	setWorkspaces: (workspaces: Workspace[]) => void;
+	setFlows: (flows: Flow[]) => void;
 	setSteps: (steps: Step[]) => void;
 	setArtifacts: (artifacts: Artifact[]) => void;
 	setMemories: (memories: Memory[]) => void;
@@ -186,8 +191,8 @@ interface BlueprintStore {
 	setWorkflows: (workflows: Workflow[]) => void;
 	setActiveWorkflow: (workflow: Workflow | null) => void;
 	setBridgeStatus: (status: BridgeStatus) => void;
-	selectProject: (id: string | null) => void;
-	selectFeature: (id: string | null) => void;
+	selectWorkspace: (id: string | null) => void;
+	selectFlow: (id: string | null) => void;
 	selectArtifact: (id: string | null) => void;
 	selectNode: (id: string | null) => void;
 	setConnected: (connected: boolean) => void;
@@ -224,8 +229,8 @@ interface BlueprintStore {
 }
 
 export const useStore = create<BlueprintStore>((set) => ({
-	projects: [],
-	features: [],
+	workspaces: [],
+	flows: [],
 	steps: [],
 	artifacts: [],
 	memories: [],
@@ -234,8 +239,8 @@ export const useStore = create<BlueprintStore>((set) => ({
 	workflows: [],
 	activeWorkflow: null,
 	bridgeStatus: "not_connected",
-	selectedProjectId: null,
-	selectedFeatureId: null,
+	selectedWorkspaceId: null,
+	selectedFlowId: null,
 	selectedArtifactId: null,
 	selectedNodeId: null,
 	connected: false,
@@ -261,8 +266,8 @@ export const useStore = create<BlueprintStore>((set) => ({
 	runModelId: null,
 	runThinkingLevel: "medium",
 
-	setProjects: (projects) => set({ projects }),
-	setFeatures: (features) => set({ features }),
+	setWorkspaces: (workspaces) => set({ workspaces }),
+	setFlows: (flows) => set({ flows }),
 	setSteps: (steps) => set({ steps }),
 	setArtifacts: (artifacts) => set({ artifacts }),
 	setMemories: (memories) => set({ memories }),
@@ -279,15 +284,15 @@ export const useStore = create<BlueprintStore>((set) => ({
 	setWorkflows: (workflows) => set({ workflows }),
 	setActiveWorkflow: (activeWorkflow) => set({ activeWorkflow }),
 	setBridgeStatus: (bridgeStatus) => set({ bridgeStatus }),
-	selectProject: (id) =>
+	selectWorkspace: (id) =>
 		set({
-			selectedProjectId: id,
-			selectedFeatureId: null,
+			selectedWorkspaceId: id,
+			selectedFlowId: null,
 			selectedArtifactId: null,
 		}),
-	selectFeature: (id) =>
+	selectFlow: (id) =>
 		set({
-			selectedFeatureId: id,
+			selectedFlowId: id,
 			selectedArtifactId: null,
 			selectedNodeId: null,
 		}),

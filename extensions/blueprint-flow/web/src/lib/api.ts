@@ -2,23 +2,23 @@ import type {
 	ActionRun,
 	Artifact,
 	BridgeStatus,
-	Feature,
+	Flow,
 	Interview,
 	Memory,
-	Project,
 	Step,
 	Workflow,
 	WorkflowStep,
+	Workspace,
 } from "../store";
 
-export interface CreateProjectPayload {
+export interface CreateWorkspacePayload {
 	name: string;
 	repoPath?: string;
 	description?: string;
 	stack?: string[];
 }
 
-export interface UpdateProjectPayload {
+export interface UpdateWorkspacePayload {
 	name?: string;
 	description?: string;
 	repoPath?: string;
@@ -26,7 +26,7 @@ export interface UpdateProjectPayload {
 	archived?: boolean;
 }
 
-export interface CreateFeaturePayload {
+export interface CreateFlowPayload {
 	title: string;
 	description?: string;
 	type?: string;
@@ -49,7 +49,7 @@ export interface AgentRunSettingsPayload {
 	reviewStrictness?: string;
 }
 
-export interface ImportProjectPayload {
+export interface ImportWorkspacePayload {
 	repoPath: string;
 	name?: string;
 	mode: "analyze_only" | "migrate_with_review";
@@ -57,8 +57,8 @@ export interface ImportProjectPayload {
 }
 
 export interface RunActionPayload {
-	projectId?: string;
-	featureId?: string;
+	workspaceId?: string;
+	flowId?: string;
 	actionType: string;
 	stepName?: string;
 	modelId?: string;
@@ -104,8 +104,8 @@ export interface AgentConfigResponse {
 
 export interface ImportResult {
 	reportId: string;
-	projectId: string | null;
-	projectName: string;
+	workspaceId: string | null;
+	workspaceName: string;
 	mode: string;
 	repoPath: string;
 	stack: {
@@ -148,69 +148,66 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-	projects: {
+	workspaces: {
 		list: () =>
-			request<(Project & { feature_count: number })[]>("/api/projects"),
-		get: (id: string) => request<Project>(`/api/projects/${id}`),
-		create: (data: CreateProjectPayload) =>
-			request<Project>("/api/projects", {
+			request<(Workspace & { flow_count: number })[]>("/api/workspaces"),
+		get: (id: string) => request<Workspace>(`/api/workspaces/${id}`),
+		create: (data: CreateWorkspacePayload) =>
+			request<Workspace>("/api/workspaces", {
 				method: "POST",
 				body: JSON.stringify(data),
 			}),
-		update: (id: string, data: UpdateProjectPayload) =>
-			request<Project>(`/api/projects/${id}`, {
+		update: (id: string, data: UpdateWorkspacePayload) =>
+			request<Workspace>(`/api/workspaces/${id}`, {
 				method: "PATCH",
 				body: JSON.stringify(data),
 			}),
-		import: (data: ImportProjectPayload) =>
-			request<ImportResult>("/api/projects/import", {
+		import: (data: ImportWorkspacePayload) =>
+			request<ImportResult>("/api/workspaces/import", {
 				method: "POST",
 				body: JSON.stringify(data),
 			}),
 		delete: (id: string) =>
-			fetch(`/api/projects/${id}`, { method: "DELETE" }).then((res) => {
-				if (!res.ok) throw new Error("Failed to delete project");
+			fetch(`/api/workspaces/${id}`, { method: "DELETE" }).then((res) => {
+				if (!res.ok) throw new Error("Failed to delete workspace");
 			}),
 	},
 
-	features: {
-		list: (projectId: string) =>
-			request<Feature[]>(`/api/projects/${projectId}/features`),
-		get: (id: string) => request<Feature>(`/api/features/${id}`),
-		create: (projectId: string, data: CreateFeaturePayload) =>
-			request<Feature>(`/api/projects/${projectId}/features`, {
+	flows: {
+		list: (workspaceId: string) =>
+			request<Flow[]>(`/api/workspaces/${workspaceId}/flows`),
+		get: (id: string) => request<Flow>(`/api/flows/${id}`),
+		create: (workspaceId: string, data: CreateFlowPayload) =>
+			request<Flow>(`/api/workspaces/${workspaceId}/flows`, {
 				method: "POST",
 				body: JSON.stringify(data),
 			}),
-		update: (id: string, data: Partial<CreateFeaturePayload>) =>
-			request<Feature>(`/api/features/${id}`, {
+		update: (id: string, data: Partial<CreateFlowPayload>) =>
+			request<Flow>(`/api/flows/${id}`, {
 				method: "PATCH",
 				body: JSON.stringify(data),
 			}),
 		delete: (id: string) =>
-			fetch(`/api/features/${id}`, { method: "DELETE" }).then((res) => {
-				if (!res.ok) throw new Error("Failed to delete feature");
+			fetch(`/api/flows/${id}`, { method: "DELETE" }).then((res) => {
+				if (!res.ok) throw new Error("Failed to delete flow");
 			}),
 		advance: (id: string) =>
-			request<{ feature: Feature; steps: Step[]; completed: boolean }>(
-				`/api/features/${id}/advance`,
+			request<{ flow: Flow; steps: Step[]; completed: boolean }>(
+				`/api/flows/${id}/advance`,
 				{ method: "POST", body: JSON.stringify({}) },
 			),
 		back: (id: string) =>
-			request<{ feature: Feature; steps: Step[] }>(`/api/features/${id}/back`, {
+			request<{ flow: Flow; steps: Step[] }>(`/api/flows/${id}/back`, {
 				method: "POST",
 				body: JSON.stringify({}),
 			}),
 		focusStep: (id: string, stepName: string) =>
-			request<{ feature: Feature; steps: Step[] }>(
-				`/api/features/${id}/focus-step`,
-				{
-					method: "POST",
-					body: JSON.stringify({ stepName }),
-				},
-			),
+			request<{ flow: Flow; steps: Step[] }>(`/api/flows/${id}/focus-step`, {
+				method: "POST",
+				body: JSON.stringify({ stepName }),
+			}),
 		runStep: (id: string, agentRunSettings?: AgentRunSettingsPayload) =>
-			request(`/api/features/${id}/run-step`, {
+			request(`/api/flows/${id}/run-step`, {
 				method: "POST",
 				body: JSON.stringify({ agentRunSettings }),
 			}),
@@ -220,19 +217,18 @@ export const api = {
 			agentRunSettings?: AgentRunSettingsPayload,
 		) =>
 			request<{
-				featureId: string;
+				flowId: string;
 				actionType: string;
 				actionRunId: string;
 				actionStatus: string;
-			}>(`/api/features/${id}/run-action`, {
+			}>(`/api/flows/${id}/run-action`, {
 				method: "POST",
 				body: JSON.stringify({ actionType, agentRunSettings }),
 			}),
 	},
 
 	steps: {
-		list: (featureId: string) =>
-			request<Step[]>(`/api/features/${featureId}/steps`),
+		list: (flowId: string) => request<Step[]>(`/api/flows/${flowId}/steps`),
 		updateStatus: (id: string, status: string) =>
 			request<Step>(`/api/steps/${id}/status`, {
 				method: "PATCH",
@@ -241,11 +237,11 @@ export const api = {
 	},
 
 	artifacts: {
-		list: (featureId: string) =>
-			request<Artifact[]>(`/api/features/${featureId}/artifacts`),
+		list: (flowId: string) =>
+			request<Artifact[]>(`/api/flows/${flowId}/artifacts`),
 		get: (id: string) => request<Artifact>(`/api/artifacts/${id}`),
 		create: (data: {
-			featureId: string;
+			flowId: string;
 			stepName: string;
 			type: string;
 			filename: string;
@@ -263,10 +259,10 @@ export const api = {
 	},
 
 	interviews: {
-		list: (featureId: string) =>
-			request<Interview[]>(`/api/features/${featureId}/interviews`),
-		pending: (featureId: string) =>
-			request<Interview[]>(`/api/features/${featureId}/interviews/pending`),
+		list: (flowId: string) =>
+			request<Interview[]>(`/api/flows/${flowId}/interviews`),
+		pending: (flowId: string) =>
+			request<Interview[]>(`/api/flows/${flowId}/interviews/pending`),
 		answer: (id: string, answer: string) =>
 			request<Interview>(`/api/interviews/${id}/answer`, {
 				method: "POST",
@@ -280,8 +276,8 @@ export const api = {
 	},
 
 	memories: {
-		list: (projectId: string) =>
-			request<Memory[]>(`/api/projects/${projectId}/memories`),
+		list: (workspaceId: string) =>
+			request<Memory[]>(`/api/workspaces/${workspaceId}/memories`),
 	},
 
 	config: {
@@ -306,14 +302,14 @@ export const api = {
 
 	actionRuns: {
 		list: (filters?: {
-			featureId?: string;
-			projectId?: string;
+			flowId?: string;
+			workspaceId?: string;
 			status?: string;
 			limit?: number;
 		}) => {
 			const params = new URLSearchParams();
-			if (filters?.featureId) params.set("featureId", filters.featureId);
-			if (filters?.projectId) params.set("projectId", filters.projectId);
+			if (filters?.flowId) params.set("flowId", filters.flowId);
+			if (filters?.workspaceId) params.set("workspaceId", filters.workspaceId);
 			if (filters?.status) params.set("status", filters.status);
 			if (filters?.limit) params.set("limit", String(filters.limit));
 			const qs = params.toString();
@@ -363,15 +359,15 @@ export const api = {
 	},
 
 	workflows: {
-		list: (projectId?: string) => {
-			const qs = projectId ? `?projectId=${projectId}` : "";
+		list: (workspaceId?: string) => {
+			const qs = workspaceId ? `?workspaceId=${workspaceId}` : "";
 			return request<Workflow[]>(`/api/workflows${qs}`);
 		},
 		get: (id: string) => request<Workflow>(`/api/workflows/${id}`),
-		getProjectWorkflow: (projectId: string) =>
-			request<Workflow>(`/api/projects/${projectId}/workflow`),
+		getWorkspaceWorkflow: (workspaceId: string) =>
+			request<Workflow>(`/api/workspaces/${workspaceId}/workflow`),
 		create: (data: {
-			projectId?: string;
+			workspaceId?: string;
 			name: string;
 			description?: string;
 			steps: WorkflowStep[];
@@ -392,9 +388,9 @@ export const api = {
 			request<{ success: boolean }>(`/api/workflows/${id}`, {
 				method: "DELETE",
 			}),
-		assignToProject: (projectId: string, workflowId: string) =>
+		assignToWorkspace: (workspaceId: string, workflowId: string) =>
 			request<{ success: boolean; workflowId: string }>(
-				`/api/projects/${projectId}/workflow`,
+				`/api/workspaces/${workspaceId}/workflow`,
 				{
 					method: "POST",
 					body: JSON.stringify({ workflowId }),

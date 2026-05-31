@@ -12,7 +12,7 @@ import { ModelBadges } from "./ModelBadges";
 
 export function WorkflowEditor() {
 	const {
-		selectedProjectId,
+		selectedWorkspaceId,
 		activeWorkflow,
 		setActiveWorkflow,
 		setWorkflows,
@@ -33,9 +33,9 @@ export function WorkflowEditor() {
 	}, []);
 
 	useEffect(() => {
-		if (selectedProjectId) {
+		if (selectedWorkspaceId) {
 			api.workflows
-				.getProjectWorkflow(selectedProjectId)
+				.getProjectWorkflow(selectedWorkspaceId)
 				.then((w) => {
 					setActiveWorkflow(w);
 					setSteps(w.steps);
@@ -44,7 +44,7 @@ export function WorkflowEditor() {
 				})
 				.catch(() => {});
 		}
-	}, [selectedProjectId, setActiveWorkflow]);
+	}, [selectedWorkspaceId, setActiveWorkflow]);
 
 	const handleAddStep = () => {
 		setSteps([...steps, { name: "", label: "", actionType: "run_step" }]);
@@ -71,7 +71,7 @@ export function WorkflowEditor() {
 	};
 
 	const handleSave = async () => {
-		if (!selectedProjectId) return;
+		if (!selectedWorkspaceId) return;
 		setError(null);
 		setSaving(true);
 
@@ -102,17 +102,17 @@ export function WorkflowEditor() {
 			} else {
 				// Create new project-specific workflow
 				const created = await api.workflows.create({
-					projectId: selectedProjectId,
+					workspaceId: selectedWorkspaceId,
 					name: name || "Custom Workflow",
 					description,
 					steps,
 				});
-				await api.workflows.assignToProject(selectedProjectId, created.id);
+				await api.workflows.assignToWorkspace(selectedWorkspaceId, created.id);
 				setActiveWorkflow(created);
 			}
 
 			// Refresh workflows list
-			const workflows = await api.workflows.list(selectedProjectId);
+			const workflows = await api.workflows.list(selectedWorkspaceId);
 			setWorkflows(workflows);
 			closeModal();
 		} catch (err: any) {
@@ -123,10 +123,10 @@ export function WorkflowEditor() {
 	};
 
 	const handleReset = async () => {
-		if (!selectedProjectId) return;
+		if (!selectedWorkspaceId) return;
 		try {
-			await api.workflows.assignToProject(selectedProjectId, "default");
-			const w = await api.workflows.getProjectWorkflow(selectedProjectId);
+			await api.workflows.assignToWorkspace(selectedWorkspaceId, "default");
+			const w = await api.workflows.getProjectWorkflow(selectedWorkspaceId);
 			setActiveWorkflow(w);
 			setSteps(w.steps);
 			setName(w.name);

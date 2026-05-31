@@ -15,7 +15,7 @@ import { ActionStatusBadge } from "./ActionStatusBadge";
 
 interface Props {
 	stepName: string;
-	featureId: string;
+	flowId: string;
 }
 
 interface LiveEvent {
@@ -24,14 +24,14 @@ interface LiveEvent {
 	timestamp: number;
 }
 
-export function InlineActionRuns({ stepName, featureId }: Props) {
+export function InlineActionRuns({ stepName, flowId }: Props) {
 	const { actionRuns, bridgeStatus } = useStore();
 	const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 	const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
 	const eventsEndRef = useRef<HTMLDivElement>(null);
 
 	const stepRuns = actionRuns.filter(
-		(r) => r.step_name === stepName && r.feature_id === featureId,
+		(r) => r.step_name === stepName && r.flow_id === flowId,
 	);
 
 	useEffect(() => {

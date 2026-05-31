@@ -20,17 +20,17 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export function FeatureKnowledgePanel({ visible, onClose }: Props) {
-	const { memories, selectedFeatureId } = useStore();
+	const { memories, selectedFlowId } = useStore();
 	const [collapsed, setCollapsed] = useState(false);
 	const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
 
 	if (!visible) return null;
 
 	const featureMemories = memories.filter(
-		(m) => m.source_feature_id === selectedFeatureId,
+		(m) => m.source_flow_id === selectedFlowId,
 	);
 	const projectMemories = memories.filter(
-		(m) => !m.source_feature_id || m.source_feature_id !== selectedFeatureId,
+		(m) => !m.source_flow_id || m.source_flow_id !== selectedFlowId,
 	);
 
 	const allMemories = [...featureMemories, ...projectMemories];

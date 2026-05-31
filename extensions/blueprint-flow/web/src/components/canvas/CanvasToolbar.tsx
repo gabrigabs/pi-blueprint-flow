@@ -31,7 +31,7 @@ export function CanvasToolbar({
 	showKnowledge,
 	onToggleKnowledge,
 }: Props) {
-	const selectedFeatureId = useStore((s) => s.selectedFeatureId);
+	const selectedFlowId = useStore((s) => s.selectedFlowId);
 	const steps = useStore((s) => s.steps);
 	const memories = useStore((s) => s.memories);
 	const executionMode = useStore((s) => s.executionMode);
@@ -62,15 +62,15 @@ export function CanvasToolbar({
 
 	const activeRun = actionRuns.find(
 		(r) =>
-			r.feature_id === selectedFeatureId &&
+			r.flow_id === selectedFlowId &&
 			!["completed", "failed", "cancelled", "not_connected"].includes(r.status),
 	);
 	const isRunning = Boolean(runningStep) || Boolean(activeRun);
 
 	async function handleRunCurrent() {
-		if (!selectedFeatureId) return;
+		if (!selectedFlowId) return;
 		try {
-			await api.features.runStep(selectedFeatureId);
+			await api.flows.runStep(selectedFlowId);
 		} catch {}
 	}
 

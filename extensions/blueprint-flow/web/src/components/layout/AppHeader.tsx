@@ -15,20 +15,20 @@ import { useStore } from "../../store";
 
 export function AppHeader() {
 	const {
-		projects,
-		selectedProjectId,
+		workspaces,
+		selectedWorkspaceId,
 		connectionState,
 		bridgeStatus,
 		actionRuns,
 		sidebarCollapsed,
-		selectProject,
+		selectWorkspace,
 		openModal,
 		toggleSidebar,
 	} = useStore();
 
-	const currentProject = projects.find((p) => p.id === selectedProjectId);
-	const currentFeature = useStore((s) =>
-		s.features.find((f) => f.id === s.selectedFeatureId),
+	const currentWorkspace = workspaces.find((p) => p.id === selectedWorkspaceId);
+	const currentFlow = useStore((s) =>
+		s.flows.find((f) => f.id === s.selectedFlowId),
 	);
 	const steps = useStore((s) => s.steps);
 	const currentStep = steps.find(
@@ -42,18 +42,21 @@ export function AppHeader() {
 		),
 	);
 
-	async function handleDeleteProject(e: React.MouseEvent, projectId: string) {
+	async function handleDeleteWorkspace(
+		e: React.MouseEvent,
+		workspaceId: string,
+	) {
 		e.stopPropagation();
-		if (!confirm("Delete this project and all its features?")) return;
+		if (!confirm("Delete this workspace and all its flows?")) return;
 		try {
-			await api.projects.delete(projectId);
+			await api.workspaces.delete(workspaceId);
 			setDropdownOpen(false);
-			if (selectedProjectId === projectId) {
-				const remaining = projects.filter((p) => p.id !== projectId);
-				selectProject(remaining.length > 0 ? remaining[0].id : null);
+			if (selectedWorkspaceId === workspaceId) {
+				const remaining = workspaces.filter((p) => p.id !== workspaceId);
+				selectWorkspace(remaining.length > 0 ? remaining[0].id : null);
 			}
-			const res = await fetch("/api/projects");
-			if (res.ok) useStore.getState().setProjects(await res.json());
+			const res = await fetch("/api/workspaces");
+			if (res.ok) useStore.getState().setWorkspaces(await res.json());
 		} catch {}
 	}
 
@@ -81,7 +84,7 @@ export function AppHeader() {
 				background: "var(--bg-elevated)",
 			}}
 		>
-			{/* Left: Logo + Project selector */}
+			{/* Left: Logo + Workspace selector */}
 			<div className="flex items-center gap-4">
 				<div className="flex items-center gap-2.5">
 					<div className="h-5 w-5 rounded-sm bg-gradient-to-br from-[var(--accent-primary)] to-[var(--cyan-500)] flex items-center justify-center">
@@ -109,19 +112,19 @@ export function AppHeader() {
 					</button>
 				)}
 
-				{/* Project dropdown */}
+				{/* Workspace dropdown */}
 				<div className="relative" ref={dropdownRef}>
 					<button
 						type="button"
 						onClick={() => setDropdownOpen(!dropdownOpen)}
 						className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
 						style={{
-							color: currentProject
+							color: currentWorkspace
 								? "var(--text-primary)"
 								: "var(--text-tertiary)",
 						}}
 					>
-						{currentProject?.name ?? "Select project"}
+						{currentWorkspace?.name ?? "Select workspace"}
 						<ChevronDown size={12} style={{ color: "var(--text-muted)" }} />
 					</button>
 
@@ -133,7 +136,7 @@ export function AppHeader() {
 								borderColor: "var(--border-default)",
 							}}
 						>
-							{projects.map((p) => (
+							{workspaces.map((p) => (
 								<div
 									key={p.id}
 									className="group flex items-center justify-between px-3 py-2 transition-colors hover:bg-[var(--bg-surface-hover)]"
@@ -141,13 +144,13 @@ export function AppHeader() {
 									<button
 										type="button"
 										onClick={() => {
-											selectProject(p.id);
+											selectWorkspace(p.id);
 											setDropdownOpen(false);
 										}}
 										className="flex-1 text-left text-sm"
 										style={{
 											color:
-												p.id === selectedProjectId
+												p.id === selectedWorkspaceId
 													? "var(--accent-primary)"
 													: "var(--text-primary)",
 										}}
@@ -156,10 +159,10 @@ export function AppHeader() {
 									</button>
 									<button
 										type="button"
-										onClick={(e) => handleDeleteProject(e, p.id)}
+										onClick={(e) => handleDeleteWorkspace(e, p.id)}
 										className="hidden group-hover:flex items-center rounded p-0.5 transition-colors hover:bg-[var(--rose-glow)]"
 										style={{ color: "var(--rose-400)" }}
-										title="Delete project"
+										title="Delete workspace"
 									>
 										<Trash2 size={11} />
 									</button>
@@ -172,27 +175,27 @@ export function AppHeader() {
 							<button
 								type="button"
 								onClick={() => {
-									openModal("onboarding");
+									openModal("create_workspace");
 									setDropdownOpen(false);
 								}}
 								className="w-full px-3 py-2 text-left text-xs transition-colors hover:bg-[var(--bg-surface-hover)]"
 								style={{ color: "var(--text-tertiary)" }}
 							>
-								+ New Project
+								+ New Workspace
 							</button>
 						</div>
 					)}
 				</div>
 
 				{/* Breadcrumb */}
-				{currentFeature && (
+				{currentFlow && (
 					<div className="flex items-center gap-2">
 						<span style={{ color: "var(--text-muted)" }}>/</span>
 						<span
 							className="font-mono text-xs"
 							style={{ color: "var(--text-secondary)" }}
 						>
-							{currentFeature.title}
+							{currentFlow.title}
 						</span>
 						{currentStep && (
 							<>
@@ -246,7 +249,7 @@ export function AppHeader() {
 				)}
 
 				{/* Knowledge base button */}
-				{selectedProjectId && (
+				{selectedWorkspaceId && (
 					<button
 						type="button"
 						onClick={() => openModal("knowledge")}

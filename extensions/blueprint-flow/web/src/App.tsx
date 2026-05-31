@@ -16,32 +16,32 @@ export function App() {
 	useWebSocket();
 	useKeyboardShortcuts();
 	const {
-		selectedProjectId,
-		selectedFeatureId,
+		selectedWorkspaceId,
+		selectedFlowId,
 		activeModal,
 		sidebarCollapsed,
 	} = useStore();
 
 	useEffect(() => {
-		if (selectedProjectId) {
-			fetch(`/api/projects/${selectedProjectId}/features`)
+		if (selectedWorkspaceId) {
+			fetch(`/api/workspaces/${selectedWorkspaceId}/flows`)
 				.then((r) => r.json())
-				.then((features) => useStore.getState().setFeatures(features))
+				.then((flows) => useStore.getState().setFlows(flows))
 				.catch(() => {});
 
-			fetch(`/api/projects/${selectedProjectId}/memories`)
+			fetch(`/api/workspaces/${selectedWorkspaceId}/memories`)
 				.then((r) => r.json())
 				.then((memories) => useStore.getState().setMemories(memories))
 				.catch(() => {});
 		}
-	}, [selectedProjectId]);
+	}, [selectedWorkspaceId]);
 
 	useEffect(() => {
-		if (selectedFeatureId) {
+		if (selectedFlowId) {
 			Promise.all([
-				fetch(`/api/features/${selectedFeatureId}/steps`).then((r) => r.json()),
-				fetch(`/api/features/${selectedFeatureId}/artifacts`).then((r) => r.json()),
-				fetch(`/api/features/${selectedFeatureId}/interviews`).then((r) => r.json()),
+				fetch(`/api/flows/${selectedFlowId}/steps`).then((r) => r.json()),
+				fetch(`/api/flows/${selectedFlowId}/artifacts`).then((r) => r.json()),
+				fetch(`/api/flows/${selectedFlowId}/interviews`).then((r) => r.json()),
 			])
 				.then(([steps, artifacts, interviews]) => {
 					useStore.getState().setSteps(steps);
@@ -50,7 +50,7 @@ export function App() {
 				})
 				.catch(() => {});
 		}
-	}, [selectedFeatureId]);
+	}, [selectedFlowId]);
 
 	return (
 		<div className="flex h-screen flex-col overflow-hidden">
@@ -69,9 +69,9 @@ export function App() {
 
 				{/* Main content */}
 				<main className="flex flex-1 flex-col overflow-hidden" style={{ background: "var(--bg-base)" }}>
-					{selectedFeatureId ? (
+					{selectedFlowId ? (
 						<WorkflowCanvas />
-					) : selectedProjectId ? (
+					) : selectedWorkspaceId ? (
 						<ProjectHomeView />
 					) : (
 						<div className="flex flex-1 items-center justify-center">
@@ -92,8 +92,8 @@ export function App() {
 			</div>
 
 			{/* Modals */}
-			{activeModal === "onboarding" && <OnboardingModal />}
-			{activeModal === "create_feature" && <CreateFeatureModal />}
+			{activeModal === "create_workspace" && <OnboardingModal />}
+			{activeModal === "create_flow" && <CreateFeatureModal />}
 			{activeModal === "workflow_editor" && <WorkflowEditor />}
 			{activeModal === "knowledge" && <KnowledgeModal />}
 

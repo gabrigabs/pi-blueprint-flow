@@ -201,7 +201,7 @@ function PipelineVisualization({ steps, hoveredStep, setHoveredStep }: {
 }
 
 export function WorkflowConfigPanel() {
-	const { selectedProjectId, activeWorkflow, setActiveWorkflow, setWorkflows } = useStore();
+	const { selectedWorkspaceId, activeWorkflow, setActiveWorkflow, setWorkflows } = useStore();
 	const [steps, setSteps] = useState<WorkflowStep[]>([]);
 	const [showTemplates, setShowTemplates] = useState(false);
 	const [showEditor, setShowEditor] = useState(false);
@@ -211,13 +211,13 @@ export function WorkflowConfigPanel() {
 	const [hoveredStep, setHoveredStep] = useState<number | null>(null);
 
 	useEffect(() => {
-		if (selectedProjectId) {
-			api.workflows.getProjectWorkflow(selectedProjectId).then((w) => {
+		if (selectedWorkspaceId) {
+			api.workflows.getProjectWorkflow(selectedWorkspaceId).then((w) => {
 				setActiveWorkflow(w);
 				setSteps(w.steps);
 			}).catch(() => {});
 		}
-	}, [selectedProjectId, setActiveWorkflow]);
+	}, [selectedWorkspaceId, setActiveWorkflow]);
 
 	const matchedTemplate = WORKFLOW_TEMPLATES.find(
 		(t) =>
@@ -237,7 +237,7 @@ export function WorkflowConfigPanel() {
 	}
 
 	async function handleSave() {
-		if (!selectedProjectId) return;
+		if (!selectedWorkspaceId) return;
 		setSaving(true);
 		setError(null);
 
@@ -265,16 +265,16 @@ export function WorkflowConfigPanel() {
 				});
 			} else {
 				const created = await api.workflows.create({
-					projectId: selectedProjectId,
+					workspaceId: selectedWorkspaceId,
 					name: matchedTemplate?.name ?? "Custom Workflow",
 					description: matchedTemplate?.description,
 					steps,
 				});
-				await api.workflows.assignToProject(selectedProjectId, created.id);
+				await api.workflows.assignToWorkspace(selectedWorkspaceId, created.id);
 				setActiveWorkflow(created);
 			}
 
-			const workflows = await api.workflows.list(selectedProjectId);
+			const workflows = await api.workflows.list(selectedWorkspaceId);
 			setWorkflows(workflows);
 			setDirty(false);
 		} catch (err: any) {
@@ -285,10 +285,10 @@ export function WorkflowConfigPanel() {
 	}
 
 	async function handleReset() {
-		if (!selectedProjectId) return;
+		if (!selectedWorkspaceId) return;
 		try {
-			await api.workflows.assignToProject(selectedProjectId, "default");
-			const w = await api.workflows.getProjectWorkflow(selectedProjectId);
+			await api.workflows.assignToWorkspace(selectedWorkspaceId, "default");
+			const w = await api.workflows.getProjectWorkflow(selectedWorkspaceId);
 			setActiveWorkflow(w);
 			setSteps(w.steps);
 			setDirty(false);

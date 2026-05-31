@@ -14,7 +14,7 @@ import { AgentRunSettingsPanel } from "./AgentRunSettingsPanel";
 import { addToast } from "./Toasts";
 
 interface Props {
-	featureId: string;
+	flowId: string;
 	stepId: string;
 	stepName: string;
 	stepStatus: string;
@@ -22,7 +22,7 @@ interface Props {
 }
 
 export function StepActions({
-	featureId,
+	flowId,
 	stepId,
 	stepName,
 	stepStatus,
@@ -30,8 +30,8 @@ export function StepActions({
 }: Props) {
 	const {
 		setSteps,
-		setFeatures,
-		selectedProjectId,
+		setFlows,
+		selectedWorkspaceId,
 		runModelId,
 		runThinkingLevel,
 		executionMode,
@@ -46,7 +46,7 @@ export function StepActions({
 
 	const activeRun = actionRuns.find(
 		(r) =>
-			r.feature_id === featureId &&
+			r.flow_id === flowId &&
 			r.step_name === stepName &&
 			!["completed", "failed", "cancelled", "not_connected"].includes(r.status),
 	);
@@ -55,11 +55,11 @@ export function StepActions({
 	async function handleAdvance() {
 		setLoading("advance");
 		try {
-			const result = await api.features.advance(featureId);
+			const result = await api.flows.advance(flowId);
 			setSteps(result.steps);
-			if (selectedProjectId) {
-				const features = await api.features.list(selectedProjectId);
-				setFeatures(features);
+			if (selectedWorkspaceId) {
+				const flows = await api.flows.list(selectedWorkspaceId);
+				setFlows(flows);
 			}
 		} catch {
 			// error handling could be added
@@ -71,11 +71,11 @@ export function StepActions({
 	async function handleBack() {
 		setLoading("back");
 		try {
-			const result = await api.features.back(featureId);
+			const result = await api.flows.back(flowId);
 			setSteps(result.steps);
-			if (selectedProjectId) {
-				const features = await api.features.list(selectedProjectId);
-				setFeatures(features);
+			if (selectedWorkspaceId) {
+				const flows = await api.flows.list(selectedWorkspaceId);
+				setFlows(flows);
 			}
 		} catch {
 			// error handling could be added
@@ -88,7 +88,7 @@ export function StepActions({
 		setLoading(status);
 		try {
 			await api.steps.updateStatus(stepId, status);
-			const steps = await api.steps.list(featureId);
+			const steps = await api.steps.list(flowId);
 			setSteps(steps);
 		} catch {
 			// error handling could be added
@@ -108,8 +108,8 @@ export function StepActions({
 					executionMode || settings.executionMode,
 				),
 			};
-			const result = (await api.features.runStep(
-				featureId,
+			const result = (await api.flows.runStep(
+				flowId,
 				mergedSettings,
 			)) as any;
 			setShowRunPanel(false);

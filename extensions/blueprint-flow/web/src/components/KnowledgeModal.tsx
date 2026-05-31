@@ -24,7 +24,7 @@ interface WikiPageSummary {
 }
 
 export function KnowledgeModal() {
-	const { memories, selectedProjectId, closeModal } = useStore();
+	const { memories, selectedWorkspaceId, closeModal } = useStore();
 	const [filter, setFilter] = useState("all");
 	const [tab, setTab] = useState<"memories" | "wiki">("memories");
 	const [wikiPages, setWikiPages] = useState<WikiPageSummary[]>([]);
@@ -33,13 +33,13 @@ export function KnowledgeModal() {
 	const [loadingContent, setLoadingContent] = useState(false);
 
 	useEffect(() => {
-		if (selectedProjectId) {
-			fetch(`/api/projects/${selectedProjectId}/wiki`)
+		if (selectedWorkspaceId) {
+			fetch(`/api/workspaces/${selectedWorkspaceId}/wiki`)
 				.then((r) => r.json())
 				.then(setWikiPages)
 				.catch(() => setWikiPages([]));
 		}
-	}, [selectedProjectId, memories]);
+	}, [selectedWorkspaceId, memories]);
 
 	useEffect(() => {
 		if (!selectedItem) {
@@ -50,9 +50,9 @@ export function KnowledgeModal() {
 		if (selectedItem.type === "memory") {
 			const mem = memories.find((m) => m.id === selectedItem.id);
 			if (mem) setItemContent(mem.content);
-		} else if (selectedItem.type === "wiki" && selectedProjectId) {
+		} else if (selectedItem.type === "wiki" && selectedWorkspaceId) {
 			setLoadingContent(true);
-			fetch(`/api/projects/${selectedProjectId}/wiki/${selectedItem.id}`)
+			fetch(`/api/workspaces/${selectedWorkspaceId}/wiki/${selectedItem.id}`)
 				.then((r) => r.json())
 				.then((data) => {
 					if (data.content) setItemContent(data.content);
@@ -60,7 +60,7 @@ export function KnowledgeModal() {
 				.catch(() => setItemContent(""))
 				.finally(() => setLoadingContent(false));
 		}
-	}, [selectedItem, selectedProjectId, memories]);
+	}, [selectedItem, selectedWorkspaceId, memories]);
 
 	const filtered =
 		filter === "all" ? memories : memories.filter((m) => m.category === filter);

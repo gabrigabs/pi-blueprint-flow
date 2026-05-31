@@ -16,10 +16,10 @@ import { addToast } from "./Toasts";
 
 interface Props {
 	stepName: string;
-	featureId: string;
+	flowId: string;
 }
 
-export function InlineArtifactViewer({ stepName, featureId }: Props) {
+export function InlineArtifactViewer({ stepName, flowId }: Props) {
 	const { artifacts, artifactContentVersion } = useStore();
 	const stepArtifacts = artifacts.filter((a) => a.step_name === stepName);
 	const [expandedId, setExpandedId] = useState<string | null>(null);

@@ -12,7 +12,7 @@ interface LiveEvent {
 }
 
 export function ActionRunPanel() {
-  const { actionRuns, selectedFeatureId, bridgeStatus, setBridgeStatus, setActionRuns } = useStore();
+  const { actionRuns, selectedFlowId, bridgeStatus, setBridgeStatus, setActionRuns } = useStore();
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
   const eventsEndRef = useRef<HTMLDivElement>(null);
@@ -22,15 +22,15 @@ export function ActionRunPanel() {
   }, [setBridgeStatus]);
 
   useEffect(() => {
-    if (selectedFeatureId) {
+    if (selectedFlowId) {
       api.actionRuns
-        .list({ featureId: selectedFeatureId, limit: 20 })
+        .list({ flowId: selectedFlowId, limit: 20 })
         .then(setActionRuns)
         .catch(() => {});
     } else {
       setActionRuns([]);
     }
-  }, [selectedFeatureId, setActionRuns]);
+  }, [selectedFlowId, setActionRuns]);
 
   // Listen for live action:event via custom event on window (dispatched from useWebSocket)
   useEffect(() => {
@@ -50,7 +50,7 @@ export function ActionRunPanel() {
     eventsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [liveEvents]);
 
-  const featureRuns = actionRuns.filter((r) => r.feature_id === selectedFeatureId);
+  const featureRuns = actionRuns.filter((r) => r.flow_id === selectedFlowId);
 
   const handleCancel = async (id: string) => {
     try {

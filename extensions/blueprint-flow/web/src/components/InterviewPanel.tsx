@@ -13,7 +13,7 @@ import { useStore } from "../store";
 import { addToast } from "./Toasts";
 
 export function InterviewPanel() {
-	const { interviews, setInterviews, selectedFeatureId } = useStore();
+	const { interviews, setInterviews, selectedFlowId } = useStore();
 
 	if (interviews.length === 0) {
 		return (
@@ -30,9 +30,9 @@ export function InterviewPanel() {
 	const answered = interviews.filter((i) => i.answer !== null);
 
 	async function refreshInterviews() {
-		if (!selectedFeatureId) return;
+		if (!selectedFlowId) return;
 		try {
-			const data = await api.interviews.list(selectedFeatureId);
+			const data = await api.interviews.list(selectedFlowId);
 			setInterviews(data);
 		} catch {}
 	}

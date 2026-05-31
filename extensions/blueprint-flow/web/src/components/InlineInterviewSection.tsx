@@ -12,10 +12,10 @@ import { useStore } from "../store";
 import { addToast } from "./Toasts";
 
 interface Props {
-	featureId: string;
+	flowId: string;
 }
 
-export function InlineInterviewSection({ featureId }: Props) {
+export function InlineInterviewSection({ flowId }: Props) {
 	const { interviews, setInterviews } = useStore();
 
 	if (interviews.length === 0) {
@@ -31,7 +31,7 @@ export function InlineInterviewSection({ featureId }: Props) {
 
 	async function refreshInterviews() {
 		try {
-			const data = await api.interviews.list(featureId);
+			const data = await api.interviews.list(flowId);
 			setInterviews(data);
 		} catch {}
 	}

@@ -43,9 +43,9 @@ export function useKeyboardShortcuts() {
 					break;
 
 				case "n":
-					if (store.selectedProjectId && !store.activeModal) {
+					if (store.selectedWorkspaceId && !store.activeModal) {
 						e.preventDefault();
-						store.openModal("create_feature");
+						store.openModal("create_flow");
 					}
 					break;
 

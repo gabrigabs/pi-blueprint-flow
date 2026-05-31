@@ -5,7 +5,7 @@ import { addToast } from "../Toasts";
 
 interface DesignVariant {
 	id: string;
-	feature_id: string;
+	flow_id: string;
 	label: string;
 	html_content: string;
 	css_content: string;
@@ -24,7 +24,7 @@ interface DesignTokens {
 	borderRadius?: number;
 }
 
-export function DesignCanvas({ featureId }: { featureId: string }) {
+export function DesignCanvas({ flowId }: { flowId: string }) {
 	const [variants, setVariants] = useState<DesignVariant[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [tokens, setTokens] = useState<DesignTokens>({
@@ -38,13 +38,13 @@ export function DesignCanvas({ featureId }: { featureId: string }) {
 
 	const fetchVariants = useCallback(async () => {
 		try {
-			const res = await fetch(`/api/features/${featureId}/design/variants`);
+			const res = await fetch(`/api/flows/${flowId}/design/variants`);
 			const data = await res.json();
 			setVariants(data);
 		} catch {} finally {
 			setLoading(false);
 		}
-	}, [featureId]);
+	}, [flowId]);
 
 	useEffect(() => { fetchVariants(); }, [fetchVariants]);
 

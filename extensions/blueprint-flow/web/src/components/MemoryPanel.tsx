@@ -24,19 +24,19 @@ interface WikiPageSummary {
 }
 
 export function MemoryPanel() {
-	const { memories, selectedProjectId } = useStore();
+	const { memories, selectedWorkspaceId } = useStore();
 	const [filter, setFilter] = useState("all");
 	const [tab, setTab] = useState<"memories" | "wiki">("memories");
 	const [wikiPages, setWikiPages] = useState<WikiPageSummary[]>([]);
 
 	useEffect(() => {
-		if (selectedProjectId) {
-			fetch(`/api/projects/${selectedProjectId}/wiki`)
+		if (selectedWorkspaceId) {
+			fetch(`/api/workspaces/${selectedWorkspaceId}/wiki`)
 				.then((r) => r.json())
 				.then(setWikiPages)
 				.catch(() => setWikiPages([]));
 		}
-	}, [selectedProjectId, memories]);
+	}, [selectedWorkspaceId, memories]);
 
 	const filtered =
 		filter === "all" ? memories : memories.filter((m) => m.category === filter);
@@ -93,7 +93,7 @@ export function MemoryPanel() {
 			{tab === "memories" ? (
 				<MemoriesView memories={filtered} />
 			) : (
-				<WikiView pages={wikiPages} projectId={selectedProjectId} />
+				<WikiView pages={wikiPages} workspaceId={selectedWorkspaceId} />
 			)}
 		</div>
 	);
@@ -162,20 +162,20 @@ function MemoriesView({
 	);
 }
 
-function WikiView({ pages, projectId }: { pages: WikiPageSummary[]; projectId: string | null }) {
+function WikiView({ pages, workspaceId }: { pages: WikiPageSummary[]; workspaceId: string | null }) {
 	const [expandedId, setExpandedId] = useState<string | null>(null);
 	const [wikiContent, setWikiContent] = useState<string>("");
 
 	useEffect(() => {
-		if (expandedId && projectId) {
-			fetch(`/api/projects/${projectId}/wiki/${expandedId}`)
+		if (expandedId && workspaceId) {
+			fetch(`/api/workspaces/${workspaceId}/wiki/${expandedId}`)
 				.then((r) => r.json())
 				.then((data) => {
 					if (data.content) setWikiContent(data.content);
 				})
 				.catch(() => setWikiContent(""));
 		}
-	}, [expandedId, projectId]);
+	}, [expandedId, workspaceId]);
 
 	if (pages.length === 0) {
 		return (

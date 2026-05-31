@@ -193,7 +193,7 @@ export function stepsToSatelliteNodes(
 	const stepActivities =
 		actionRuns?.filter((r) => r.step_name === step.name) ?? [];
 	const stepInterviews =
-		interviews?.filter((i) => i.feature_id === step.feature_id) ?? [];
+		interviews?.filter((i) => i.flow_id === step.flow_id) ?? [];
 	const pendingInterviews = stepInterviews.filter((i) => !i.answer);
 	const answeredInterviews = stepInterviews.filter(
 		(i) => i.answer && !i.answer.startsWith("[SKIPPED]"),

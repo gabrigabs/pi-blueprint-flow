@@ -25,7 +25,7 @@ const PRIORITY_OPTIONS = [
 type ModalState = "form" | "creating" | "success";
 
 export function CreateFeatureModal() {
-	const { closeModal, selectedProjectId, activeWorkflow, setFeatures, selectFeature } = useStore();
+	const { closeModal, selectedWorkspaceId, activeWorkflow, setFlows, selectFlow } = useStore();
 	const [modalState, setModalState] = useState<ModalState>("form");
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
@@ -49,14 +49,14 @@ export function CreateFeatureModal() {
 
 	async function handleSubmit(e?: React.FormEvent) {
 		e?.preventDefault();
-		if (!title.trim() || !selectedProjectId) return;
+		if (!title.trim() || !selectedWorkspaceId) return;
 
 		setLoading(true);
 		setError(null);
 		setModalState("creating");
 
 		try {
-			const feature = await api.features.create(selectedProjectId, {
+			const flow = await api.flows.create(selectedWorkspaceId, {
 				title: title.trim(),
 				description: description.trim() || undefined,
 				type,
@@ -65,18 +65,18 @@ export function CreateFeatureModal() {
 
 			if (workflowOverride) {
 				const workflow = await api.workflows.create({
-					projectId: selectedProjectId,
-					name: `${feature.title} — ${workflowOverride.name}`,
+					workspaceId: selectedWorkspaceId,
+					name: `${flow.title} — ${workflowOverride.name}`,
 					description: workflowOverride.description,
 					steps: workflowOverride.steps,
 				});
-				await api.workflows.assignToProject(selectedProjectId, workflow.id);
+				await api.workflows.assignToWorkspace(selectedWorkspaceId, workflow.id);
 			}
 
-			const features = await api.features.list(selectedProjectId);
-			setFeatures(features);
-			selectFeature(feature.id);
-			setCreatedTitle(feature.title);
+			const flows = await api.flows.list(selectedWorkspaceId);
+			setFlows(flows);
+			selectFlow(flow.id);
+			setCreatedTitle(flow.title);
 			setModalState("success");
 
 			setTimeout(() => closeModal(), 1200);

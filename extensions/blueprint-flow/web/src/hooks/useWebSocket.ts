@@ -34,7 +34,7 @@ export function useWebSocket() {
 	);
 	const wasConnectedRef = useRef(false);
 
-	const { setConnected, setConnectionState, setProjects, selectProject } =
+	const { setConnected, setConnectionState, setWorkspaces, selectWorkspace } =
 		useStore();
 
 	useEffect(() => {
@@ -159,10 +159,10 @@ export function useWebSocket() {
 
 		switch (msg.type) {
 			case "init":
-				if (msg.data.projects) {
-					setProjects(msg.data.projects);
-					if (msg.data.projects.length > 0 && !store.selectedProjectId) {
-						selectProject(msg.data.projects[0].id);
+				if (msg.data.workspaces) {
+					setWorkspaces(msg.data.workspaces);
+					if (msg.data.workspaces.length > 0 && !store.selectedWorkspaceId) {
+						selectWorkspace(msg.data.workspaces[0].id);
 					}
 				}
 				if (msg.data.bridgeStatus) {
@@ -175,8 +175,8 @@ export function useWebSocket() {
 				if (msg.data.id) {
 					store.addActionRun({
 						id: msg.data.id,
-						project_id: msg.data.projectId ?? null,
-						feature_id: msg.data.featureId ?? null,
+						workspace_id: msg.data.workspaceId ?? null,
+						flow_id: msg.data.flowId ?? null,
 						action_type: msg.data.actionType,
 						step_name: msg.data.stepName ?? null,
 						status: msg.data.status,
@@ -248,19 +248,19 @@ export function useWebSocket() {
 						actionRunId: msg.data.id,
 					});
 					addToast({ type: "success", message: "Action completed" });
-					debouncedRefresh("featureData", refreshFeatureData);
+					debouncedRefresh("flowData", refreshFlowData);
 
 					// Auto-advance: advance + run next step (autonomous mode)
-					if (store.executionMode === "autonomous" && store.selectedFeatureId) {
-						const featureId = store.selectedFeatureId;
+					if (store.executionMode === "autonomous" && store.selectedFlowId) {
+						const flowId = store.selectedFlowId;
 						const completedStepName = completedRun?.step_name;
 						const shouldPause =
-							completedRun?.feature_id !== featureId ||
+							completedRun?.flow_id !== flowId ||
 							completedStepName === "interview";
 
 						if (!shouldPause) {
 							const { runModelId, runThinkingLevel } = store;
-							fetch(`/api/features/${featureId}/advance`, {
+							fetch(`/api/flows/${flowId}/advance`, {
 								method: "POST",
 								headers: { "Content-Type": "application/json" },
 								body: "{}",
@@ -268,7 +268,7 @@ export function useWebSocket() {
 								.then((r) => r.json())
 								.then((data) => {
 									if (data.completed) return;
-									fetch(`/api/features/${featureId}/run-step`, {
+									fetch(`/api/flows/${flowId}/run-step`, {
 										method: "POST",
 										headers: { "Content-Type": "application/json" },
 										body: JSON.stringify({
@@ -325,20 +325,20 @@ export function useWebSocket() {
 					type: "info",
 					message: `Advanced to next step`,
 				});
-				debouncedRefresh("featureData", refreshFeatureData);
-				debouncedRefresh("projects", refreshProjects);
+				debouncedRefresh("flowData", refreshFlowData);
+				debouncedRefresh("workspaces", refreshWorkspaces);
 				break;
 			case "step:back":
 			case "step:status_changed":
-				debouncedRefresh("featureData", refreshFeatureData);
-				debouncedRefresh("projects", refreshProjects);
+				debouncedRefresh("flowData", refreshFlowData);
+				debouncedRefresh("workspaces", refreshWorkspaces);
 				break;
 
-			// --- Feature events ---
-			case "feature:created":
-			case "feature:updated":
-				debouncedRefresh("features", refreshFeatures);
-				debouncedRefresh("featureData", refreshFeatureData);
+			// --- Flow events ---
+			case "flow:created":
+			case "flow:updated":
+				debouncedRefresh("flows", refreshFlows);
+				debouncedRefresh("flowData", refreshFlowData);
 				break;
 
 			// --- Artifact events ---
@@ -371,17 +371,17 @@ export function useWebSocket() {
 				debouncedRefresh("interviews", refreshInterviews);
 				break;
 
-			// --- Project events ---
-			case "project:created":
-			case "project:updated":
-			case "project:archived":
-				debouncedRefresh("projects", refreshProjects);
+			// --- Workspace events ---
+			case "workspace:created":
+			case "workspace:updated":
+			case "workspace:archived":
+				debouncedRefresh("workspaces", refreshWorkspaces);
 				break;
 
 			// --- Import events ---
 			case "import:started":
 			case "import:completed":
-				debouncedRefresh("projects", refreshProjects);
+				debouncedRefresh("workspaces", refreshWorkspaces);
 				break;
 
 			// --- Config events ---
@@ -399,43 +399,43 @@ export function useWebSocket() {
 
 	// --- Granular refresh helpers ---
 
-	async function refreshProjects() {
+	async function refreshWorkspaces() {
 		try {
-			const res = await fetch("/api/projects");
+			const res = await fetch("/api/workspaces");
 			if (res.ok) {
-				useStore.getState().setProjects(await res.json());
+				useStore.getState().setWorkspaces(await res.json());
 			}
 		} catch {}
 	}
 
-	async function refreshFeatures() {
-		const { selectedProjectId } = useStore.getState();
-		if (!selectedProjectId) return;
+	async function refreshFlows() {
+		const { selectedWorkspaceId } = useStore.getState();
+		if (!selectedWorkspaceId) return;
 		try {
-			const res = await fetch(`/api/projects/${selectedProjectId}/features`);
+			const res = await fetch(`/api/workspaces/${selectedWorkspaceId}/flows`);
 			if (res.ok) {
-				useStore.getState().setFeatures(await res.json());
+				useStore.getState().setFlows(await res.json());
 			}
 		} catch {}
 	}
 
-	async function refreshFeatureData() {
-		const { selectedFeatureId, selectedProjectId } = useStore.getState();
+	async function refreshFlowData() {
+		const { selectedFlowId, selectedWorkspaceId } = useStore.getState();
 
-		if (selectedProjectId) {
+		if (selectedWorkspaceId) {
 			try {
-				const res = await fetch(`/api/projects/${selectedProjectId}/features`);
-				if (res.ok) useStore.getState().setFeatures(await res.json());
+				const res = await fetch(`/api/workspaces/${selectedWorkspaceId}/flows`);
+				if (res.ok) useStore.getState().setFlows(await res.json());
 			} catch {}
 		}
 
-		if (!selectedFeatureId) return;
+		if (!selectedFlowId) return;
 
 		try {
 			const [stepsRes, artifactsRes, interviewsRes] = await Promise.all([
-				fetch(`/api/features/${selectedFeatureId}/steps`),
-				fetch(`/api/features/${selectedFeatureId}/artifacts`),
-				fetch(`/api/features/${selectedFeatureId}/interviews`),
+				fetch(`/api/flows/${selectedFlowId}/steps`),
+				fetch(`/api/flows/${selectedFlowId}/artifacts`),
+				fetch(`/api/flows/${selectedFlowId}/interviews`),
 			]);
 
 			if (stepsRes.ok) useStore.getState().setSteps(await stepsRes.json());
@@ -447,31 +447,33 @@ export function useWebSocket() {
 	}
 
 	async function refreshArtifacts() {
-		const { selectedFeatureId } = useStore.getState();
-		if (!selectedFeatureId) return;
+		const { selectedFlowId } = useStore.getState();
+		if (!selectedFlowId) return;
 		try {
-			const res = await fetch(`/api/features/${selectedFeatureId}/artifacts`);
+			const res = await fetch(`/api/flows/${selectedFlowId}/artifacts`);
 			if (res.ok) useStore.getState().setArtifacts(await res.json());
 		} catch {}
 	}
 
 	async function refreshMemories() {
-		const { selectedProjectId } = useStore.getState();
-		if (!selectedProjectId) return;
+		const { selectedWorkspaceId } = useStore.getState();
+		if (!selectedWorkspaceId) return;
 		try {
-			const res = await fetch(`/api/projects/${selectedProjectId}/memories`);
+			const res = await fetch(
+				`/api/workspaces/${selectedWorkspaceId}/memories`,
+			);
 			if (res.ok) useStore.getState().setMemories(await res.json());
 		} catch {}
 	}
 
 	async function refreshInterviews() {
-		const { selectedFeatureId } = useStore.getState();
-		if (!selectedFeatureId) return;
+		const { selectedFlowId } = useStore.getState();
+		if (!selectedFlowId) return;
 		try {
-			const res = await fetch(`/api/features/${selectedFeatureId}/interviews`);
+			const res = await fetch(`/api/flows/${selectedFlowId}/interviews`);
 			if (res.ok) useStore.getState().setInterviews(await res.json());
 		} catch {}
 	}
 
-	return { refreshFeatureData };
+	return { refreshFlowData };
 }

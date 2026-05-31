@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function NewProjectFlow({ onBack }: Props) {
-	const { closeModal, setProjects, selectProject } = useStore();
+	const { closeModal, setWorkspaces, selectWorkspace } = useStore();
 	const [step, setStep] = useState<Step>("details");
 	const [name, setName] = useState("");
 	const [repoPath, setRepoPath] = useState("");
@@ -26,24 +26,24 @@ export function NewProjectFlow({ onBack }: Props) {
 		setError(null);
 
 		try {
-			const project = await api.projects.create({
+			const workspace = await api.workspaces.create({
 				name: name.trim(),
 				repoPath: repoPath.trim() || undefined,
 			});
 
 			if (selectedTemplate) {
 				const workflow = await api.workflows.create({
-					projectId: project.id,
+					workspaceId: workspace.id,
 					name: selectedTemplate.name,
 					description: selectedTemplate.description,
 					steps: selectedTemplate.steps,
 				});
-				await api.workflows.assignToProject(project.id, workflow.id);
+				await api.workflows.assignToWorkspace(workspace.id, workflow.id);
 			}
 
-			const projects = await api.projects.list();
-			setProjects(projects);
-			selectProject(project.id);
+			const workspaces = await api.workspaces.list();
+			setWorkspaces(workspaces);
+			selectWorkspace(workspace.id);
 			setStep("done");
 
 			setTimeout(() => closeModal(), 1200);
@@ -158,7 +158,7 @@ export function NewProjectFlow({ onBack }: Props) {
 							Choose a workflow template
 						</h3>
 						<p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-							This defines the steps your features will follow. You can change it later.
+							This defines the steps your flows will follow. You can change it later.
 						</p>
 					</div>
 
