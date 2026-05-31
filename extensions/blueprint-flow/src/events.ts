@@ -56,6 +56,7 @@ export interface BlueprintEvents {
 	};
 	"action:completed": { id: string; status: string };
 	"action:failed": { id: string; error: string };
+	"action:timeout_info": { id: string; timeoutMs: number; startedAt: number };
 	"import:pi_analysis_requested": { reportId: string; actionRunId: string };
 	"config:updated": {
 		models: {

@@ -1,4 +1,4 @@
-import { Bot, Brain, Cpu, Flame, Loader2, Scale, Zap } from "lucide-react";
+import { Brain, Cpu, Flame, Loader2, Scale, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import type {
 	AgentConfigResponse,
@@ -43,21 +43,20 @@ const EFFORT_OPTIONS = [
 ] as const;
 
 const MODE_OPTIONS = [
-	{ value: "draft", label: "Draft", description: "Generate artifacts only" },
 	{
-		value: "review",
-		label: "Review",
-		description: "Generate + review before apply",
+		value: "supervised",
+		label: "Supervised",
+		description: "Pause between steps — you decide when to advance",
 	},
 	{
-		value: "apply",
-		label: "Apply",
-		description: "Generate + apply code changes",
+		value: "autonomous",
+		label: "Autonomous",
+		description: "Auto-advance + skip optional steps",
 	},
 	{
-		value: "subagent",
-		label: "Sub-agent",
-		description: "Run in isolated sub-agent",
+		value: "draft",
+		label: "Draft",
+		description: "Generate artifacts without applying code",
 	},
 ] as const;
 
@@ -130,7 +129,7 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 					setConfigError(null);
 					setConfigLoading(false);
 				})
-				.catch(() => { });
+				.catch(() => {});
 		}
 		window.addEventListener("blueprint:config-updated", handleConfigUpdate);
 		return () =>
@@ -214,10 +213,11 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 								type="button"
 								onClick={() => update({ effortLevel: v })}
 								title={description}
-								className={`flex flex-col items-center gap-0.5 rounded px-2 py-1.5 text-xs transition-colors ${value.effortLevel === v
-									? "bg-blue-600/30 text-blue-300 ring-1 ring-blue-500/50"
-									: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
-									}`}
+								className={`flex flex-col items-center gap-0.5 rounded px-2 py-1.5 text-xs transition-colors ${
+									value.effortLevel === v
+										? "bg-blue-600/30 text-blue-300 ring-1 ring-blue-500/50"
+										: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
+								}`}
 							>
 								<Icon size={12} />
 								<span>{label}</span>
@@ -232,19 +232,20 @@ export function AgentRunSettingsPanel({ value, onChange, compact }: Props) {
 				<label className="mb-1.5 block text-xs font-medium text-gray-400">
 					Mode
 				</label>
-				<div className="grid grid-cols-4 gap-1">
+				<div className="grid grid-cols-3 gap-1">
 					{MODE_OPTIONS.map(({ value: v, label, description }) => (
 						<button
 							key={v}
 							type="button"
 							onClick={() => update({ executionMode: v })}
 							title={description}
-							className={`flex flex-col items-center gap-0.5 rounded px-2 py-1.5 text-xs transition-colors ${value.executionMode === v
-								? "bg-emerald-600/30 text-emerald-300 ring-1 ring-emerald-500/50"
-								: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
-								}`}
+							className={`flex flex-col items-center gap-0.5 rounded px-2 py-1.5 text-xs transition-colors ${
+								value.executionMode === v
+									? "bg-emerald-600/30 text-emerald-300 ring-1 ring-emerald-500/50"
+									: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
+							}`}
 						>
-							{v === "subagent" && <Bot size={11} />}
+							{v === "autonomous" && <Zap size={11} />}
 							<span>{label}</span>
 						</button>
 					))}
@@ -393,10 +394,11 @@ function ThinkingLevelSelector({
 						type="button"
 						disabled={updating}
 						onClick={() => handleChange(level)}
-						className={`rounded px-1.5 py-1 text-xs capitalize transition-colors ${active === level
-							? "bg-violet-600/30 text-violet-300 ring-1 ring-violet-500/50"
-							: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
-							} disabled:opacity-50`}
+						className={`rounded px-1.5 py-1 text-xs capitalize transition-colors ${
+							active === level
+								? "bg-violet-600/30 text-violet-300 ring-1 ring-violet-500/50"
+								: "bg-gray-800 text-gray-400 hover:bg-gray-750 hover:text-gray-300"
+						} disabled:opacity-50`}
 					>
 						{level === "xhigh" ? "max" : level}
 					</button>

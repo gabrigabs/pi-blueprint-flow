@@ -131,6 +131,7 @@ export const STEP_LABELS: Record<FlowStep, string> = {
 
 export type StepStatus =
 	| "pending"
+	| "current"
 	| "running"
 	| "needs_user"
 	| "blocked"
@@ -155,7 +156,14 @@ export const WORKFLOW_TEMPLATES: Record<string, readonly string[]> = {
 		"review",
 		"memory_update",
 	],
-	bugfix: ["intake", "research", "spec", "implementation", "review", "memory_update"],
+	bugfix: [
+		"intake",
+		"research",
+		"spec",
+		"implementation",
+		"review",
+		"memory_update",
+	],
 	refactor: ["intake", "spec", "implementation", "review", "memory_update"],
 	spike: ["intake", "research", "memory_update"],
 	research: ["intake", "research", "memory_update"],

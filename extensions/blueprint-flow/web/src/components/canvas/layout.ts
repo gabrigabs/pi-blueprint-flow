@@ -35,13 +35,14 @@ export function stepsToNodes(
 	actionRuns?: ActionRun[],
 	selectedNodeId?: string | null,
 ): Node<StepNodeData>[] {
-
 	return steps.map((step, index) => {
 		const stepArtifacts = artifacts.filter((a) => a.step_name === step.name);
-		const stepActivities = actionRuns?.filter((r) => r.step_name === step.name) ?? [];
-		const stepInterviews = step.name === "interview"
-			? (interviews?.filter((i) => !i.answer) ?? [])
-			: [];
+		const stepActivities =
+			actionRuns?.filter((r) => r.step_name === step.name) ?? [];
+		const stepInterviews =
+			step.name === "interview"
+				? (interviews?.filter((i) => !i.answer) ?? [])
+				: [];
 		const isSelected = step.id === selectedNodeId;
 
 		return {
@@ -53,10 +54,17 @@ export function stepsToNodes(
 				status: step.status,
 				stepName: step.name,
 				artifactCount: stepArtifacts.length,
-				artifacts: stepArtifacts.map((a) => ({ id: a.id, filename: a.filename, type: a.type })),
+				artifacts: stepArtifacts.map((a) => ({
+					id: a.id,
+					filename: a.filename,
+					type: a.type,
+				})),
 				interviewCount: stepInterviews.length,
 				activityCount: stepActivities.length,
-				isCurrentStep: step.status === "running" || step.status === "needs_user",
+				isCurrentStep:
+					step.status === "current" ||
+					step.status === "running" ||
+					step.status === "needs_user",
 				isSelected,
 			},
 		};
@@ -71,12 +79,20 @@ export function stepsToEdges(steps: Step[]): Edge[] {
 		type: "smoothstep",
 		animated: step.status === "running",
 		style: {
-			stroke: step.status === "done"
-				? "rgba(107, 207, 127, 0.4)"
-				: step.status === "running"
-					? "rgba(91, 155, 213, 0.6)"
-					: "rgba(255, 255, 255, 0.06)",
-			strokeWidth: step.status === "done" || step.status === "running" ? 3 : 1.5,
+			stroke:
+				step.status === "done"
+					? "rgba(107, 207, 127, 0.4)"
+					: step.status === "running"
+						? "rgba(91, 155, 213, 0.6)"
+						: step.status === "current"
+							? "rgba(91, 155, 213, 0.35)"
+							: "rgba(255, 255, 255, 0.06)",
+			strokeWidth:
+				step.status === "done" || step.status === "running"
+					? 3
+					: step.status === "current"
+						? 2
+						: 1.5,
 		},
 	}));
 }
@@ -169,10 +185,14 @@ export function stepsToSatelliteNodes(
 
 	const stepColor = STEP_COLORS_MAP[step.name] ?? "#5b9bd5";
 	const stepArtifacts = artifacts.filter((a) => a.step_name === step.name);
-	const stepActivities = actionRuns?.filter((r) => r.step_name === step.name) ?? [];
-	const stepInterviews = interviews?.filter((i) => i.feature_id === step.feature_id) ?? [];
+	const stepActivities =
+		actionRuns?.filter((r) => r.step_name === step.name) ?? [];
+	const stepInterviews =
+		interviews?.filter((i) => i.feature_id === step.feature_id) ?? [];
 	const pendingInterviews = stepInterviews.filter((i) => !i.answer);
-	const answeredInterviews = stepInterviews.filter((i) => i.answer && !i.answer.startsWith("[SKIPPED]"));
+	const answeredInterviews = stepInterviews.filter(
+		(i) => i.answer && !i.answer.startsWith("[SKIPPED]"),
+	);
 
 	const satellites: Node<SatelliteNodeData>[] = [];
 	const baseX = parentNode.position.x + NODE_WIDTH + SATELLITE_OFFSET_X;
@@ -183,7 +203,10 @@ export function stepsToSatelliteNodes(
 		satellites.push({
 			id: `sat-${artifact.id}`,
 			type: "artifactSatellite",
-			position: { x: baseX, y: baseY + idx * (SATELLITE_HEIGHT + SATELLITE_GAP) },
+			position: {
+				x: baseX,
+				y: baseY + idx * (SATELLITE_HEIGHT + SATELLITE_GAP),
+			},
 			data: {
 				artifactId: artifact.id,
 				filename: artifact.filename,
@@ -198,7 +221,10 @@ export function stepsToSatelliteNodes(
 		satellites.push({
 			id: `sat-activity-${run.id}`,
 			type: "artifactSatellite",
-			position: { x: baseX, y: baseY + idx * (SATELLITE_HEIGHT + SATELLITE_GAP) },
+			position: {
+				x: baseX,
+				y: baseY + idx * (SATELLITE_HEIGHT + SATELLITE_GAP),
+			},
 			data: {
 				artifactId: run.id,
 				filename: run.action_type ?? "Action",
@@ -216,7 +242,10 @@ export function stepsToSatelliteNodes(
 			satellites.push({
 				id: `sat-interview-pending-${step.id}`,
 				type: "artifactSatellite",
-				position: { x: baseX, y: baseY + idx * (SATELLITE_HEIGHT + SATELLITE_GAP) },
+				position: {
+					x: baseX,
+					y: baseY + idx * (SATELLITE_HEIGHT + SATELLITE_GAP),
+				},
 				data: {
 					artifactId: "",
 					filename: `Pending (${pendingInterviews.length})`,
@@ -232,7 +261,10 @@ export function stepsToSatelliteNodes(
 			satellites.push({
 				id: `sat-interview-done-${step.id}`,
 				type: "artifactSatellite",
-				position: { x: baseX, y: baseY + idx * (SATELLITE_HEIGHT + SATELLITE_GAP) },
+				position: {
+					x: baseX,
+					y: baseY + idx * (SATELLITE_HEIGHT + SATELLITE_GAP),
+				},
 				data: {
 					artifactId: "",
 					filename: `Answered (${answeredInterviews.length})`,

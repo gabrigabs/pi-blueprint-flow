@@ -4,6 +4,7 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	Play,
+	Square,
 } from "lucide-react";
 import { useState } from "react";
 import type { AgentRunSettingsPayload } from "../lib/api";
@@ -27,13 +28,29 @@ export function StepActions({
 	stepStatus,
 	isCurrentStep,
 }: Props) {
-	const { setSteps, setFeatures, selectedProjectId } = useStore();
+	const {
+		setSteps,
+		setFeatures,
+		selectedProjectId,
+		runModelId,
+		runEffortLevel,
+		executionMode,
+		actionRuns,
+	} = useStore();
 	const [showRunPanel, setShowRunPanel] = useState(false);
 	const [loading, setLoading] = useState<string | null>(null);
 	const [settings, setSettings] = useState<AgentRunSettingsPayload>({
 		effortLevel: "balanced",
-		executionMode: "draft",
+		executionMode: "supervised",
 	});
+
+	const activeRun = actionRuns.find(
+		(r) =>
+			r.feature_id === featureId &&
+			r.step_name === stepName &&
+			!["completed", "failed", "cancelled", "not_connected"].includes(r.status),
+	);
+	const isRunning = Boolean(activeRun);
 
 	async function handleAdvance() {
 		setLoading("advance");
@@ -83,7 +100,16 @@ export function StepActions({
 	async function handleRunStep() {
 		setLoading("run");
 		try {
-			const result = (await api.features.runStep(featureId, settings)) as any;
+			const mergedSettings: AgentRunSettingsPayload = {
+				...settings,
+				modelId: runModelId ?? settings.modelId,
+				effortLevel: runEffortLevel || settings.effortLevel,
+				executionMode: executionMode || settings.executionMode,
+			};
+			const result = (await api.features.runStep(
+				featureId,
+				mergedSettings,
+			)) as any;
 			setShowRunPanel(false);
 			if (result.actionStatus === "not_connected") {
 				addToast({
@@ -103,57 +129,79 @@ export function StepActions({
 		}
 	}
 
-	if (!isCurrentStep && stepStatus !== "running") return null;
+	if (!isCurrentStep && stepStatus !== "running" && stepStatus !== "current")
+		return null;
 
 	return (
 		<div className="mt-2 space-y-2">
 			<div className="flex items-center gap-1">
-				<button
-					onClick={handleBack}
-					disabled={loading !== null}
-					title="Back to previous step"
-					className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-secondary)] disabled:opacity-30"
-				>
-					<ChevronLeft size={14} />
-				</button>
+				{isRunning ? (
+					<button
+						onClick={async () => {
+							if (!activeRun) return;
+							setLoading("stop");
+							try {
+								await api.actionRuns.cancel(activeRun.id);
+							} catch {}
+							setLoading(null);
+						}}
+						disabled={loading !== null}
+						title="Stop execution"
+						className="flex items-center gap-1 rounded bg-[var(--rose-glow,rgba(231,76,60,0.08))] px-2 py-1 text-xs text-[var(--rose-400)] hover:bg-[var(--rose-400)]/20 disabled:opacity-30"
+					>
+						<Square size={10} />
+						Stop
+					</button>
+				) : (
+					<>
+						<button
+							onClick={handleBack}
+							disabled={loading !== null}
+							title="Back to previous step"
+							className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-secondary)] disabled:opacity-30"
+						>
+							<ChevronLeft size={14} />
+						</button>
 
-				<button
-					onClick={() => setShowRunPanel(!showRunPanel)}
-					disabled={loading !== null}
-					title="Run this step"
-					className="flex items-center gap-1 rounded bg-[var(--cyan-glow)] px-2 py-1 text-xs text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/20 disabled:opacity-30"
-				>
-					<Play size={10} />
-					Run
-				</button>
+						<button
+							onClick={() => setShowRunPanel(!showRunPanel)}
+							disabled={loading !== null}
+							title="Run this step"
+							className="flex items-center gap-1 rounded bg-[var(--cyan-glow)] px-2 py-1 text-xs text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/20 disabled:opacity-30"
+						>
+							<Play size={10} />
+							Run
+						</button>
 
-				<button
-					onClick={handleAdvance}
-					disabled={loading !== null}
-					title="Advance to next step"
-					className="flex items-center gap-1 rounded bg-[var(--emerald-glow)] px-2 py-1 text-xs text-[var(--accent-success)] hover:bg-[var(--accent-success)]/20 disabled:opacity-30"
-				>
-					Done
-					<ChevronRight size={10} />
-				</button>
+						<button
+							onClick={handleAdvance}
+							disabled={loading !== null}
+							title="Advance to next step"
+							className="flex items-center gap-1 rounded bg-[var(--emerald-glow)] px-2 py-1 text-xs text-[var(--accent-success)] hover:bg-[var(--accent-success)]/20 disabled:opacity-30"
+						>
+							Done
+							<ChevronRight size={10} />
+						</button>
 
-				<button
-					onClick={() => handleStatusChange("blocked")}
-					disabled={loading !== null}
-					title="Mark as blocked"
-					className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--rose-glow)] hover:text-[var(--rose-400)] disabled:opacity-30"
-				>
-					<Ban size={12} />
-				</button>
+						<button
+							onClick={() => handleStatusChange("blocked")}
+							disabled={loading !== null}
+							title="Mark as blocked"
+							className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--rose-glow)] hover:text-[var(--rose-400)] disabled:opacity-30"
+						>
+							<Ban size={12} />
+						</button>
 
-				<button
-					onClick={() => handleStatusChange("done")}
-					disabled={loading !== null}
-					title="Mark as done"
-					className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--emerald-glow)] hover:text-[var(--accent-success)] disabled:opacity-30"
-				>
-					<CheckCircle size={12} />
-				</button>
+						<button
+							onClick={() => handleStatusChange("done")}
+							disabled={loading !== null}
+							title="Mark as done"
+							className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--emerald-glow)] hover:text-[var(--accent-success)] disabled:opacity-30"
+						>
+							<CheckCircle size={12} />
+						</button>
+					</>
+				)}
 			</div>
 
 			{showRunPanel && (

@@ -1,7 +1,20 @@
-import { FileText, Loader2, X } from "lucide-react";
+import {
+	Brain,
+	Cpu,
+	FileText,
+	Flame,
+	Loader2,
+	Scale,
+	X,
+	Zap,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { STEP_LABELS } from "../../constants/steps";
-import { api } from "../../lib/api";
+import {
+	type AgentConfigResponse,
+	type AgentModelInfo,
+	api,
+} from "../../lib/api";
 import { useStore } from "../../store";
 import { InlineActionRuns } from "../InlineActionRuns";
 import { InlineInterviewSection } from "../InlineInterviewSection";
@@ -18,7 +31,9 @@ export function StepDetailDrawer() {
 		artifacts,
 		actionRuns,
 		interviews,
+		features,
 	} = useStore();
+	const currentFeature = features.find((f) => f.id === selectedFeatureId);
 	const step = steps.find((s) => s.id === selectedNodeId);
 	const [activeTab, setActiveTab] = useState<Tab>("artifacts");
 	const [artifactContent, setArtifactContent] = useState<string>("");
@@ -54,13 +69,13 @@ export function StepDetailDrawer() {
 	const liveMessagePreview = useStore((s) => s.liveMessagePreview);
 	const liveToolName = useStore((s) => s.liveToolName);
 	const liveToolHistory = useStore((s) => s.liveToolHistory);
+	const actionTimeout = useStore((s) => s.actionTimeout);
+	const pendingInterviews = interviews.filter((i) => !i.answer);
 	const activeRun = actionRuns.find(
 		(r) =>
 			r.feature_id === selectedFeatureId &&
 			r.step_name === step?.name &&
-			!["completed", "failed", "cancelled", "not_connected"].includes(
-				r.status,
-			),
+			!["completed", "failed", "cancelled", "not_connected"].includes(r.status),
 	);
 
 	useEffect(() => {
@@ -69,18 +84,38 @@ export function StepDetailDrawer() {
 		}
 	}, [activeRun, activeTab]);
 
+	useEffect(() => {
+		if (activeRun && activeTab !== "output") {
+			setActiveTab("output");
+		}
+	}, [activeRun?.id]);
+
+	const prevPendingCount = useRef(0);
+	useEffect(() => {
+		if (
+			pendingInterviews.length > prevPendingCount.current &&
+			pendingInterviews.length > 0
+		) {
+			setActiveTab("interview");
+		}
+		prevPendingCount.current = pendingInterviews.length;
+	}, [pendingInterviews.length]);
+
 	if (!step || !selectedFeatureId) return null;
 
 	const stepArtifacts = artifacts.filter((a) => a.step_name === step.name);
-	const showInterview = step.name === "interview";
-	const pendingInterviews = interviews.filter((i) => !i.answer);
+	const isCurrentStep = currentFeature?.current_step === step.name;
+	const isActive =
+		step.status === "current" ||
+		step.status === "running" ||
+		step.status === "needs_user";
 
 	const tabs: { id: Tab; label: string; count?: number }[] = [
 		{ id: "artifacts", label: "Artifacts", count: stepArtifacts.length },
 		...(activeRun ? [{ id: "output" as Tab, label: "Output" }] : []),
 		{ id: "activity", label: "Activity" },
 	];
-	if (showInterview)
+	if (pendingInterviews.length > 0)
 		tabs.push({
 			id: "interview",
 			label: "Interview",
@@ -190,12 +225,23 @@ export function StepDetailDrawer() {
 						message={liveMessagePreview}
 						toolName={liveToolName}
 						toolHistory={liveToolHistory}
+						timeout={actionTimeout}
 					/>
 				)}
-				{activeTab === "interview" && showInterview && (
+				{activeTab === "interview" && (
 					<InlineInterviewSection featureId={selectedFeatureId} />
 				)}
 			</div>
+
+			{/* Run Settings (model + effort) */}
+			{(isCurrentStep || isActive) && (
+				<div
+					className="border-t px-5 py-3 shrink-0"
+					style={{ borderColor: "var(--border-subtle)" }}
+				>
+					<DrawerRunSettings />
+				</div>
+			)}
 
 			{activeRun && (
 				<div
@@ -244,6 +290,7 @@ export function StepDetailDrawer() {
 function StatusPill({ status }: { status: string }) {
 	const config: Record<string, { bg: string; color: string }> = {
 		done: { bg: "var(--emerald-glow)", color: "var(--accent-success)" },
+		current: { bg: "var(--cyan-glow)", color: "var(--accent-primary)" },
 		running: { bg: "var(--cyan-glow)", color: "var(--accent-primary)" },
 		needs_user: { bg: "var(--amber-glow)", color: "var(--amber-400)" },
 		blocked: { bg: "var(--rose-glow)", color: "var(--rose-400)" },
@@ -343,17 +390,217 @@ function ArtifactsTab({
 	);
 }
 
+const EFFORT_OPTIONS = [
+	{ value: "fast", label: "Fast", icon: Zap },
+	{ value: "balanced", label: "Balanced", icon: Scale },
+	{ value: "deep", label: "Deep", icon: Brain },
+	{ value: "max", label: "Max", icon: Flame },
+] as const;
+
+const FALLBACK_MODELS: AgentModelInfo[] = [
+	{
+		id: "claude-haiku-4-5-20251001",
+		name: "Haiku 4.5",
+		provider: "anthropic",
+		reasoning: false,
+		contextWindow: 200000,
+		maxTokens: 8192,
+		cost: { input: 0.8, output: 4 },
+	},
+	{
+		id: "claude-sonnet-4-6-20250514",
+		name: "Sonnet 4.6",
+		provider: "anthropic",
+		reasoning: true,
+		contextWindow: 200000,
+		maxTokens: 16384,
+		cost: { input: 3, output: 15 },
+	},
+	{
+		id: "claude-opus-4-7-20250219",
+		name: "Opus 4.7",
+		provider: "anthropic",
+		reasoning: true,
+		contextWindow: 200000,
+		maxTokens: 32768,
+		cost: { input: 15, output: 75 },
+	},
+];
+
+function DrawerRunSettings() {
+	const [config, setConfig] = useState<AgentConfigResponse | null>(null);
+	const [loading, setLoading] = useState(true);
+	const { runModelId, runEffortLevel, setRunModelId, setRunEffortLevel } =
+		useStore();
+
+	useEffect(() => {
+		api.config
+			.agent()
+			.then((c) => {
+				setConfig(c);
+				setLoading(false);
+			})
+			.catch(() => setLoading(false));
+
+		function handleConfigUpdate() {
+			api.config
+				.agent()
+				.then((c) => setConfig(c))
+				.catch(() => {});
+		}
+		window.addEventListener("blueprint:config-updated", handleConfigUpdate);
+		return () =>
+			window.removeEventListener(
+				"blueprint:config-updated",
+				handleConfigUpdate,
+			);
+	}, []);
+
+	const models = config?.models ?? [];
+	const displayModels = models.length > 0 ? models : FALLBACK_MODELS;
+	const defaultModel = config?.defaultModel;
+
+	return (
+		<div className="space-y-2.5">
+			{/* Model */}
+			<div>
+				<label
+					className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide"
+					style={{ color: "var(--text-muted)" }}
+				>
+					<Cpu size={9} />
+					Model
+				</label>
+				{loading ? (
+					<div
+						className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px]"
+						style={{
+							background: "var(--bg-inset)",
+							borderColor: "var(--border-subtle)",
+							color: "var(--text-muted)",
+						}}
+					>
+						<Loader2 size={9} className="animate-spin" />
+						Loading...
+					</div>
+				) : (
+					<select
+						value={runModelId ?? ""}
+						onChange={(e) => setRunModelId(e.target.value || null)}
+						className="w-full rounded-lg border px-2.5 py-1.5 text-[11px] focus:outline-none"
+						style={{
+							background: "var(--bg-inset)",
+							borderColor: "var(--border-subtle)",
+							color: "var(--text-primary)",
+						}}
+					>
+						<option value="">
+							{defaultModel ? `default (${defaultModel})` : "default"}
+						</option>
+						{displayModels.map((m) => (
+							<option key={m.id} value={m.id}>
+								{m.name}
+								{m.reasoning ? " (reasoning)" : ""}
+							</option>
+						))}
+					</select>
+				)}
+			</div>
+
+			{/* Effort */}
+			<div>
+				<label
+					className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide"
+					style={{ color: "var(--text-muted)" }}
+				>
+					Effort
+				</label>
+				<div className="grid grid-cols-4 gap-1">
+					{EFFORT_OPTIONS.map(({ value: v, label, icon: Icon }) => (
+						<button
+							key={v}
+							type="button"
+							onClick={() => setRunEffortLevel(v)}
+							className="flex flex-col items-center gap-0.5 rounded-lg px-1.5 py-1.5 text-[10px] font-medium transition-all"
+							style={{
+								background:
+									runEffortLevel === v
+										? "var(--cyan-glow)"
+										: "rgba(255,255,255,0.02)",
+								border: `1px solid ${runEffortLevel === v ? "rgba(91, 155, 213, 0.3)" : "var(--border-subtle)"}`,
+								color:
+									runEffortLevel === v
+										? "var(--cyan-400)"
+										: "var(--text-tertiary)",
+							}}
+						>
+							<Icon size={10} />
+							{label}
+						</button>
+					))}
+				</div>
+			</div>
+		</div>
+	);
+}
+
 function LiveOutputTab({
 	message,
 	toolName,
 	toolHistory,
+	timeout,
 }: {
 	message: string | null;
 	toolName: string | null;
 	toolHistory: { name: string; startedAt: number; endedAt?: number }[];
+	timeout: { timeoutMs: number; startedAt: number } | null;
 }) {
+	const [remaining, setRemaining] = useState<number | null>(null);
+
+	useEffect(() => {
+		if (!timeout) {
+			setRemaining(null);
+			return;
+		}
+		function tick() {
+			const elapsed = Date.now() - timeout!.startedAt;
+			const left = Math.max(0, timeout!.timeoutMs - elapsed);
+			setRemaining(left);
+		}
+		tick();
+		const id = setInterval(tick, 1000);
+		return () => clearInterval(id);
+	}, [timeout]);
+
 	return (
 		<div className="space-y-3">
+			{/* Timeout countdown */}
+			{remaining != null && remaining > 0 && (
+				<div
+					className="flex items-center justify-between rounded-lg px-3 py-1.5"
+					style={{
+						background: "rgba(255,255,255,0.02)",
+						border: "1px solid var(--border-subtle)",
+					}}
+				>
+					<span
+						className="text-[10px] font-medium"
+						style={{ color: "var(--text-tertiary)" }}
+					>
+						Timeout
+					</span>
+					<span
+						className="text-[11px] font-mono"
+						style={{
+							color:
+								remaining < 60000 ? "var(--rose-400)" : "var(--text-secondary)",
+						}}
+					>
+						{Math.floor(remaining / 60000)}:
+						{String(Math.floor((remaining % 60000) / 1000)).padStart(2, "0")}
+					</span>
+				</div>
+			)}
 			{/* Current tool indicator */}
 			{toolName && (
 				<div

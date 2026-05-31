@@ -253,7 +253,10 @@ async function attemptInjection(runId: string): Promise<void> {
 			dataJson: null,
 		});
 
-		retryHandle = setTimeout(() => void attemptInjection(runId), RETRY_DELAY_MS);
+		retryHandle = setTimeout(
+			() => void attemptInjection(runId),
+			RETRY_DELAY_MS,
+		);
 		return;
 	}
 
@@ -324,7 +327,10 @@ async function attemptInjection(runId: string): Promise<void> {
 		// If injection fails, retry once with followUp
 		if (retryCount === 0) {
 			retryCount++;
-			retryHandle = setTimeout(() => void attemptInjection(runId), RETRY_DELAY_MS);
+			retryHandle = setTimeout(
+				() => void attemptInjection(runId),
+				RETRY_DELAY_MS,
+			);
 			return;
 		}
 		currentRunId = null;
@@ -336,6 +342,11 @@ async function attemptInjection(runId: string): Promise<void> {
 	}
 
 	startActionTimeout(runId);
+	bus.emit("action:timeout_info", {
+		id: runId,
+		timeoutMs: getTimeoutForAction(runId),
+		startedAt: Date.now(),
+	});
 }
 
 function getTimeoutForAction(actionRunId: string): number {
@@ -401,6 +412,24 @@ export function notifyAgentEnd(actionRunId: string): void {
 	currentRunId = null;
 	updateActionRunStatus(actionRunId, "completed");
 	bus.emit("action:completed", { id: actionRunId, status: "completed" });
+
+	const db = getDb();
+	const run = db
+		.prepare("SELECT * FROM action_runs WHERE id = ?")
+		.get(actionRunId) as
+		| { feature_id: string | null; step_name: string | null }
+		| undefined;
+	if (run?.feature_id && run?.step_name) {
+		db.prepare(
+			"UPDATE steps SET status = 'current' WHERE feature_id = ? AND name = ? AND status = 'running'",
+		).run(run.feature_id, run.step_name);
+		bus.emit("step:status_changed", {
+			featureId: run.feature_id,
+			stepName: run.step_name,
+			status: "current",
+		});
+	}
+
 	processNext();
 }
 

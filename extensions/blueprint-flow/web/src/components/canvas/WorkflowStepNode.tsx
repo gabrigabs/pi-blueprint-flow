@@ -10,19 +10,19 @@ import {
 	FileText,
 	Layers,
 	Loader2,
+	type LucideIcon,
 	MessageCircle,
 	Microscope,
 	PenTool,
 	Play,
 	RefreshCw,
 	Shield,
+	SkipForward,
 	Sparkles,
 	Square,
-	SkipForward,
 	Zap,
-	type LucideIcon,
 } from "lucide-react";
-import { memo, type MouseEvent } from "react";
+import { type MouseEvent, memo } from "react";
 import { api } from "../../lib/api";
 import { useStore } from "../../store";
 import { ArtifactChip } from "./ArtifactChip";
@@ -66,6 +66,12 @@ const statusConfig: Record<
 		border: "rgba(107, 207, 127, 0.3)",
 		text: "var(--emerald-400)",
 		glow: "0 0 20px -6px rgba(107, 207, 127, 0.15)",
+	},
+	current: {
+		bg: "rgba(91, 155, 213, 0.03)",
+		border: "rgba(91, 155, 213, 0.25)",
+		text: "var(--accent-primary)",
+		glow: "0 0 16px -6px rgba(91, 155, 213, 0.1)",
 	},
 	running: {
 		bg: "rgba(91, 155, 213, 0.05)",
@@ -123,15 +129,16 @@ function WorkflowStepNodeComponent({
 		(r) =>
 			r.feature_id === selectedFeatureId &&
 			r.step_name === stepName &&
-			!["completed", "failed", "cancelled", "not_connected"].includes(
-				r.status,
-			),
+			!["completed", "failed", "cancelled", "not_connected"].includes(r.status),
 	);
 	const canRunCurrent =
 		Boolean(selectedFeatureId) &&
 		isCurrentStep &&
 		!activeRun &&
-		(status === "running" || status === "needs_user" || status === "pending");
+		(status === "current" ||
+			status === "running" ||
+			status === "needs_user" ||
+			status === "pending");
 	const canStop = Boolean(activeRun);
 	const canNavigateCurrent = Boolean(selectedFeatureId) && isCurrentStep;
 	const canReturnToStep = Boolean(selectedFeatureId) && status === "done";
@@ -147,8 +154,13 @@ function WorkflowStepNodeComponent({
 	async function handleRun(event: MouseEvent) {
 		stopNodeClick(event);
 		if (!selectedFeatureId) return;
+		const { runModelId, runEffortLevel, executionMode } = useStore.getState();
 		try {
-			await api.features.runStep(selectedFeatureId);
+			await api.features.runStep(selectedFeatureId, {
+				modelId: runModelId ?? undefined,
+				effortLevel: runEffortLevel || undefined,
+				executionMode: executionMode || undefined,
+			});
 		} catch {}
 	}
 
@@ -381,14 +393,17 @@ function WorkflowStepNodeComponent({
 							onClick={handleReturn}
 						/>
 					)}
-					{!canRunCurrent && !canStop && !canNavigateCurrent && !canReturnToStep && (
-						<span
-							className="text-[10px]"
-							style={{ color: "var(--text-muted)" }}
-						>
-							Open for details
-						</span>
-					)}
+					{!canRunCurrent &&
+						!canStop &&
+						!canNavigateCurrent &&
+						!canReturnToStep && (
+							<span
+								className="text-[10px]"
+								style={{ color: "var(--text-muted)" }}
+							>
+								Open for details
+							</span>
+						)}
 				</div>
 			)}
 

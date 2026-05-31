@@ -232,7 +232,9 @@ export function useWebSocket() {
 
 			case "action:completed":
 				if (msg.data.id) {
-					const completedRun = store.actionRuns.find((r) => r.id === msg.data.id);
+					const completedRun = store.actionRuns.find(
+						(r) => r.id === msg.data.id,
+					);
 					store.updateActionRun(msg.data.id, {
 						status: msg.data.status ?? "completed",
 						completed_at: new Date().toISOString(),
@@ -242,8 +244,8 @@ export function useWebSocket() {
 					addToast({ type: "success", message: "Action completed" });
 					debouncedRefresh("featureData", refreshFeatureData);
 
-					// Auto-advance: advance + run next step
-					if (store.autoAdvance && store.selectedFeatureId) {
+					// Auto-advance: advance + run next step (autonomous mode)
+					if (store.executionMode === "autonomous" && store.selectedFeatureId) {
 						const featureId = store.selectedFeatureId;
 						const completedStepName = completedRun?.step_name;
 						const shouldPause =
@@ -251,6 +253,7 @@ export function useWebSocket() {
 							completedStepName === "interview";
 
 						if (!shouldPause) {
+							const { runModelId, runEffortLevel, executionMode } = store;
 							fetch(`/api/features/${featureId}/advance`, {
 								method: "POST",
 								headers: { "Content-Type": "application/json" },
@@ -262,7 +265,13 @@ export function useWebSocket() {
 									fetch(`/api/features/${featureId}/run-step`, {
 										method: "POST",
 										headers: { "Content-Type": "application/json" },
-										body: JSON.stringify({}),
+										body: JSON.stringify({
+											agentRunSettings: {
+												modelId: runModelId ?? undefined,
+												effortLevel: runEffortLevel || undefined,
+												executionMode: executionMode || undefined,
+											},
+										}),
 									}).catch(() => {});
 								})
 								.catch(() => {});
@@ -284,6 +293,15 @@ export function useWebSocket() {
 						type: "error",
 						message: `Action failed: ${msg.data.error ?? "Unknown error"}`,
 						duration: 10000,
+					});
+				}
+				break;
+
+			case "action:timeout_info":
+				if (msg.data.timeoutMs && msg.data.startedAt) {
+					store.setActionTimeout({
+						timeoutMs: msg.data.timeoutMs,
+						startedAt: msg.data.startedAt,
 					});
 				}
 				break;

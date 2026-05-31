@@ -149,9 +149,14 @@ interface BlueprintStore {
 	liveToolName: string | null;
 	liveMessagePreview: string | null;
 	liveToolHistory: { name: string; startedAt: number; endedAt?: number }[];
+	actionTimeout: { timeoutMs: number; startedAt: number } | null;
 
-	// Auto-advance mode
-	autoAdvance: boolean;
+	// Execution mode
+	executionMode: "supervised" | "autonomous" | "draft";
+
+	// Run settings (shared between drawer and canvas node actions)
+	runModelId: string | null;
+	runEffortLevel: string;
 
 	setProjects: (projects: Project[]) => void;
 	setFeatures: (features: Feature[]) => void;
@@ -177,13 +182,20 @@ interface BlueprintStore {
 	openModal: (modal: ModalType) => void;
 	closeModal: () => void;
 
-	// Auto-advance
-	toggleAutoAdvance: () => void;
+	// Execution mode
+	setExecutionMode: (mode: "supervised" | "autonomous" | "draft") => void;
+
+	// Run settings
+	setRunModelId: (modelId: string | null) => void;
+	setRunEffortLevel: (level: string) => void;
 
 	// Live activity setters
 	setLiveActivity: (
 		actionRunId: string | null,
 		toolName: string | null,
+	) => void;
+	setActionTimeout: (
+		timeout: { timeoutMs: number; startedAt: number } | null,
 	) => void;
 	appendLiveMessage: (text: string) => void;
 	clearLiveActivity: () => void;
@@ -217,8 +229,12 @@ export const useStore = create<BlueprintStore>((set) => ({
 	liveToolName: null,
 	liveMessagePreview: null,
 	liveToolHistory: [],
+	actionTimeout: null,
 
-	autoAdvance: false,
+	executionMode: "supervised",
+
+	runModelId: null,
+	runEffortLevel: "balanced",
 
 	setProjects: (projects) => set({ projects }),
 	setFeatures: (features) => set({ features }),
@@ -265,8 +281,10 @@ export const useStore = create<BlueprintStore>((set) => ({
 	openModal: (modal) => set({ activeModal: modal }),
 	closeModal: () => set({ activeModal: null }),
 
-	toggleAutoAdvance: () =>
-		set((state) => ({ autoAdvance: !state.autoAdvance })),
+	setExecutionMode: (mode) => set({ executionMode: mode }),
+
+	setRunModelId: (modelId) => set({ runModelId: modelId }),
+	setRunEffortLevel: (level) => set({ runEffortLevel: level }),
 
 	setLiveActivity: (actionRunId, toolName) =>
 		set((state) => ({
@@ -286,7 +304,9 @@ export const useStore = create<BlueprintStore>((set) => ({
 			liveToolName: null,
 			liveMessagePreview: null,
 			liveToolHistory: [],
+			actionTimeout: null,
 		}),
+	setActionTimeout: (timeout) => set({ actionTimeout: timeout }),
 	pushLiveToolEnd: () =>
 		set((state) => {
 			const history = [...state.liveToolHistory];

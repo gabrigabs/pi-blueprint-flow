@@ -66,7 +66,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			).run(nextStep, id);
 
 			db.prepare(
-				"UPDATE steps SET status = 'running', started_at = datetime('now') WHERE feature_id = ? AND name = ?",
+				"UPDATE steps SET status = 'current', started_at = datetime('now') WHERE feature_id = ? AND name = ?",
 			).run(id, nextStep);
 
 			bus.emit("step:advanced", {
@@ -113,7 +113,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			).run(id, feature.current_step);
 
 			db.prepare(
-				"UPDATE steps SET status = 'running', completed_at = NULL WHERE feature_id = ? AND name = ?",
+				"UPDATE steps SET status = 'current', completed_at = NULL WHERE feature_id = ? AND name = ?",
 			).run(id, prevStep);
 
 			db.prepare(
@@ -165,7 +165,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			);
 			const markCurrent = db.prepare(
 				`UPDATE steps
-				 SET status = 'running', started_at = COALESCE(started_at, datetime('now')), completed_at = NULL
+				 SET status = 'current', started_at = COALESCE(started_at, datetime('now')), completed_at = NULL
 				 WHERE feature_id = ? AND name = ?`,
 			);
 			const markPending = db.prepare(
@@ -210,6 +210,7 @@ export function registerActionRoutes(app: FastifyInstance): void {
 
 			const validStatuses: StepStatus[] = [
 				"pending",
+				"current",
 				"running",
 				"needs_user",
 				"blocked",
@@ -312,6 +313,15 @@ export function registerActionRoutes(app: FastifyInstance): void {
 			stepToAction[feature.current_step] ?? "run_step";
 
 		// Enqueue via PiBridge
+		db.prepare(
+			"UPDATE steps SET status = 'running', started_at = COALESCE(started_at, datetime('now')) WHERE feature_id = ? AND name = ?",
+		).run(id, feature.current_step);
+		bus.emit("step:status_changed", {
+			featureId: id,
+			stepName: feature.current_step,
+			status: "running",
+		});
+
 		const bridge = getPiBridge();
 		const result = bridge.enqueue({
 			projectId: feature.project_id,

@@ -193,6 +193,7 @@ export async function startServer(
 		"action:event",
 		"action:completed",
 		"action:failed",
+		"action:timeout_info",
 		"import:pi_analysis_requested",
 		"config:updated",
 	] as const;

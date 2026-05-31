@@ -30,8 +30,8 @@ export function CanvasToolbar({
 	const selectedFeatureId = useStore((s) => s.selectedFeatureId);
 	const steps = useStore((s) => s.steps);
 	const memories = useStore((s) => s.memories);
-	const autoAdvance = useStore((s) => s.autoAdvance);
-	const toggleAutoAdvance = useStore((s) => s.toggleAutoAdvance);
+	const executionMode = useStore((s) => s.executionMode);
+	const setExecutionMode = useStore((s) => s.setExecutionMode);
 	const { getViewport } = useReactFlow();
 	const [zoom, setZoom] = useState(100);
 
@@ -114,23 +114,33 @@ export function CanvasToolbar({
 				</button>
 			)}
 
-			{/* Auto-advance toggle */}
-			<button
-				onClick={toggleAutoAdvance}
-				title={
-					autoAdvance
-						? "Auto-advance ON — will run all steps"
-						: "Auto-advance OFF"
-				}
-				className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
-					autoAdvance
-						? "bg-[var(--cyan-glow)] text-[var(--accent-primary)]"
-						: "text-[var(--text-tertiary)] hover:bg-[var(--bg-surface-hover)]"
-				}`}
+			{/* Execution mode selector */}
+			<div
+				className="flex items-center rounded-lg border"
+				style={{ borderColor: "var(--border-subtle)" }}
 			>
-				<Zap size={11} />
-				Auto
-			</button>
+				{(["supervised", "autonomous", "draft"] as const).map((mode) => (
+					<button
+						key={mode}
+						onClick={() => setExecutionMode(mode)}
+						title={
+							mode === "supervised"
+								? "Pause between steps"
+								: mode === "autonomous"
+									? "Auto-advance + skip optional"
+									: "Generate artifacts only"
+						}
+						className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium transition-colors first:rounded-l-lg last:rounded-r-lg ${
+							executionMode === mode
+								? "bg-[var(--cyan-glow)] text-[var(--accent-primary)]"
+								: "text-[var(--text-tertiary)] hover:bg-[var(--bg-surface-hover)]"
+						}`}
+					>
+						{mode === "autonomous" && <Zap size={10} />}
+						{mode.charAt(0).toUpperCase() + mode.slice(1)}
+					</button>
+				))}
+			</div>
 
 			{/* Knowledge toggle */}
 			<button
