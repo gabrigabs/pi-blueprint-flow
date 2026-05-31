@@ -142,7 +142,7 @@ export function registerProjectRoutes(app: FastifyInstance): void {
 			const cascade = db.transaction(() => {
 				for (const feature of featureIds) {
 					db.prepare(
-						"DELETE FROM action_events WHERE action_run_id IN (SELECT id FROM action_runs WHERE feature_id = ?)",
+						"DELETE FROM action_run_events WHERE action_run_id IN (SELECT id FROM action_runs WHERE feature_id = ?)",
 					).run(feature.id);
 					db.prepare("DELETE FROM action_runs WHERE feature_id = ?").run(
 						feature.id,
