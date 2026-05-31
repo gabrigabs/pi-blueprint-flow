@@ -22,7 +22,7 @@ import {
 	Square,
 	Zap,
 } from "lucide-react";
-import { type MouseEvent, memo } from "react";
+import { type MouseEvent, memo, useEffect, useState } from "react";
 import { api, mapExecutionMode } from "../../lib/api";
 import { useStore } from "../../store";
 import { ArtifactChip } from "./ArtifactChip";
@@ -198,7 +198,7 @@ function WorkflowStepNodeComponent({
 
 	return (
 		<div
-			className={`rounded-2xl border transition-all duration-200 ${isLive ? "ring-2 ring-[var(--cyan-400)]/20 animate-pulse" : ""}`}
+			className={`relative rounded-2xl border transition-all duration-200 ${isLive ? "ring-2 ring-[var(--cyan-400)]/20 animate-pulse" : ""}`}
 			style={{
 				width: NODE_WIDTH,
 				height: isSelected ? NODE_HEIGHT_EXPANDED : NODE_HEIGHT,
@@ -282,10 +282,10 @@ function WorkflowStepNodeComponent({
 								</p>
 							) : isLive && liveMessagePreview ? (
 								<p
-									className="text-[10px] mt-0.5 truncate max-w-[140px]"
+									className="text-[10px] mt-0.5 truncate max-w-[180px]"
 									style={{ color: "var(--text-secondary)" }}
 								>
-									{liveMessagePreview.slice(-60)}
+									{liveMessagePreview.slice(-80)}
 								</p>
 							) : activeRun && !isLive ? (
 								<p
@@ -499,6 +499,27 @@ function WorkflowStepNodeComponent({
 				</div>
 			)}
 
+			{/* Progress bar when running */}
+			{isLive && (
+				<div className="absolute bottom-0 left-0 right-0 h-[3px] overflow-hidden rounded-b-2xl">
+					<div
+						className="h-full animate-indeterminate-progress"
+						style={{
+							background:
+								"linear-gradient(90deg, transparent, var(--cyan-400), transparent)",
+							width: "40%",
+						}}
+					/>
+				</div>
+			)}
+
+			{/* Elapsed time badge */}
+			{isLive && activeRun?.started_at && (
+				<div className="absolute top-2 right-3">
+					<NodeElapsedTime startedAt={activeRun.started_at} />
+				</div>
+			)}
+
 			<Handle
 				type="source"
 				position={Position.Bottom}
@@ -549,6 +570,36 @@ function NodeActionButton({
 			<Icon size={10} />
 			<span>{label}</span>
 		</button>
+	);
+}
+
+function NodeElapsedTime({ startedAt }: { startedAt: string }) {
+	const [elapsed, setElapsed] = useState("");
+
+	useEffect(() => {
+		function update() {
+			const diff = Math.floor(
+				(Date.now() - new Date(startedAt).getTime()) / 1000,
+			);
+			const m = Math.floor(diff / 60);
+			const s = diff % 60;
+			setElapsed(m > 0 ? `${m}:${s.toString().padStart(2, "0")}` : `${s}s`);
+		}
+		update();
+		const interval = setInterval(update, 1000);
+		return () => clearInterval(interval);
+	}, [startedAt]);
+
+	return (
+		<span
+			className="text-[9px] font-mono tabular-nums rounded px-1 py-0.5"
+			style={{
+				color: "var(--cyan-400)",
+				background: "rgba(34, 211, 238, 0.08)",
+			}}
+		>
+			{elapsed}
+		</span>
 	);
 }
 

@@ -118,6 +118,17 @@ export type ModalType =
 	| "knowledge"
 	| null;
 
+export type NotificationType = "success" | "error" | "info" | "warning";
+
+export interface NotificationEntry {
+	id: string;
+	type: NotificationType;
+	message: string;
+	timestamp: number;
+	stepName?: string;
+	actionRunId?: string;
+}
+
 interface BlueprintStore {
 	projects: Project[];
 	features: Feature[];
@@ -149,7 +160,12 @@ interface BlueprintStore {
 	liveToolName: string | null;
 	liveMessagePreview: string | null;
 	liveToolHistory: { name: string; startedAt: number; endedAt?: number }[];
+	lastRunToolHistory: { name: string; startedAt: number; endedAt?: number }[];
 	actionTimeout: { timeoutMs: number; startedAt: number } | null;
+
+	// Notifications
+	notifications: NotificationEntry[];
+	unreadNotificationCount: number;
 
 	// Execution mode
 	executionMode: "supervised" | "autonomous" | "draft";
@@ -200,6 +216,11 @@ interface BlueprintStore {
 	appendLiveMessage: (text: string) => void;
 	clearLiveActivity: () => void;
 	pushLiveToolEnd: () => void;
+
+	// Notification actions
+	addNotification: (entry: Omit<NotificationEntry, "id" | "timestamp">) => void;
+	clearNotifications: () => void;
+	markNotificationsRead: () => void;
 }
 
 export const useStore = create<BlueprintStore>((set) => ({
@@ -229,7 +250,11 @@ export const useStore = create<BlueprintStore>((set) => ({
 	liveToolName: null,
 	liveMessagePreview: null,
 	liveToolHistory: [],
+	lastRunToolHistory: [],
 	actionTimeout: null,
+
+	notifications: [],
+	unreadNotificationCount: 0,
 
 	executionMode: "supervised",
 
@@ -299,13 +324,17 @@ export const useStore = create<BlueprintStore>((set) => ({
 			liveMessagePreview: (state.liveMessagePreview ?? "") + text,
 		})),
 	clearLiveActivity: () =>
-		set({
+		set((state) => ({
 			liveActionRunId: null,
 			liveToolName: null,
 			liveMessagePreview: null,
+			lastRunToolHistory:
+				state.liveToolHistory.length > 0
+					? state.liveToolHistory
+					: state.lastRunToolHistory,
 			liveToolHistory: [],
 			actionTimeout: null,
-		}),
+		})),
 	setActionTimeout: (timeout) => set({ actionTimeout: timeout }),
 	pushLiveToolEnd: () =>
 		set((state) => {
@@ -314,4 +343,21 @@ export const useStore = create<BlueprintStore>((set) => ({
 			if (last && !last.endedAt) last.endedAt = Date.now();
 			return { liveToolHistory: history, liveToolName: null };
 		}),
+
+	addNotification: (entry) =>
+		set((state) => {
+			const notification: NotificationEntry = {
+				...entry,
+				id: crypto.randomUUID(),
+				timestamp: Date.now(),
+			};
+			const notifications = [notification, ...state.notifications].slice(0, 50);
+			return {
+				notifications,
+				unreadNotificationCount: state.unreadNotificationCount + 1,
+			};
+		}),
+	clearNotifications: () =>
+		set({ notifications: [], unreadNotificationCount: 0 }),
+	markNotificationsRead: () => set({ unreadNotificationCount: 0 }),
 }));

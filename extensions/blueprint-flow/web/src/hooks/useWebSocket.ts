@@ -241,6 +241,12 @@ export function useWebSocket() {
 						updated_at: new Date().toISOString(),
 					});
 					store.clearLiveActivity();
+					store.addNotification({
+						type: "success",
+						message: `Step "${completedRun?.step_name ?? "unknown"}" completed`,
+						stepName: completedRun?.step_name ?? undefined,
+						actionRunId: msg.data.id,
+					});
 					addToast({ type: "success", message: "Action completed" });
 					debouncedRefresh("featureData", refreshFeatureData);
 
@@ -253,7 +259,7 @@ export function useWebSocket() {
 							completedStepName === "interview";
 
 						if (!shouldPause) {
-							const { runModelId, runThinkingLevel, executionMode } = store;
+							const { runModelId, runThinkingLevel } = store;
 							fetch(`/api/features/${featureId}/advance`, {
 								method: "POST",
 								headers: { "Content-Type": "application/json" },
@@ -282,6 +288,7 @@ export function useWebSocket() {
 
 			case "action:failed":
 				if (msg.data.id) {
+					const failedRun = store.actionRuns.find((r) => r.id === msg.data.id);
 					store.updateActionRun(msg.data.id, {
 						status: "failed",
 						error: msg.data.error,
@@ -289,6 +296,12 @@ export function useWebSocket() {
 						updated_at: new Date().toISOString(),
 					});
 					store.clearLiveActivity();
+					store.addNotification({
+						type: "error",
+						message: `Step "${failedRun?.step_name ?? "unknown"}" failed: ${msg.data.error ?? "Unknown error"}`,
+						stepName: failedRun?.step_name ?? undefined,
+						actionRunId: msg.data.id,
+					});
 					addToast({
 						type: "error",
 						message: `Action failed: ${msg.data.error ?? "Unknown error"}`,
@@ -308,6 +321,13 @@ export function useWebSocket() {
 
 			// --- Step events ---
 			case "step:advanced":
+				store.addNotification({
+					type: "info",
+					message: `Advanced to next step`,
+				});
+				debouncedRefresh("featureData", refreshFeatureData);
+				debouncedRefresh("projects", refreshProjects);
+				break;
 			case "step:back":
 			case "step:status_changed":
 				debouncedRefresh("featureData", refreshFeatureData);
@@ -336,6 +356,10 @@ export function useWebSocket() {
 			// --- Interview events ---
 			case "interview:asked":
 				debouncedRefresh("interviews", refreshInterviews);
+				store.addNotification({
+					type: "warning",
+					message: "Agent has questions — check the Interview tab",
+				});
 				addToast({
 					type: "info",
 					message: "New interview question available",

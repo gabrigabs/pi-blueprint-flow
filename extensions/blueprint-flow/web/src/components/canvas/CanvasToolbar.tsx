@@ -2,15 +2,19 @@ import { useReactFlow } from "@xyflow/react";
 import {
 	ArrowDownUp,
 	ArrowRightLeft,
+	Bell,
 	Brain,
+	Loader2,
 	Maximize2,
 	Play,
+	Square,
 	Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
 import { useStore } from "../../store";
 import type { LayoutDirection } from "./layout";
+import { NotificationPanel } from "./NotificationPanel";
 
 interface Props {
 	direction: LayoutDirection;
@@ -32,8 +36,12 @@ export function CanvasToolbar({
 	const memories = useStore((s) => s.memories);
 	const executionMode = useStore((s) => s.executionMode);
 	const setExecutionMode = useStore((s) => s.setExecutionMode);
+	const actionRuns = useStore((s) => s.actionRuns);
+	const liveToolName = useStore((s) => s.liveToolName);
+	const unreadNotificationCount = useStore((s) => s.unreadNotificationCount);
 	const { getViewport } = useReactFlow();
 	const [zoom, setZoom] = useState(100);
+	const [showNotifications, setShowNotifications] = useState(false);
 
 	useEffect(() => {
 		const interval = setInterval(() => {
@@ -52,10 +60,24 @@ export function CanvasToolbar({
 			s.status === "pending",
 	);
 
+	const activeRun = actionRuns.find(
+		(r) =>
+			r.feature_id === selectedFeatureId &&
+			!["completed", "failed", "cancelled", "not_connected"].includes(r.status),
+	);
+	const isRunning = Boolean(runningStep) || Boolean(activeRun);
+
 	async function handleRunCurrent() {
 		if (!selectedFeatureId) return;
 		try {
 			await api.features.runStep(selectedFeatureId);
+		} catch {}
+	}
+
+	async function handleStop() {
+		if (!activeRun) return;
+		try {
+			await api.actionRuns.cancel(activeRun.id);
 		} catch {}
 	}
 
@@ -103,15 +125,46 @@ export function CanvasToolbar({
 				</span>
 			</div>
 
-			{/* Run current step */}
-			{currentStep && currentStep.status !== "running" && (
-				<button
-					onClick={handleRunCurrent}
-					className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
-					style={{ color: "var(--accent-primary)" }}
-				>
-					<Play size={11} /> Run
-				</button>
+			{/* Run / Progress state */}
+			{isRunning ? (
+				<div className="flex items-center gap-1.5 px-2.5 py-1.5">
+					<Loader2
+						size={11}
+						className="animate-spin"
+						style={{ color: "var(--accent-primary)" }}
+					/>
+					{liveToolName && (
+						<span
+							className="text-[10px] font-mono truncate max-w-[80px]"
+							style={{ color: "var(--cyan-400)" }}
+						>
+							{liveToolName}
+						</span>
+					)}
+					{activeRun?.started_at && (
+						<ElapsedTime startedAt={activeRun.started_at} />
+					)}
+					<button
+						type="button"
+						onClick={handleStop}
+						className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
+						style={{ color: "var(--rose-400)" }}
+					>
+						<Square size={9} /> Stop
+					</button>
+				</div>
+			) : (
+				currentStep &&
+				currentStep.status !== "running" && (
+					<button
+						type="button"
+						onClick={handleRunCurrent}
+						className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
+						style={{ color: "var(--accent-primary)" }}
+					>
+						<Play size={11} /> Run
+					</button>
+				)
 			)}
 
 			{/* Execution mode selector */}
@@ -121,6 +174,7 @@ export function CanvasToolbar({
 			>
 				{(["supervised", "autonomous", "draft"] as const).map((mode) => (
 					<button
+						type="button"
 						key={mode}
 						onClick={() => setExecutionMode(mode)}
 						title={
@@ -144,6 +198,7 @@ export function CanvasToolbar({
 
 			{/* Knowledge toggle */}
 			<button
+				type="button"
 				onClick={onToggleKnowledge}
 				title="Toggle knowledge panel"
 				className="relative rounded-lg p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
@@ -162,8 +217,37 @@ export function CanvasToolbar({
 				)}
 			</button>
 
+			{/* Notifications */}
+			<div className="relative">
+				<button
+					type="button"
+					onClick={() => setShowNotifications((v) => !v)}
+					title="Notifications"
+					className="relative rounded-lg p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
+					style={{
+						color: showNotifications
+							? "var(--accent-primary)"
+							: "var(--text-tertiary)",
+					}}
+				>
+					<Bell size={14} />
+					{unreadNotificationCount > 0 && (
+						<div
+							className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold text-white"
+							style={{ background: "var(--rose-400)" }}
+						>
+							{unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+						</div>
+					)}
+				</button>
+				{showNotifications && (
+					<NotificationPanel onClose={() => setShowNotifications(false)} />
+				)}
+			</div>
+
 			{/* Layout toggle */}
 			<button
+				type="button"
 				onClick={() =>
 					onDirectionChange(
 						direction === "vertical" ? "horizontal" : "vertical",
@@ -182,6 +266,7 @@ export function CanvasToolbar({
 
 			{/* Fit view */}
 			<button
+				type="button"
 				onClick={onFitView}
 				title="Fit view"
 				className="rounded-lg p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
@@ -217,5 +302,32 @@ export function CanvasToolbar({
 				</div>
 			)}
 		</div>
+	);
+}
+
+function ElapsedTime({ startedAt }: { startedAt: string }) {
+	const [elapsed, setElapsed] = useState("");
+
+	useEffect(() => {
+		function update() {
+			const diff = Math.floor(
+				(Date.now() - new Date(startedAt).getTime()) / 1000,
+			);
+			const m = Math.floor(diff / 60);
+			const s = diff % 60;
+			setElapsed(m > 0 ? `${m}m${s.toString().padStart(2, "0")}s` : `${s}s`);
+		}
+		update();
+		const interval = setInterval(update, 1000);
+		return () => clearInterval(interval);
+	}, [startedAt]);
+
+	return (
+		<span
+			className="text-[10px] font-mono tabular-nums"
+			style={{ color: "var(--text-muted)" }}
+		>
+			{elapsed}
+		</span>
 	);
 }

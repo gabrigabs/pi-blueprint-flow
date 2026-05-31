@@ -136,6 +136,15 @@ body::before {
   animation: pulseGlow 2s ease-in-out infinite;
 }
 
+.animate-indeterminate-progress {
+  animation: indeterminateProgress 1.5s ease-in-out infinite;
+}
+
+@keyframes indeterminateProgress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
 .font-display {
   font-family: var(--font-display);
 }
