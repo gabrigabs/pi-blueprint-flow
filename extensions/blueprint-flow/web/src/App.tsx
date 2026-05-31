@@ -1,9 +1,9 @@
 import { useEffect } from "react";
+import { CreateFlowModal } from "./components/CreateFlowModal";
 import { WorkflowCanvas } from "./components/canvas/WorkflowCanvas";
-import { CreateFeatureModal } from "./components/CreateFeatureModal";
-import { AppHeader } from "./components/layout/AppHeader";
 import { KnowledgeModal } from "./components/KnowledgeModal";
-import { OnboardingModal } from "./components/onboarding/OnboardingModal";
+import { AppHeader } from "./components/layout/AppHeader";
+import { CreateWorkspaceModal } from "./components/onboarding/CreateWorkspaceModal";
 import { ProjectSidebar } from "./components/ProjectSidebar";
 import { Toasts } from "./components/Toasts";
 import { ProjectHomeView } from "./components/views/ProjectHomeView";
@@ -15,12 +15,8 @@ import { useStore } from "./store";
 export function App() {
 	useWebSocket();
 	useKeyboardShortcuts();
-	const {
-		selectedWorkspaceId,
-		selectedFlowId,
-		activeModal,
-		sidebarCollapsed,
-	} = useStore();
+	const { selectedWorkspaceId, selectedFlowId, activeModal, sidebarCollapsed } =
+		useStore();
 
 	useEffect(() => {
 		if (selectedWorkspaceId) {
@@ -61,14 +57,20 @@ export function App() {
 				{!sidebarCollapsed && (
 					<aside
 						className="w-64 shrink-0 flex flex-col overflow-hidden border-r sidebar-transition"
-						style={{ borderColor: "var(--border-subtle)", background: "var(--bg-elevated)" }}
+						style={{
+							borderColor: "var(--border-subtle)",
+							background: "var(--bg-elevated)",
+						}}
 					>
 						<ProjectSidebar />
 					</aside>
 				)}
 
 				{/* Main content */}
-				<main className="flex flex-1 flex-col overflow-hidden" style={{ background: "var(--bg-base)" }}>
+				<main
+					className="flex flex-1 flex-col overflow-hidden"
+					style={{ background: "var(--bg-base)" }}
+				>
 					{selectedFlowId ? (
 						<WorkflowCanvas />
 					) : selectedWorkspaceId ? (
@@ -78,12 +80,23 @@ export function App() {
 							<div className="text-center animate-fade-in">
 								<div
 									className="mx-auto mb-4 h-16 w-16 rounded-xl flex items-center justify-center"
-									style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)" }}
+									style={{
+										background: "var(--bg-surface)",
+										border: "1px solid var(--border-default)",
+									}}
 								>
-									<span className="font-display text-2xl" style={{ color: "var(--text-muted)" }}>&#9671;</span>
+									<span
+										className="font-display text-2xl"
+										style={{ color: "var(--text-muted)" }}
+									>
+										&#9671;
+									</span>
 								</div>
-								<p className="font-display text-lg" style={{ color: "var(--text-tertiary)" }}>
-									Create or select a project to begin
+								<p
+									className="font-display text-lg"
+									style={{ color: "var(--text-tertiary)" }}
+								>
+									Create or select a workspace to begin
 								</p>
 							</div>
 						</div>
@@ -92,8 +105,8 @@ export function App() {
 			</div>
 
 			{/* Modals */}
-			{activeModal === "create_workspace" && <OnboardingModal />}
-			{activeModal === "create_flow" && <CreateFeatureModal />}
+			{activeModal === "create_workspace" && <CreateWorkspaceModal />}
+			{activeModal === "create_flow" && <CreateFlowModal />}
 			{activeModal === "workflow_editor" && <WorkflowEditor />}
 			{activeModal === "knowledge" && <KnowledgeModal />}
 

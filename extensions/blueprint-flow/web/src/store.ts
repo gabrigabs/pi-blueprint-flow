@@ -92,10 +92,13 @@ export type Feature = Flow;
 
 export type BridgeStatus = "idle" | "busy" | "not_connected";
 
+export type StepType = "agent" | "manual" | "hybrid";
+
 export interface WorkflowStep {
 	name: string;
 	label: string;
 	actionType?: string;
+	type?: StepType;
 	optional?: boolean;
 	modelId?: string;
 	thinkingLevel?: string;

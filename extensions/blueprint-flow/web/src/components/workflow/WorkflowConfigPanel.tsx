@@ -212,7 +212,7 @@ export function WorkflowConfigPanel() {
 
 	useEffect(() => {
 		if (selectedWorkspaceId) {
-			api.workflows.getProjectWorkflow(selectedWorkspaceId).then((w) => {
+			api.workflows.getWorkspaceWorkflow(selectedWorkspaceId).then((w) => {
 				setActiveWorkflow(w);
 				setSteps(w.steps);
 			}).catch(() => {});
@@ -288,7 +288,7 @@ export function WorkflowConfigPanel() {
 		if (!selectedWorkspaceId) return;
 		try {
 			await api.workflows.assignToWorkspace(selectedWorkspaceId, "default");
-			const w = await api.workflows.getProjectWorkflow(selectedWorkspaceId);
+			const w = await api.workflows.getWorkspaceWorkflow(selectedWorkspaceId);
 			setActiveWorkflow(w);
 			setSteps(w.steps);
 			setDirty(false);

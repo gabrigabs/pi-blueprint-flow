@@ -35,7 +35,7 @@ export function WorkflowEditor() {
 	useEffect(() => {
 		if (selectedWorkspaceId) {
 			api.workflows
-				.getProjectWorkflow(selectedWorkspaceId)
+				.getWorkspaceWorkflow(selectedWorkspaceId)
 				.then((w) => {
 					setActiveWorkflow(w);
 					setSteps(w.steps);
@@ -126,7 +126,7 @@ export function WorkflowEditor() {
 		if (!selectedWorkspaceId) return;
 		try {
 			await api.workflows.assignToWorkspace(selectedWorkspaceId, "default");
-			const w = await api.workflows.getProjectWorkflow(selectedWorkspaceId);
+			const w = await api.workflows.getWorkspaceWorkflow(selectedWorkspaceId);
 			setActiveWorkflow(w);
 			setSteps(w.steps);
 			setName(w.name);
