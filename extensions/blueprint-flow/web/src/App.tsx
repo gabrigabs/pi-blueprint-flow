@@ -7,7 +7,6 @@ import { CreateWorkspaceModal } from "./components/onboarding/CreateWorkspaceMod
 import { ProjectSidebar } from "./components/ProjectSidebar";
 import { Toasts } from "./components/Toasts";
 import { HomeView } from "./components/views/HomeView";
-import { ProjectHomeView } from "./components/views/ProjectHomeView";
 import { WorkflowEditor } from "./components/WorkflowEditor";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useWebSocket } from "./hooks/useWebSocket";
@@ -49,15 +48,16 @@ export function App() {
 		}
 	}, [selectedFlowId]);
 
+	const showSidebar = selectedWorkspaceId && !sidebarCollapsed;
+
 	return (
 		<div className="flex h-screen flex-col overflow-hidden">
 			<AppHeader />
 
 			<div className="flex flex-1 overflow-hidden">
-				{/* Sidebar: Features */}
-				{!sidebarCollapsed && (
+				{showSidebar && (
 					<aside
-						className="w-64 shrink-0 flex flex-col overflow-hidden border-r sidebar-transition"
+						className="w-60 shrink-0 flex flex-col overflow-hidden border-r sidebar-transition"
 						style={{
 							borderColor: "var(--border-subtle)",
 							background: "var(--bg-elevated)",
@@ -67,22 +67,14 @@ export function App() {
 					</aside>
 				)}
 
-				{/* Main content */}
 				<main
-					className="flex flex-1 flex-col overflow-hidden animate-fade-in"
+					className="flex flex-1 flex-col overflow-hidden"
 					style={{ background: "var(--bg-base)" }}
 				>
-					{selectedFlowId ? (
-						<WorkflowCanvas />
-					) : selectedWorkspaceId ? (
-						<ProjectHomeView />
-					) : (
-						<HomeView />
-					)}
+					{selectedFlowId ? <WorkflowCanvas /> : <HomeView />}
 				</main>
 			</div>
 
-			{/* Modals */}
 			{activeModal === "create_workspace" && <CreateWorkspaceModal />}
 			{activeModal === "create_flow" && <CreateFlowModal />}
 			{activeModal === "workflow_editor" && <WorkflowEditor />}
