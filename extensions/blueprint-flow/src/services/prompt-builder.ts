@@ -12,6 +12,7 @@ export interface PromptContext {
 	memories?: string[];
 	interviewAnswers?: Array<{ question: string; answer: string }>;
 	extraContext?: Record<string, unknown>;
+	stepInstructions?: string;
 }
 
 /** Per-action-type instruction templates */
@@ -69,7 +70,9 @@ export function buildPrompt(ctx: PromptContext): string {
 	const { actionRun } = ctx;
 	const tag = `[blueprint-action:${actionRun.id}]`;
 	const instructions =
-		ACTION_INSTRUCTIONS[actionRun.action_type] ?? ACTION_INSTRUCTIONS.run_step;
+		ctx.stepInstructions ??
+		ACTION_INSTRUCTIONS[actionRun.action_type] ??
+		ACTION_INSTRUCTIONS.run_step;
 
 	const lines: string[] = [
 		tag,
@@ -217,6 +220,28 @@ export function gatherPromptContext(actionRun: ActionRunRow): PromptContext {
 			ctx.currentStepArtifacts = artifacts.map(
 				(a) => `${a.filename} (${a.type})`,
 			);
+		}
+
+		// Get per-step instructions from workflow
+		const flow = db
+			.prepare("SELECT workflow_id FROM flows WHERE id = ?")
+			.get(actionRun.flow_id) as { workflow_id: string } | undefined;
+		if (flow?.workflow_id) {
+			const workflow = db
+				.prepare("SELECT steps_json FROM workflows WHERE id = ?")
+				.get(flow.workflow_id) as { steps_json: string } | undefined;
+			if (workflow?.steps_json) {
+				try {
+					const steps = JSON.parse(workflow.steps_json) as Array<{
+						name: string;
+						instructions?: string;
+					}>;
+					const stepDef = steps.find((s) => s.name === actionRun.step_name);
+					if (stepDef?.instructions) {
+						ctx.stepInstructions = stepDef.instructions;
+					}
+				} catch {}
+			}
 		}
 	}
 

@@ -376,6 +376,26 @@ export async function startServer(
 			.send(BUILD_INSTRUCTIONS_HTML);
 	});
 
+	// Clean up stale action runs from previous sessions
+	try {
+		const db = getDb();
+		const staleStatuses = [
+			"created",
+			"queued",
+			"waiting_for_pi",
+			"injected",
+			"agent_running",
+			"tool_running",
+			"needs_user",
+			"saving_artifacts",
+		];
+		const placeholders = staleStatuses.map(() => "?").join(",");
+		const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+		db.prepare(
+			`UPDATE action_runs SET status = 'cancelled', completed_at = ? WHERE status IN (${placeholders})`,
+		).run(now, ...staleStatuses);
+	} catch {}
+
 	// Start listening
 	await server.listen({ port: BLUEPRINT_PORT, host: "127.0.0.1" });
 	bus.emit("server:started", { port: BLUEPRINT_PORT });

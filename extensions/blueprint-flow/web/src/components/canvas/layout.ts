@@ -25,6 +25,7 @@ export interface StepNodeData {
 	label: string;
 	status: string;
 	stepName: string;
+	stepType: "agent" | "manual" | "hybrid";
 	artifactCount: number;
 	artifacts: { id: string; filename: string; type: string }[];
 	interviewCount: number;
@@ -41,6 +42,7 @@ export function stepsToNodes(
 	interviews?: Interview[],
 	actionRuns?: ActionRun[],
 	selectedNodeId?: string | null,
+	workflowSteps?: WorkflowStep[],
 ): Node<StepNodeData>[] {
 	return steps.map((step, index) => {
 		const stepArtifacts = artifacts.filter((a) => a.step_name === step.name);
@@ -54,6 +56,7 @@ export function stepsToNodes(
 		const hasCompletedRuns = stepActivities.some(
 			(r) => r.status === "completed",
 		);
+		const wfStep = workflowSteps?.find((ws) => ws.name === step.name);
 
 		return {
 			id: step.id,
@@ -63,6 +66,7 @@ export function stepsToNodes(
 				label: STEP_LABELS[step.name] || step.name,
 				status: step.status,
 				stepName: step.name,
+				stepType: (wfStep?.type as "agent" | "manual" | "hybrid") ?? "agent",
 				artifactCount: stepArtifacts.length,
 				artifacts: stepArtifacts.map((a) => ({
 					id: a.id,

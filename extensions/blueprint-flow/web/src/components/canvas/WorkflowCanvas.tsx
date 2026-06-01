@@ -33,6 +33,7 @@ import {
 	stepsToSatelliteEdges,
 	stepsToSatelliteNodes,
 } from "./layout";
+import { StepConfigPanel } from "./StepConfigPanel";
 import { StepDetailDrawer } from "./StepDetailDrawer";
 import { EditModeNode, WorkflowStepNode } from "./WorkflowStepNode";
 
@@ -57,6 +58,7 @@ function WorkflowCanvasInner() {
 	const selectNode = useStore((s) => s.selectNode);
 	const canvasEditMode = useStore((s) => s.canvasEditMode);
 	const editModeSteps = useStore((s) => s.editModeSteps);
+	const activeWorkflow = useStore((s) => s.activeWorkflow);
 
 	const [direction, setDirection] = useState<LayoutDirection>("vertical");
 	const [showKnowledge, setShowKnowledge] = useState(false);
@@ -86,6 +88,7 @@ function WorkflowCanvasInner() {
 			interviews,
 			actionRuns,
 			selectedNodeId,
+			activeWorkflow?.steps,
 		);
 		const e = stepsToEdges(steps);
 
@@ -152,6 +155,7 @@ function WorkflowCanvasInner() {
 			interviews,
 			actionRuns,
 			selectedNodeId,
+			activeWorkflow?.steps,
 		);
 		const e = stepsToEdges(steps);
 		autoLayout(n, e, direction, selectedNodeId).then(({ nodes: layouted }) => {
@@ -178,6 +182,7 @@ function WorkflowCanvasInner() {
 			interviews,
 			actionRuns,
 			selectedNodeId,
+			activeWorkflow?.steps,
 		);
 		const e = stepsToEdges(steps);
 		autoLayout(n, e, direction, selectedNodeId).then(({ nodes: layouted }) => {
@@ -261,6 +266,25 @@ function WorkflowCanvasInner() {
 		setHoveredNodeId(null);
 	}, []);
 
+	const reorderEditStep = useStore((s) => s.reorderEditStep);
+
+	const onNodeDragStop = useCallback(
+		(_: React.MouseEvent, node: Node) => {
+			if (!canvasEditMode || !editModeSteps) return;
+			const sorted = [...nodes]
+				.filter((n) => n.id.startsWith("edit-"))
+				.sort((a, b) => a.position.y - b.position.y);
+			const fromIndex = editModeSteps.findIndex(
+				(s, i) => `edit-${i}-${s.name}` === node.id,
+			);
+			const toIndex = sorted.findIndex((n) => n.id === node.id);
+			if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+				reorderEditStep(fromIndex, toIndex);
+			}
+		},
+		[canvasEditMode, editModeSteps, nodes, reorderEditStep],
+	);
+
 	function handleFitView() {
 		fitView({ padding: 0.6, duration: 500 });
 	}
@@ -301,6 +325,7 @@ function WorkflowCanvasInner() {
 				onNodeClick={onNodeClick}
 				onNodeMouseEnter={canvasEditMode ? undefined : onNodeMouseEnter}
 				onNodeMouseLeave={canvasEditMode ? undefined : onNodeMouseLeave}
+				onNodeDragStop={canvasEditMode ? onNodeDragStop : undefined}
 				onPaneClick={onPaneClick}
 				fitView
 				fitViewOptions={{ padding: 0.6 }}
@@ -343,6 +368,9 @@ function WorkflowCanvasInner() {
 
 			{/* Edit mode save bar */}
 			{canvasEditMode && <EditModeSaveBar />}
+
+			{/* Edit mode config panel */}
+			{canvasEditMode && selectedNodeId && <StepConfigPanel />}
 
 			{/* Floating detail drawer */}
 			{!canvasEditMode && selectedNodeId && <StepDetailDrawer />}

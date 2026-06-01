@@ -25,7 +25,7 @@ import {
 	X,
 	Zap,
 } from "lucide-react";
-import { type MouseEvent, memo, useEffect, useState } from "react";
+import { type MouseEvent, memo, useEffect, useRef, useState } from "react";
 import { api, mapExecutionMode } from "../../lib/api";
 import { useStore } from "../../store";
 import { ArtifactChip } from "./ArtifactChip";
@@ -109,6 +109,7 @@ function WorkflowStepNodeComponent({
 		label,
 		status,
 		stepName,
+		stepType,
 		artifactCount,
 		artifacts,
 		isSelected,
@@ -172,7 +173,11 @@ function WorkflowStepNodeComponent({
 		if (!activeRun) return;
 		try {
 			await api.actionRuns.cancel(activeRun.id);
-		} catch {}
+		} catch {
+			try {
+				await api.actionRuns.forceCancel(activeRun.id);
+			} catch {}
+		}
 	}
 
 	async function handleSkip(event: MouseEvent) {
@@ -411,7 +416,26 @@ function WorkflowStepNodeComponent({
 					className="flex items-center gap-1.5 border-t px-4 py-2"
 					style={{ borderColor: "var(--border-subtle)" }}
 				>
-					{canRunCurrent && (
+					{/* Manual step: mark done */}
+					{stepType === "manual" && isCurrentStep && !activeRun && (
+						<NodeActionButton
+							label="Mark done"
+							icon={CheckCircle}
+							tone="primary"
+							onClick={handleSkip}
+						/>
+					)}
+					{/* Hybrid step: generate suggestion */}
+					{stepType === "hybrid" && canRunCurrent && (
+						<NodeActionButton
+							label="Generate"
+							icon={Sparkles}
+							tone="primary"
+							onClick={handleRun}
+						/>
+					)}
+					{/* Agent step: run */}
+					{(stepType === "agent" || !stepType) && canRunCurrent && (
 						<NodeActionButton
 							label="Run"
 							icon={Play}
@@ -427,7 +451,7 @@ function WorkflowStepNodeComponent({
 							onClick={handleStop}
 						/>
 					)}
-					{canNavigateCurrent && !activeRun && (
+					{canNavigateCurrent && !activeRun && stepType !== "manual" && (
 						<>
 							<NodeActionButton
 								label="Skip"
@@ -440,6 +464,13 @@ function WorkflowStepNodeComponent({
 								onClick={handleBack}
 							/>
 						</>
+					)}
+					{canNavigateCurrent && !activeRun && stepType === "manual" && (
+						<NodeActionButton
+							label="Back"
+							icon={ArrowLeft}
+							onClick={handleBack}
+						/>
 					)}
 					{canReturnToStep && (
 						<NodeActionButton
@@ -620,10 +651,36 @@ const TYPE_CONFIG = {
 function EditModeNodeComponent({
 	data,
 }: NodeProps & { data: EditStepNodeData }) {
-	const { label, stepName, stepType, index } = data;
+	const { label, stepName, stepType, index, isSelected } = data;
 	const removeEditStep = useStore((s) => s.removeEditStep);
+	const updateEditStep = useStore((s) => s.updateEditStep);
 	const config = TYPE_CONFIG[stepType] ?? TYPE_CONFIG.agent;
 	const TypeIcon = config.icon;
+
+	const [editing, setEditing] = useState(false);
+	const [editValue, setEditValue] = useState(label);
+	const inputRef = useRef<HTMLInputElement>(null);
+
+	useEffect(() => {
+		if (editing && inputRef.current) {
+			inputRef.current.focus();
+			inputRef.current.select();
+		}
+	}, [editing]);
+
+	function handleDoubleClick(e: MouseEvent) {
+		e.stopPropagation();
+		setEditValue(label);
+		setEditing(true);
+	}
+
+	function commitEdit() {
+		const trimmed = editValue.trim();
+		if (trimmed && trimmed !== label) {
+			updateEditStep(index, { label: trimmed });
+		}
+		setEditing(false);
+	}
 
 	function handleDelete(e: MouseEvent) {
 		e.stopPropagation();
@@ -636,8 +693,13 @@ function EditModeNodeComponent({
 			style={{
 				width: EDIT_NODE_WIDTH,
 				height: EDIT_NODE_HEIGHT,
-				background: "var(--bg-surface)",
-				borderColor: "var(--border-default)",
+				background: isSelected
+					? "var(--bg-surface-hover)"
+					: "var(--bg-surface)",
+				borderColor: isSelected
+					? "var(--accent-primary)"
+					: "var(--border-default)",
+				boxShadow: isSelected ? "0 0 0 2px rgba(91, 155, 213, 0.15)" : "none",
 			}}
 		>
 			<Handle
@@ -657,13 +719,42 @@ function EditModeNodeComponent({
 					>
 						<TypeIcon size={16} style={{ color: config.color }} />
 					</div>
-					<div className="min-w-0">
-						<p
-							className="text-[13px] font-medium truncate leading-tight"
-							style={{ color: "var(--text-primary)" }}
-						>
-							{label}
-						</p>
+					<div
+						className="min-w-0"
+						role="button"
+						tabIndex={0}
+						onDoubleClick={handleDoubleClick}
+						onKeyDown={(e) => {
+							if (e.key === "Enter")
+								handleDoubleClick(e as unknown as MouseEvent);
+						}}
+					>
+						{editing ? (
+							<input
+								ref={inputRef}
+								type="text"
+								value={editValue}
+								onChange={(e) => setEditValue(e.target.value)}
+								onBlur={commitEdit}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") commitEdit();
+									if (e.key === "Escape") setEditing(false);
+								}}
+								className="text-[13px] font-medium leading-tight w-full bg-transparent border-b outline-none"
+								style={{
+									color: "var(--text-primary)",
+									borderColor: "var(--accent-primary)",
+								}}
+							/>
+						) : (
+							<p
+								className="text-[13px] font-medium truncate leading-tight cursor-text"
+								style={{ color: "var(--text-primary)" }}
+								title="Double-click to edit"
+							>
+								{label}
+							</p>
+						)}
 						<p
 							className="text-[10px] font-mono mt-0.5"
 							style={{ color: "var(--text-muted)" }}

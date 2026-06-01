@@ -102,6 +102,8 @@ export interface WorkflowStep {
 	optional?: boolean;
 	modelId?: string;
 	thinkingLevel?: string;
+	instructions?: string;
+	skipCondition?: string;
 }
 
 export interface Workflow {

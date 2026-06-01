@@ -83,7 +83,11 @@ export function CanvasToolbar({
 		if (!activeRun) return;
 		try {
 			await api.actionRuns.cancel(activeRun.id);
-		} catch {}
+		} catch {
+			try {
+				await api.actionRuns.forceCancel(activeRun.id);
+			} catch {}
+		}
 	}
 
 	function handleToggleEditMode() {

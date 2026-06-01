@@ -343,6 +343,13 @@ export const api = {
 					method: "POST",
 				},
 			),
+		forceCancel: (id: string) =>
+			request<{ success: boolean; status: string }>(
+				`/api/action-runs/${id}/force-cancel`,
+				{
+					method: "POST",
+				},
+			),
 		inject: (id: string, message: string) =>
 			request<{ success: boolean }>(`/api/action-runs/${id}/inject`, {
 				method: "POST",

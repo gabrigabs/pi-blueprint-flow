@@ -4,6 +4,7 @@ import {
 	createActionRunEvent,
 	getActionRun,
 	getActiveActionRun,
+	getDb,
 	listActionRunEvents,
 	listActionRuns,
 } from "../db.js";
@@ -107,6 +108,45 @@ export function registerActionRunRoutes(app: FastifyInstance): void {
 					message: "Action run is not in a cancellable state",
 				});
 			}
+
+			return reply.send({ success: true, status: "cancelled" });
+		},
+	);
+
+	// Force-cancel a stuck action run (bypasses bridge, writes directly to DB)
+	app.post<{ Params: { id: string } }>(
+		"/api/action-runs/:id/force-cancel",
+		async (req, reply) => {
+			const db = getDb();
+			const run = db
+				.prepare("SELECT id, status FROM action_runs WHERE id = ?")
+				.get(req.params.id) as { id: string; status: string } | undefined;
+
+			if (!run) {
+				return reply
+					.code(404)
+					.send({ error: "not_found", message: "Action run not found" });
+			}
+
+			if (
+				["completed", "failed", "cancelled", "not_connected"].includes(
+					run.status,
+				)
+			) {
+				return reply.code(409).send({
+					error: "already_terminal",
+					message: "Action run is already in a terminal state",
+				});
+			}
+
+			db.prepare(
+				"UPDATE action_runs SET status = 'cancelled', completed_at = ? WHERE id = ?",
+			).run(new Date().toISOString().replace("T", " ").slice(0, 19), run.id);
+
+			bus.emit("action_run_updated", {
+				id: run.id,
+				status: "cancelled",
+			});
 
 			return reply.send({ success: true, status: "cancelled" });
 		},
