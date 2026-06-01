@@ -34,7 +34,7 @@ export function ProjectSidebar() {
 				style={{ borderColor: "var(--border-subtle)" }}
 			>
 				<h2
-					className="text-xs font-medium uppercase tracking-wide"
+					className="text-xs font-medium uppercase tracking-wide animate-slide-in-left"
 					style={{ color: "var(--text-tertiary)" }}
 				>
 					Flows
@@ -45,7 +45,7 @@ export function ProjectSidebar() {
 							type="button"
 							onClick={() => openModal("create_flow")}
 							title="New flow (N)"
-							className="rounded-lg p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
+							className="rounded-lg p-1.5 transition-all duration-150 hover:bg-[var(--bg-surface-hover)] active:scale-90"
 							style={{ color: "var(--text-tertiary)" }}
 						>
 							<Plus size={13} />
@@ -55,7 +55,7 @@ export function ProjectSidebar() {
 						type="button"
 						onClick={toggleSidebar}
 						title="Hide sidebar ([)"
-						className="rounded-lg p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
+						className="rounded-lg p-1.5 transition-all duration-150 hover:bg-[var(--bg-surface-hover)] active:scale-90"
 						style={{ color: "var(--text-muted)" }}
 					>
 						<PanelLeftClose size={13} />
@@ -83,21 +83,27 @@ export function ProjectSidebar() {
 					/>
 				) : (
 					<ul className="space-y-0.5">
-						{flows.map((f) => {
+						{flows.map((f, i) => {
 							const isSelected = selectedFlowId === f.id;
 							return (
-								<li key={f.id}>
+								<li
+									key={f.id}
+									className={`animate-fade-up stagger-${Math.min(i + 1, 8)}`}
+								>
 									<button
 										type="button"
 										onClick={() => selectFlow(f.id)}
-										className="group w-full rounded-xl px-3 py-2.5 text-left transition-all duration-150"
+										className="group w-full rounded-xl px-3 py-2.5 text-left transition-all duration-150 hover:bg-[var(--bg-surface-hover)] active:scale-[0.98]"
 										style={{
 											background: isSelected ? "var(--bg-surface)" : undefined,
+											boxShadow: isSelected
+												? "inset 2px 0 0 var(--accent-primary)"
+												: undefined,
 										}}
 									>
 										<div className="flex items-center justify-between">
 											<span
-												className="block truncate text-sm"
+												className="block truncate text-[13px]"
 												style={{
 													color: isSelected
 														? "var(--text-primary)"
@@ -110,7 +116,7 @@ export function ProjectSidebar() {
 											<button
 												type="button"
 												onClick={(e) => handleDeleteFlow(e, f.id)}
-												className="hidden group-hover:flex items-center rounded p-0.5 transition-colors hover:bg-[var(--rose-glow)]"
+												className="hidden group-hover:flex items-center rounded p-0.5 transition-all duration-150 hover:bg-[var(--rose-glow)] active:scale-90"
 												style={{ color: "var(--rose-400)" }}
 												title="Delete flow"
 											>
@@ -120,7 +126,7 @@ export function ProjectSidebar() {
 										<div className="flex items-center gap-2 mt-1">
 											<StatusDot status={f.status} />
 											<span
-												className="text-xs"
+												className="text-[11px]"
 												style={{ color: "var(--text-muted)" }}
 											>
 												{f.current_step}
