@@ -143,7 +143,7 @@ export function registerActionRunRoutes(app: FastifyInstance): void {
 				"UPDATE action_runs SET status = 'cancelled', completed_at = ? WHERE id = ?",
 			).run(new Date().toISOString().replace("T", " ").slice(0, 19), run.id);
 
-			bus.emit("action_run_updated", {
+			bus.emit("action:updated", {
 				id: run.id,
 				status: "cancelled",
 			});
