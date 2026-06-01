@@ -176,6 +176,10 @@ export const api = {
 	flows: {
 		list: (workspaceId: string) =>
 			request<Flow[]>(`/api/workspaces/${workspaceId}/flows`),
+		listRecent: (limit = 8) =>
+			request<(Flow & { workspace_name: string })[]>(
+				`/api/flows/recent?limit=${limit}`,
+			),
 		get: (id: string) => request<Flow>(`/api/flows/${id}`),
 		create: (workspaceId: string, data: CreateFlowPayload) =>
 			request<Flow>(`/api/workspaces/${workspaceId}/flows`, {

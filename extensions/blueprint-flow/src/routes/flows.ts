@@ -224,4 +224,25 @@ export function registerFlowRoutes(app: FastifyInstance): void {
 			return reply.code(204).send();
 		},
 	);
+
+	app.get<{ Querystring: { limit?: string } }>(
+		"/api/flows/recent",
+		async (req, reply) => {
+			const limit = Math.min(
+				Number.parseInt(req.query.limit ?? "8", 10) || 8,
+				20,
+			);
+			const db = getDb();
+			const flows = db
+				.prepare(
+					`SELECT f.*, w.name as workspace_name
+				 FROM flows f
+				 JOIN workspaces w ON w.id = f.workspace_id
+				 ORDER BY f.updated_at DESC
+				 LIMIT ?`,
+				)
+				.all(limit);
+			return reply.send(flows);
+		},
+	);
 }

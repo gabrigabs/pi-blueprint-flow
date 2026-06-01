@@ -6,6 +6,7 @@ import { AppHeader } from "./components/layout/AppHeader";
 import { CreateWorkspaceModal } from "./components/onboarding/CreateWorkspaceModal";
 import { ProjectSidebar } from "./components/ProjectSidebar";
 import { Toasts } from "./components/Toasts";
+import { HomeView } from "./components/views/HomeView";
 import { ProjectHomeView } from "./components/views/ProjectHomeView";
 import { WorkflowEditor } from "./components/WorkflowEditor";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -76,30 +77,7 @@ export function App() {
 					) : selectedWorkspaceId ? (
 						<ProjectHomeView />
 					) : (
-						<div className="flex flex-1 items-center justify-center">
-							<div className="text-center animate-fade-in">
-								<div
-									className="mx-auto mb-4 h-16 w-16 rounded-xl flex items-center justify-center"
-									style={{
-										background: "var(--bg-surface)",
-										border: "1px solid var(--border-default)",
-									}}
-								>
-									<span
-										className="font-display text-2xl"
-										style={{ color: "var(--text-muted)" }}
-									>
-										&#9671;
-									</span>
-								</div>
-								<p
-									className="font-display text-lg"
-									style={{ color: "var(--text-tertiary)" }}
-								>
-									Create or select a workspace to begin
-								</p>
-							</div>
-						</div>
+						<HomeView />
 					)}
 				</main>
 			</div>
