@@ -235,10 +235,17 @@ export function gatherPromptContext(actionRun: ActionRunRow): PromptContext {
 					const steps = JSON.parse(workflow.steps_json) as Array<{
 						name: string;
 						instructions?: string;
+						skipCondition?: string;
 					}>;
 					const stepDef = steps.find((s) => s.name === actionRun.step_name);
 					if (stepDef?.instructions) {
 						ctx.stepInstructions = stepDef.instructions;
+					}
+					if (stepDef?.skipCondition) {
+						ctx.extraContext = {
+							...ctx.extraContext,
+							skipCondition: `This step may be skipped if: ${stepDef.skipCondition}`,
+						};
 					}
 				} catch {}
 			}

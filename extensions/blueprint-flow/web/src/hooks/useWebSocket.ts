@@ -259,11 +259,13 @@ export function useWebSocket() {
 							fetch(`/api/flows/${flowId}/advance`, {
 								method: "POST",
 								headers: { "Content-Type": "application/json" },
-								body: "{}",
+								body: JSON.stringify({ executionMode: "autonomous" }),
 							})
 								.then((r) => r.json())
 								.then((data) => {
 									if (data.completed) return;
+									const nextType = data.stepType ?? "agent";
+									if (nextType !== "agent") return;
 									fetch(`/api/flows/${flowId}/run-step`, {
 										method: "POST",
 										headers: { "Content-Type": "application/json" },

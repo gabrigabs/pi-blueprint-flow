@@ -110,6 +110,7 @@ function WorkflowStepNodeComponent({
 		status,
 		stepName,
 		stepType,
+		optional,
 		artifactCount,
 		artifacts,
 		isSelected,
@@ -190,6 +191,14 @@ function WorkflowStepNodeComponent({
 		if (!selectedFlowId) return;
 		try {
 			await api.flows.advance(selectedFlowId);
+		} catch {}
+	}
+
+	async function handleMarkDone(event: MouseEvent) {
+		stopNodeClick(event);
+		if (!selectedFlowId) return;
+		try {
+			await api.flows.completeManual(selectedFlowId);
 		} catch {}
 	}
 
@@ -411,6 +420,26 @@ function WorkflowStepNodeComponent({
 								</span>
 							</div>
 						)}
+						{optional && (
+							<div
+								className="flex items-center gap-1 rounded-md px-1.5 py-0.5"
+								style={{
+									background: "rgba(167, 139, 250, 0.06)",
+									border: "1px solid rgba(167, 139, 250, 0.2)",
+								}}
+							>
+								<SkipForward
+									size={8}
+									style={{ color: "var(--purple-400, #a78bfa)" }}
+								/>
+								<span
+									className="text-[10px] font-medium"
+									style={{ color: "var(--purple-400, #a78bfa)" }}
+								>
+									Optional
+								</span>
+							</div>
+						)}
 					</div>
 				</div>
 			</div>
@@ -427,7 +456,7 @@ function WorkflowStepNodeComponent({
 							label="Mark done"
 							icon={CheckCircle}
 							tone="primary"
-							onClick={handleSkip}
+							onClick={handleMarkDone}
 						/>
 					)}
 					{/* Hybrid step: generate suggestion */}
@@ -656,7 +685,7 @@ const TYPE_CONFIG = {
 function EditModeNodeComponent({
 	data,
 }: NodeProps & { data: EditStepNodeData }) {
-	const { label, stepName, stepType, index, isSelected } = data;
+	const { label, stepName, stepType, optional, index, isSelected } = data;
 	const removeEditStep = useStore((s) => s.removeEditStep);
 	const updateEditStep = useStore((s) => s.updateEditStep);
 	const config = TYPE_CONFIG[stepType] ?? TYPE_CONFIG.agent;
@@ -779,6 +808,17 @@ function EditModeNodeComponent({
 					>
 						{config.label}
 					</span>
+					{optional && (
+						<span
+							className="rounded-md px-1.5 py-0.5 text-[10px] font-medium"
+							style={{
+								background: "rgba(167, 139, 250, 0.08)",
+								color: "#a78bfa",
+							}}
+						>
+							Optional
+						</span>
+					)}
 					<button
 						type="button"
 						onClick={handleDelete}

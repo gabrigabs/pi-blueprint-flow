@@ -830,6 +830,8 @@ export interface WorkflowStep {
 	optional?: boolean;
 	modelId?: string;
 	thinkingLevel?: string;
+	instructions?: string;
+	skipCondition?: string;
 }
 
 const DEFAULT_WORKFLOW_STEPS: WorkflowStep[] = [

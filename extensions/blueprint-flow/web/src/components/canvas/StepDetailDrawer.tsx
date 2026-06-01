@@ -1,5 +1,13 @@
-import { Cpu, FileText, Loader2, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import {
+	CheckCircle,
+	Cpu,
+	FileText,
+	Loader2,
+	PenLine,
+	Sparkles,
+	X,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { STEP_LABELS } from "../../constants/steps";
 import {
 	type AgentConfigResponse,
@@ -11,7 +19,13 @@ import { InlineActionRuns } from "../InlineActionRuns";
 import { InlineInterviewSection } from "../InlineInterviewSection";
 import { MarkdownContent } from "../MarkdownContent";
 
-type Tab = "artifacts" | "activity" | "output" | "interview";
+type Tab =
+	| "artifacts"
+	| "activity"
+	| "output"
+	| "interview"
+	| "notes"
+	| "suggestion";
 
 export function StepDetailDrawer() {
 	const {
@@ -23,9 +37,12 @@ export function StepDetailDrawer() {
 		actionRuns,
 		interviews,
 		flows,
+		activeWorkflow,
 	} = useStore();
 	const currentFlow = flows.find((f) => f.id === selectedFlowId);
 	const step = steps.find((s) => s.id === selectedNodeId);
+	const wfStep = activeWorkflow?.steps?.find((ws) => ws.name === step?.name);
+	const stepType = wfStep?.type ?? "agent";
 	const [activeTab, setActiveTab] = useState<Tab>("artifacts");
 	const [artifactContent, setArtifactContent] = useState<string>("");
 	const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(
@@ -35,9 +52,15 @@ export function StepDetailDrawer() {
 	const artifactContentVersion = useStore((s) => s.artifactContentVersion);
 
 	useEffect(() => {
-		setActiveTab("artifacts");
+		const defaultTab: Tab =
+			stepType === "manual"
+				? "notes"
+				: stepType === "hybrid"
+					? "suggestion"
+					: "artifacts";
+		setActiveTab(defaultTab);
 		setSelectedArtifactId(null);
-	}, [selectedNodeId]);
+	}, [selectedNodeId, stepType]);
 
 	useEffect(() => {
 		if (!selectedArtifactId) {
@@ -101,17 +124,29 @@ export function StepDetailDrawer() {
 		step.status === "running" ||
 		step.status === "needs_user";
 
-	const tabs: { id: Tab; label: string; count?: number }[] = [
-		{ id: "artifacts", label: "Artifacts", count: stepArtifacts.length },
-		...(activeRun ? [{ id: "output" as Tab, label: "Output" }] : []),
-		{ id: "activity", label: "Activity" },
-	];
-	if (pendingInterviews.length > 0)
+	const tabs: { id: Tab; label: string; count?: number }[] = [];
+	if (stepType === "hybrid") {
+		tabs.push({ id: "suggestion", label: "Suggestion" });
+	}
+	if (stepType === "manual" || stepType === "hybrid") {
+		tabs.push({ id: "notes", label: "Notes" });
+	}
+	tabs.push({
+		id: "artifacts",
+		label: "Artifacts",
+		count: stepArtifacts.length,
+	});
+	if (activeRun) {
+		tabs.push({ id: "output", label: "Output" });
+	}
+	tabs.push({ id: "activity", label: "Activity" });
+	if (pendingInterviews.length > 0) {
 		tabs.push({
 			id: "interview",
 			label: "Interview",
 			count: pendingInterviews.length,
 		});
+	}
 
 	async function handleInject() {
 		if (!injectText.trim()) return;
@@ -196,6 +231,24 @@ export function StepDetailDrawer() {
 
 			{/* Content */}
 			<div className="flex-1 overflow-y-auto scrollbar-thin px-5 py-3">
+				{activeTab === "notes" && (
+					<NotesTab
+						flowId={selectedFlowId}
+						stepName={step.name}
+						isCurrentStep={isCurrentStep}
+					/>
+				)}
+				{activeTab === "suggestion" && (
+					<SuggestionTab
+						flowId={selectedFlowId}
+						stepName={step.name}
+						artifacts={stepArtifacts}
+						actionRuns={actionRuns.filter(
+							(r) => r.flow_id === selectedFlowId && r.step_name === step.name,
+						)}
+						onSwitchToNotes={() => setActiveTab("notes")}
+					/>
+				)}
 				{activeTab === "artifacts" && (
 					<ArtifactsTab
 						artifacts={stepArtifacts}
@@ -720,6 +773,305 @@ function LiveOutputTab({
 					<p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
 						Waiting for output...
 					</p>
+				</div>
+			)}
+		</div>
+	);
+}
+
+function NotesTab({
+	flowId,
+	stepName,
+	isCurrentStep,
+}: {
+	flowId: string;
+	stepName: string;
+	isCurrentStep: boolean;
+}) {
+	const [notes, setNotes] = useState("");
+	const [saving, setSaving] = useState(false);
+	const [saved, setSaved] = useState(false);
+	const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	useEffect(() => {
+		fetch(`/api/artifacts?flowId=${flowId}&stepName=${stepName}&type=notes`)
+			.then((r) => r.json())
+			.then((data) => {
+				if (data?.[0]?.id) {
+					fetch(`/api/artifacts/${data[0].id}`)
+						.then((r) => r.json())
+						.then((a) => {
+							if (a.content) setNotes(a.content);
+						});
+				}
+			})
+			.catch(() => {});
+	}, [flowId, stepName]);
+
+	const handleSave = useCallback(() => {
+		if (timeoutRef.current) clearTimeout(timeoutRef.current);
+		timeoutRef.current = setTimeout(async () => {
+			if (!notes.trim()) return;
+			setSaving(true);
+			try {
+				await fetch("/api/artifacts", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						flowId,
+						stepName,
+						type: "notes",
+						filename: `${stepName}-notes.md`,
+						content: notes.trim(),
+					}),
+				});
+				setSaved(true);
+				setTimeout(() => setSaved(false), 2000);
+			} catch {}
+			setSaving(false);
+		}, 800);
+	}, [notes, flowId, stepName]);
+
+	async function handleMarkDone() {
+		await api.flows.completeManual(flowId, notes.trim() || undefined);
+	}
+
+	return (
+		<div className="flex flex-col gap-3 h-full">
+			<div className="relative flex-1">
+				<textarea
+					value={notes}
+					onChange={(e) => {
+						setNotes(e.target.value);
+						handleSave();
+					}}
+					placeholder="Add notes for this step..."
+					className="w-full h-full min-h-[120px] rounded-xl border p-3.5 text-xs leading-relaxed resize-none focus:outline-none transition-all duration-200 focus:border-[rgba(91,155,213,0.4)] focus:shadow-[0_0_0_2px_rgba(91,155,213,0.08)]"
+					style={{
+						background: "var(--bg-inset)",
+						borderColor: "var(--border-subtle)",
+						color: "var(--text-primary)",
+					}}
+				/>
+				<div
+					className="absolute bottom-2.5 right-3 flex items-center gap-1.5 transition-opacity duration-300"
+					style={{ opacity: saving || saved ? 1 : 0 }}
+				>
+					{saving && (
+						<Loader2
+							size={10}
+							className="animate-spin"
+							style={{ color: "var(--text-muted)" }}
+						/>
+					)}
+					<span
+						className="text-[10px] font-medium"
+						style={{
+							color: saving ? "var(--text-muted)" : "var(--emerald-400)",
+						}}
+					>
+						{saving ? "Saving" : "Saved"}
+					</span>
+				</div>
+			</div>
+			{isCurrentStep && (
+				<button
+					onClick={handleMarkDone}
+					className="flex items-center justify-center gap-2 w-full rounded-xl px-4 py-2.5 text-xs font-semibold transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+					style={{
+						background:
+							"linear-gradient(135deg, rgba(107, 207, 127, 0.12), rgba(107, 207, 127, 0.06))",
+						border: "1px solid rgba(107, 207, 127, 0.3)",
+						color: "var(--emerald-400)",
+						boxShadow: "0 2px 8px rgba(107, 207, 127, 0.08)",
+					}}
+				>
+					<CheckCircle size={13} />
+					Mark as done
+				</button>
+			)}
+		</div>
+	);
+}
+
+function SuggestionTab({
+	flowId,
+	stepName,
+	artifacts,
+	actionRuns,
+	onSwitchToNotes,
+}: {
+	flowId: string;
+	stepName: string;
+	artifacts: { id: string; filename: string; type: string }[];
+	actionRuns: { id: string; status: string }[];
+	onSwitchToNotes: () => void;
+}) {
+	const [content, setContent] = useState("");
+	const [loading, setLoading] = useState(false);
+	const [revising, setRevising] = useState(false);
+	const [feedback, setFeedback] = useState("");
+
+	const suggestionArtifact = artifacts.find((a) => a.type === "suggestion");
+	const lastCompletedRun = actionRuns
+		.filter((r) => r.status === "completed")
+		.at(-1);
+
+	useEffect(() => {
+		if (!suggestionArtifact) {
+			setContent("");
+			return;
+		}
+		setLoading(true);
+		fetch(`/api/artifacts/${suggestionArtifact.id}`)
+			.then((r) => r.json())
+			.then((data) => {
+				if (data.content) setContent(data.content);
+			})
+			.catch(() => {})
+			.finally(() => setLoading(false));
+	}, [suggestionArtifact?.id]);
+
+	async function handleAccept() {
+		await api.flows.advance(flowId);
+	}
+
+	async function handleRevise() {
+		if (!feedback.trim() || !lastCompletedRun) return;
+		setRevising(false);
+		await api.actionRuns.retry(lastCompletedRun.id, feedback.trim());
+		setFeedback("");
+	}
+
+	if (loading) {
+		return (
+			<div className="flex items-center justify-center py-12">
+				<Loader2
+					size={16}
+					className="animate-spin"
+					style={{ color: "var(--text-muted)" }}
+				/>
+			</div>
+		);
+	}
+
+	if (!content) {
+		return (
+			<div className="flex flex-col items-center justify-center py-16 gap-4">
+				<div
+					className="flex h-12 w-12 items-center justify-center rounded-2xl"
+					style={{
+						background:
+							"linear-gradient(135deg, rgba(167, 139, 250, 0.1), rgba(91, 155, 213, 0.08))",
+						border: "1px solid rgba(167, 139, 250, 0.15)",
+					}}
+				>
+					<Sparkles size={20} style={{ color: "#a78bfa" }} />
+				</div>
+				<div className="text-center space-y-1">
+					<p
+						className="text-xs font-medium"
+						style={{ color: "var(--text-secondary)" }}
+					>
+						No suggestion yet
+					</p>
+					<p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+						Click "Generate" on the node to create one
+					</p>
+				</div>
+			</div>
+		);
+	}
+
+	return (
+		<div className="flex flex-col gap-3">
+			<div
+				className="rounded-xl border p-3 max-h-[300px] overflow-y-auto scrollbar-thin"
+				style={{
+					background: "var(--bg-inset)",
+					borderColor: "var(--border-subtle)",
+				}}
+			>
+				<MarkdownContent content={content} />
+			</div>
+
+			{revising ? (
+				<div className="flex flex-col gap-2">
+					<textarea
+						value={feedback}
+						onChange={(e) => setFeedback(e.target.value)}
+						placeholder="What should be different?"
+						className="min-h-[60px] rounded-lg border p-2.5 text-xs resize-none focus:outline-none"
+						style={{
+							background: "var(--bg-inset)",
+							borderColor: "var(--border-subtle)",
+							color: "var(--text-primary)",
+						}}
+						autoFocus
+					/>
+					<div className="flex gap-1.5">
+						<button
+							onClick={handleRevise}
+							disabled={!feedback.trim()}
+							className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-40"
+							style={{
+								background: "var(--cyan-glow)",
+								border: "1px solid rgba(91, 155, 213, 0.2)",
+								color: "var(--accent-primary)",
+							}}
+						>
+							Submit revision
+						</button>
+						<button
+							onClick={() => setRevising(false)}
+							className="rounded-lg px-3 py-1.5 text-xs font-medium"
+							style={{ color: "var(--text-muted)" }}
+						>
+							Cancel
+						</button>
+					</div>
+				</div>
+			) : (
+				<div className="flex flex-col gap-2">
+					<button
+						onClick={handleAccept}
+						className="flex items-center justify-center gap-2 w-full rounded-xl px-4 py-2.5 text-xs font-semibold transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+						style={{
+							background:
+								"linear-gradient(135deg, rgba(107, 207, 127, 0.14), rgba(107, 207, 127, 0.06))",
+							border: "1px solid rgba(107, 207, 127, 0.3)",
+							color: "var(--emerald-400)",
+							boxShadow: "0 2px 8px rgba(107, 207, 127, 0.08)",
+						}}
+					>
+						<CheckCircle size={13} />
+						Accept suggestion
+					</button>
+					<div className="flex gap-1.5">
+						<button
+							onClick={() => setRevising(true)}
+							className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-medium transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+							style={{
+								background: "var(--cyan-glow)",
+								border: "1px solid rgba(91, 155, 213, 0.2)",
+								color: "var(--accent-primary)",
+							}}
+						>
+							<PenLine size={11} />
+							Revise
+						</button>
+						<button
+							onClick={onSwitchToNotes}
+							className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-medium transition-all duration-200 active:scale-[0.98]"
+							style={{
+								background: "rgba(255,255,255,0.03)",
+								border: "1px solid var(--border-subtle)",
+								color: "var(--text-tertiary)",
+							}}
+						>
+							Do manually
+						</button>
+					</div>
 				</div>
 			)}
 		</div>

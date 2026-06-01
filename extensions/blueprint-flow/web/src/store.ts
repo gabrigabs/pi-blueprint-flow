@@ -159,6 +159,10 @@ interface BlueprintStore {
 	connectionState: ConnectionState;
 	activeModal: ModalType;
 
+	// Loading states
+	flowsLoaded: boolean;
+	stepsLoaded: boolean;
+
 	// Panel visibility
 	sidebarCollapsed: boolean;
 	footerCollapsed: boolean;
@@ -267,6 +271,8 @@ export const useStore = create<BlueprintStore>((set) => ({
 
 	sidebarCollapsed: false,
 	footerCollapsed: false,
+	flowsLoaded: false,
+	stepsLoaded: false,
 	artifactContentVersion: 0,
 
 	liveActionRunId: null,
@@ -288,8 +294,8 @@ export const useStore = create<BlueprintStore>((set) => ({
 	editModeSteps: null,
 
 	setWorkspaces: (workspaces) => set({ workspaces }),
-	setFlows: (flows) => set({ flows }),
-	setSteps: (steps) => set({ steps }),
+	setFlows: (flows) => set({ flows, flowsLoaded: true }),
+	setSteps: (steps) => set({ steps, stepsLoaded: true }),
 	setArtifacts: (artifacts) => set({ artifacts }),
 	setMemories: (memories) => set({ memories }),
 	setInterviews: (interviews) => set({ interviews }),

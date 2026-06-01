@@ -195,11 +195,26 @@ export const api = {
 			fetch(`/api/flows/${id}`, { method: "DELETE" }).then((res) => {
 				if (!res.ok) throw new Error("Failed to delete flow");
 			}),
-		advance: (id: string) =>
-			request<{ flow: Flow; steps: Step[]; completed: boolean }>(
-				`/api/flows/${id}/advance`,
-				{ method: "POST", body: JSON.stringify({}) },
-			),
+		advance: (id: string, executionMode?: string) =>
+			request<{
+				flow: Flow;
+				steps: Step[];
+				completed: boolean;
+				stepType?: string;
+			}>(`/api/flows/${id}/advance`, {
+				method: "POST",
+				body: JSON.stringify({ executionMode }),
+			}),
+		completeManual: (id: string, notes?: string) =>
+			request<{
+				feature: Flow;
+				steps: Step[];
+				completed: boolean;
+				stepType?: string;
+			}>(`/api/flows/${id}/complete-manual`, {
+				method: "POST",
+				body: JSON.stringify({ notes }),
+			}),
 		back: (id: string) =>
 			request<{ flow: Flow; steps: Step[] }>(`/api/flows/${id}/back`, {
 				method: "POST",

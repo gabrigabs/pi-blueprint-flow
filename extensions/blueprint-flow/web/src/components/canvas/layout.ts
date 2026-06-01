@@ -26,6 +26,8 @@ export interface StepNodeData {
 	status: string;
 	stepName: string;
 	stepType: "agent" | "manual" | "hybrid";
+	optional?: boolean;
+	skipCondition?: string;
 	artifactCount: number;
 	artifacts: { id: string; filename: string; type: string }[];
 	interviewCount: number;
@@ -67,6 +69,8 @@ export function stepsToNodes(
 				status: step.status,
 				stepName: step.name,
 				stepType: (wfStep?.type as "agent" | "manual" | "hybrid") ?? "agent",
+				optional: wfStep?.optional,
+				skipCondition: wfStep?.skipCondition,
 				artifactCount: stepArtifacts.length,
 				artifacts: stepArtifacts.map((a) => ({
 					id: a.id,
@@ -333,6 +337,7 @@ export interface EditStepNodeData {
 	stepName: string;
 	stepType: "agent" | "manual" | "hybrid";
 	actionType?: string;
+	optional?: boolean;
 	index: number;
 	isSelected: boolean;
 	[key: string]: unknown;
@@ -351,6 +356,7 @@ export function editStepsToNodes(
 			stepName: step.name,
 			stepType: step.type ?? "agent",
 			actionType: step.actionType,
+			optional: step.optional,
 			index,
 			isSelected: `edit-${index}-${step.name}` === selectedNodeId,
 		},
