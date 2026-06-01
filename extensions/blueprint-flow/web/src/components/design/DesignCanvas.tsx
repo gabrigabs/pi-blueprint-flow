@@ -235,7 +235,7 @@ ${variant.js_content ? `<script>${variant.js_content}</script>` : ""}
 				</span>
 				<button
 					onClick={onSelect}
-					className={`flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+					className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
 						variant.selected
 							? "bg-amber-600/20 text-amber-300"
 							: "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
@@ -257,7 +257,7 @@ ${variant.js_content ? `<script>${variant.js_content}</script>` : ""}
 			{/* Feedback */}
 			{variant.feedback && (
 				<div className="px-3 py-1.5 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)]">
-					<p className="text-[10px] text-gray-400 italic truncate">
+					<p className="text-[11px] text-gray-400 italic truncate">
 						{variant.feedback}
 					</p>
 				</div>
@@ -283,7 +283,7 @@ function DesignSlider({
 }) {
 	return (
 		<div className="flex items-center gap-2">
-			<span className="text-[10px] text-[var(--text-muted)] w-10">{label}</span>
+			<span className="text-[11px] text-[var(--text-muted)] w-10">{label}</span>
 			<input
 				type="range"
 				min={min}

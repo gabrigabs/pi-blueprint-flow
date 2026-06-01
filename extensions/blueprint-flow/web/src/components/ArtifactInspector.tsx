@@ -146,7 +146,7 @@ export function ArtifactInspector() {
 								)}
 								<ArtifactIcon type={a.type} />
 								<span className="flex-1 truncate">{a.filename}</span>
-								<span className="text-[10px] text-gray-500">{a.type}</span>
+								<span className="text-[11px] text-gray-500">{a.type}</span>
 							</button>
 						</li>
 					);
@@ -579,7 +579,7 @@ function ReviewRenderer({ content }: { content: string }) {
 						className={`rounded border ${style.border} ${style.bg} px-3 py-2 flex items-start gap-2`}
 					>
 						<span
-							className={`rounded px-1.5 py-0.5 text-[10px] font-medium shrink-0 ${style.badge}`}
+							className={`rounded px-1.5 py-0.5 text-[11px] font-medium shrink-0 ${style.badge}`}
 						>
 							{f.severity}
 						</span>

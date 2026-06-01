@@ -311,7 +311,7 @@ function ElapsedTime({ startedAt }: { startedAt: string }) {
 	}, [startedAt]);
 
 	return (
-		<div className="flex items-center gap-1 text-[10px] text-zinc-600">
+		<div className="flex items-center gap-1 text-[11px] text-zinc-600">
 			<Clock size={10} />
 			<span>{elapsed}</span>
 		</div>
@@ -333,7 +333,7 @@ function BridgeIndicator({ status }: { status: string }) {
 	return (
 		<div className="flex items-center gap-1.5">
 			<span className={`h-1.5 w-1.5 rounded-full ${color}`} />
-			<span className="text-[10px] text-zinc-600 font-medium">{label}</span>
+			<span className="text-[11px] text-zinc-600 font-medium">{label}</span>
 		</div>
 	);
 }

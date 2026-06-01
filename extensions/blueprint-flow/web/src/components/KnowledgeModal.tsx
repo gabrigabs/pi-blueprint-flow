@@ -237,7 +237,7 @@ export function KnowledgeModal() {
 										<div className="flex items-center gap-2 mb-1">
 											<CategoryBadge category={m.category} />
 											<span
-												className="text-[10px]"
+												className="text-[11px]"
 												style={{ color: "var(--text-muted)" }}
 											>
 												{new Date(m.created_at).toLocaleDateString()}
@@ -293,7 +293,7 @@ export function KnowledgeModal() {
 									</div>
 									{page.summary && (
 										<p
-											className="text-[10px] mt-1 truncate"
+											className="text-[11px] mt-1 truncate"
 											style={{ color: "var(--text-muted)" }}
 										>
 											{page.summary}
@@ -363,7 +363,7 @@ function CategoryBadge({ category }: { category: string }) {
 
 	return (
 		<span
-			className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+			className="rounded px-1.5 py-0.5 text-[11px] font-medium"
 			style={{ color: style.text, background: style.bg }}
 		>
 			{category}

@@ -203,7 +203,7 @@ function RunCard({
 				<div className="flex items-center gap-1 shrink-0">
 					{run.error && (
 						<span
-							className="max-w-[100px] truncate text-[10px] text-[var(--rose-400)]/80"
+							className="max-w-[100px] truncate text-[11px] text-[var(--rose-400)]/80"
 							title={run.error}
 						>
 							{run.error}
@@ -336,7 +336,7 @@ function ElapsedTime({ startedAt }: { startedAt: string }) {
 	}, [startedAt]);
 
 	return (
-		<div className="flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
+		<div className="flex items-center gap-1 text-[11px] text-[var(--text-muted)]">
 			<Clock size={9} />
 			<span>{elapsed}</span>
 		</div>

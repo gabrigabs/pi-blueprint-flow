@@ -64,7 +64,7 @@ export function InterviewPanel() {
 			{/* Answered questions — collapsed */}
 			{answered.length > 0 && (
 				<div className="space-y-1">
-					<p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">
+					<p className="text-[11px] text-gray-600 uppercase tracking-wider mb-1">
 						Answered
 					</p>
 					{answered.map((interview) => (
@@ -129,7 +129,7 @@ function PendingQuestion({
 					<div className="mt-1 flex items-center gap-2">
 						<TypeBadge type={interview.type} />
 						{interview.required === 1 && (
-							<span className="text-[10px] text-red-400 font-medium">
+							<span className="text-[11px] text-red-400 font-medium">
 								required
 							</span>
 						)}
@@ -219,6 +219,6 @@ function TypeBadge({ type }: { type: string }) {
 	const style = colors[type] || "text-gray-400 bg-gray-800";
 
 	return (
-		<span className={`rounded px-1.5 py-0.5 text-[10px] ${style}`}>{type}</span>
+		<span className={`rounded px-1.5 py-0.5 text-[11px] ${style}`}>{type}</span>
 	);
 }

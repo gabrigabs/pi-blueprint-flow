@@ -212,7 +212,7 @@ export function WorkflowEditor() {
 											<button
 												type="button"
 												onClick={() => handleMoveStep(i, i - 1)}
-												className="hover:text-zinc-300 text-[10px] leading-none"
+												className="hover:text-zinc-300 text-[11px] leading-none"
 												disabled={i === 0}
 											>
 												▲
@@ -220,14 +220,14 @@ export function WorkflowEditor() {
 											<button
 												type="button"
 												onClick={() => handleMoveStep(i, i + 1)}
-												className="hover:text-zinc-300 text-[10px] leading-none"
+												className="hover:text-zinc-300 text-[11px] leading-none"
 												disabled={i === steps.length - 1}
 											>
 												▼
 											</button>
 										</div>
 
-										<span className="text-[10px] text-zinc-600 w-5 text-center shrink-0">
+										<span className="text-[11px] text-zinc-600 w-5 text-center shrink-0">
 											{i + 1}
 										</span>
 
@@ -290,7 +290,7 @@ export function WorkflowEditor() {
 											onChange={(e) =>
 												handleStepChange(i, "modelId", e.target.value)
 											}
-											className="w-36 rounded border border-white/[0.04] bg-zinc-900/50 px-1.5 py-0.5 text-[10px] text-zinc-400 focus:border-fuchsia-500/40 focus:outline-none"
+											className="w-36 rounded border border-white/[0.04] bg-zinc-900/50 px-1.5 py-0.5 text-[11px] text-zinc-400 focus:border-fuchsia-500/40 focus:outline-none"
 										>
 											<option value="">
 												{STEP_MODEL_SUGGESTIONS[step.name]
@@ -320,7 +320,7 @@ export function WorkflowEditor() {
 											onChange={(e) =>
 												handleStepChange(i, "thinkingLevel", e.target.value)
 											}
-											className="w-24 rounded border border-white/[0.04] bg-zinc-900/50 px-1.5 py-0.5 text-[10px] text-zinc-400 focus:border-fuchsia-500/40 focus:outline-none"
+											className="w-24 rounded border border-white/[0.04] bg-zinc-900/50 px-1.5 py-0.5 text-[11px] text-zinc-400 focus:border-fuchsia-500/40 focus:outline-none"
 										>
 											<option value="">thinking: auto</option>
 											<option value="off">off</option>

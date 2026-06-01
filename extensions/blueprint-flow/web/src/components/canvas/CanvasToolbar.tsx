@@ -201,7 +201,7 @@ export function CanvasToolbar({
 							<button
 								type="button"
 								onClick={handleStop}
-								className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
+								className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
 								style={{ color: "var(--rose-400)" }}
 							>
 								<Square size={9} /> Stop

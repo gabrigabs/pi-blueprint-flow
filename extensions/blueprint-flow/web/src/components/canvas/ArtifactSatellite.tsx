@@ -71,7 +71,7 @@ function ArtifactSatelliteComponent({
 				/>
 				<div className="min-w-0 flex-1">
 					<p
-						className="text-[11px] font-mono truncate leading-tight"
+						className="text-[10px] font-mono truncate leading-tight"
 						style={{ color: "var(--text-secondary)" }}
 					>
 						{filename}

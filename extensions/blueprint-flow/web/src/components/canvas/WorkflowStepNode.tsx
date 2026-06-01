@@ -304,7 +304,7 @@ function WorkflowStepNodeComponent({
 								</p>
 							) : isLive && liveMessagePreview ? (
 								<p
-									className="text-[10px] mt-0.5 truncate max-w-[180px]"
+									className="text-[11px] mt-0.5 truncate max-w-[180px]"
 									style={{ color: "var(--text-secondary)" }}
 								>
 									{liveMessagePreview.slice(-80)}
@@ -345,7 +345,7 @@ function WorkflowStepNodeComponent({
 							>
 								<CheckCircle size={8} style={{ color: "var(--emerald-400)" }} />
 								<span
-									className="text-[10px] font-medium"
+									className="text-[11px] font-medium"
 									style={{ color: "var(--emerald-400)" }}
 								>
 									Review
@@ -362,7 +362,7 @@ function WorkflowStepNodeComponent({
 							>
 								<Play size={8} style={{ color: "var(--accent-primary)" }} />
 								<span
-									className="text-[10px] font-medium"
+									className="text-[11px] font-medium"
 									style={{ color: "var(--accent-primary)" }}
 								>
 									Next
@@ -433,7 +433,7 @@ function WorkflowStepNodeComponent({
 									style={{ color: "var(--purple-400, #a78bfa)" }}
 								/>
 								<span
-									className="text-[10px] font-medium"
+									className="text-[11px] font-medium"
 									style={{ color: "var(--purple-400, #a78bfa)" }}
 								>
 									Optional
@@ -518,7 +518,7 @@ function WorkflowStepNodeComponent({
 						!canNavigateCurrent &&
 						!canReturnToStep && (
 							<span
-								className="text-[10px]"
+								className="text-[11px]"
 								style={{ color: "var(--text-muted)" }}
 							>
 								Open for details
@@ -561,7 +561,7 @@ function WorkflowStepNodeComponent({
 					className="px-5 pb-3 border-t pt-2.5"
 					style={{ borderColor: "var(--border-subtle)" }}
 				>
-					<p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+					<p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
 						No artifacts yet
 					</p>
 				</div>
@@ -631,7 +631,7 @@ function NodeActionButton({
 		<button
 			type="button"
 			onClick={onClick}
-			className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[10px] font-medium transition-colors hover:brightness-110"
+			className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium transition-colors hover:brightness-110"
 			style={{ color, background, border: `1px solid ${border}` }}
 			title={label}
 		>
@@ -800,7 +800,7 @@ function EditModeNodeComponent({
 
 				<div className="flex items-center gap-2 shrink-0">
 					<span
-						className="rounded-md px-1.5 py-0.5 text-[10px] font-medium"
+						className="rounded-md px-1.5 py-0.5 text-[11px] font-medium"
 						style={{
 							background: `color-mix(in srgb, ${config.color} 10%, transparent)`,
 							color: config.color,
@@ -810,7 +810,7 @@ function EditModeNodeComponent({
 					</span>
 					{optional && (
 						<span
-							className="rounded-md px-1.5 py-0.5 text-[10px] font-medium"
+							className="rounded-md px-1.5 py-0.5 text-[11px] font-medium"
 							style={{
 								background: "rgba(167, 139, 250, 0.08)",
 								color: "#a78bfa",

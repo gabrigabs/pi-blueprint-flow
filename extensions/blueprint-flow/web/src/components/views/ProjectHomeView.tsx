@@ -35,7 +35,7 @@ export function ProjectHomeView() {
 						</h2>
 						{workspace.repo_path && (
 							<p
-								className="mt-0.5 font-mono text-[11px] truncate"
+								className="mt-0.5 font-mono text-[10px] truncate"
 								style={{ color: "var(--text-muted)" }}
 							>
 								{workspace.repo_path}
@@ -160,7 +160,7 @@ function StatCard({
 				</p>
 				{icon && (
 					<span
-						className="text-[10px]"
+						className="text-[11px]"
 						style={{ color: color ?? "var(--text-muted)", opacity: 0.6 }}
 					>
 						{icon}

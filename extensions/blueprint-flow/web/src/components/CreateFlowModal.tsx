@@ -360,7 +360,7 @@ export function CreateFlowModal() {
 																{template.name}
 															</p>
 															<p
-																className="text-[10px] truncate mt-0.5"
+																className="text-[11px] truncate mt-0.5"
 																style={{ color: "var(--text-muted)" }}
 															>
 																{template.steps.length} steps

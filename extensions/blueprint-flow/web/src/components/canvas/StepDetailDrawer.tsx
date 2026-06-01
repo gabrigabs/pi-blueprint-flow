@@ -380,7 +380,7 @@ function ArtifactsTab({
 					<button
 						key={a.id}
 						onClick={() => onSelect(selectedId === a.id ? null : a.id)}
-						className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-mono transition-all"
+						className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-mono transition-all"
 						style={{
 							background:
 								selectedId === a.id
@@ -516,7 +516,7 @@ function DrawerRunSettings() {
 			{/* Model */}
 			<div>
 				<label
-					className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide"
+					className="mb-1 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide"
 					style={{ color: "var(--text-muted)" }}
 				>
 					<Cpu size={9} />
@@ -561,7 +561,7 @@ function DrawerRunSettings() {
 			{/* Thinking Level */}
 			<div>
 				<label
-					className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide"
+					className="mb-1 flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide"
 					style={{ color: "var(--text-muted)" }}
 				>
 					Thinking
@@ -584,7 +584,7 @@ function DrawerRunSettings() {
 					if (!modelSupportsThinking) {
 						return (
 							<p
-								className="text-[10px] italic"
+								className="text-[11px] italic"
 								style={{ color: "var(--text-muted)" }}
 							>
 								Not supported for this model
@@ -599,7 +599,7 @@ function DrawerRunSettings() {
 									key={level}
 									type="button"
 									onClick={() => setRunThinkingLevel(level)}
-									className="flex flex-col items-center gap-0.5 rounded-lg px-1.5 py-1.5 text-[10px] font-medium capitalize transition-all"
+									className="flex flex-col items-center gap-0.5 rounded-lg px-1.5 py-1.5 text-[11px] font-medium capitalize transition-all"
 									style={{
 										background:
 											runThinkingLevel === level
@@ -663,13 +663,13 @@ function LiveOutputTab({
 					}}
 				>
 					<span
-						className="text-[10px] font-medium"
+						className="text-[11px] font-medium"
 						style={{ color: "var(--text-tertiary)" }}
 					>
 						Timeout
 					</span>
 					<span
-						className="text-[11px] font-mono"
+						className="text-[10px] font-mono"
 						style={{
 							color:
 								remaining < 60000 ? "var(--rose-400)" : "var(--text-secondary)",
@@ -695,7 +695,7 @@ function LiveOutputTab({
 						style={{ color: "var(--cyan-400)" }}
 					/>
 					<span
-						className="text-[11px] font-mono"
+						className="text-[10px] font-mono"
 						style={{ color: "var(--cyan-400)" }}
 					>
 						{toolName}
@@ -707,7 +707,7 @@ function LiveOutputTab({
 			{toolHistory.length > 0 && (
 				<div className="space-y-1">
 					<p
-						className="text-[10px] font-medium uppercase tracking-wide"
+						className="text-[11px] font-medium uppercase tracking-wide"
 						style={{ color: "var(--text-muted)" }}
 					>
 						Tools
@@ -865,7 +865,7 @@ function NotesTab({
 						/>
 					)}
 					<span
-						className="text-[10px] font-medium"
+						className="text-[11px] font-medium"
 						style={{
 							color: saving ? "var(--text-muted)" : "var(--emerald-400)",
 						}}
@@ -975,7 +975,7 @@ function SuggestionTab({
 					>
 						No suggestion yet
 					</p>
-					<p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+					<p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
 						Click "Generate" on the node to create one
 					</p>
 				</div>

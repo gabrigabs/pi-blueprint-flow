@@ -58,7 +58,7 @@ export function MemoryPanel() {
 					<div className="flex rounded bg-gray-900 border border-gray-800">
 						<button
 							onClick={() => setTab("memories")}
-							className={`px-2 py-0.5 text-[10px] font-medium rounded-l transition-colors ${
+							className={`px-2 py-0.5 text-[11px] font-medium rounded-l transition-colors ${
 								tab === "memories"
 									? "bg-gray-800 text-gray-200"
 									: "text-gray-500 hover:text-gray-300"
@@ -68,7 +68,7 @@ export function MemoryPanel() {
 						</button>
 						<button
 							onClick={() => setTab("wiki")}
-							className={`px-2 py-0.5 text-[10px] font-medium rounded-r transition-colors ${
+							className={`px-2 py-0.5 text-[11px] font-medium rounded-r transition-colors ${
 								tab === "wiki"
 									? "bg-gray-800 text-gray-200"
 									: "text-gray-500 hover:text-gray-300"
@@ -156,7 +156,7 @@ function MemoriesView({
 							<span className="flex-1 truncate text-xs text-gray-300">
 								{firstLine}
 							</span>
-							<span className="text-[10px] text-gray-600 shrink-0">
+							<span className="text-[11px] text-gray-600 shrink-0">
 								{new Date(m.created_at).toLocaleDateString()}
 							</span>
 						</button>
@@ -201,7 +201,7 @@ function WikiView({
 				<div className="text-center">
 					<BookOpen size={20} className="mx-auto mb-1 text-gray-600" />
 					<p className="text-xs text-gray-500">No wiki pages yet</p>
-					<p className="text-[10px] text-gray-600 mt-0.5">
+					<p className="text-[11px] text-gray-600 mt-0.5">
 						Wiki pages are created by the agent during research and review
 					</p>
 				</div>
@@ -282,7 +282,7 @@ function CategoryBadge({ category }: { category: string }) {
 
 	return (
 		<span
-			className={`rounded px-1.5 py-0.5 text-[10px] font-medium shrink-0 ${style}`}
+			className={`rounded px-1.5 py-0.5 text-[11px] font-medium shrink-0 ${style}`}
 		>
 			{category}
 		</span>
@@ -304,7 +304,7 @@ function WikiCategoryBadge({ category }: { category: string }) {
 	};
 
 	return (
-		<span className="rounded bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-500 shrink-0">
+		<span className="rounded bg-gray-800 px-1.5 py-0.5 text-[11px] text-gray-500 shrink-0">
 			{labels[category] || category}
 		</span>
 	);

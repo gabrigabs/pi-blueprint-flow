@@ -80,7 +80,7 @@ export function NotificationPanel({ onClose }: Props) {
 					<button
 						type="button"
 						onClick={clearNotifications}
-						className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] transition-colors hover:bg-[var(--bg-surface-hover)]"
+						className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] transition-colors hover:bg-[var(--bg-surface-hover)]"
 						style={{ color: "var(--text-muted)" }}
 					>
 						<Trash2 size={10} /> Clear
@@ -121,7 +121,7 @@ export function NotificationPanel({ onClose }: Props) {
 										{n.message}
 									</p>
 									<p
-										className="text-[10px] mt-0.5"
+										className="text-[11px] mt-0.5"
 										style={{ color: "var(--text-muted)" }}
 									>
 										{formatRelativeTime(n.timestamp)}

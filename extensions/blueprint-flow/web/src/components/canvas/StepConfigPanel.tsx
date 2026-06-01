@@ -174,7 +174,7 @@ export function StepConfigPanel() {
 									key={level}
 									type="button"
 									onClick={() => update("thinkingLevel", level)}
-									className="rounded-md px-2 py-0.5 text-[11px] font-mono transition-colors"
+									className="rounded-md px-2 py-0.5 text-[10px] font-mono transition-colors"
 									style={{
 										background: selected ? "var(--cyan-glow)" : "transparent",
 										color: selected ? "var(--cyan-400)" : "var(--text-muted)",
@@ -285,7 +285,7 @@ function Field({
 				</span>
 				{hint && (
 					<p
-						className="text-[10px] mt-0.5"
+						className="text-[11px] mt-0.5"
 						style={{ color: "var(--text-muted)" }}
 					>
 						{hint}

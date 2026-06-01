@@ -62,7 +62,7 @@ export function KnowledgeReadingModal({ memory, onClose }: Props) {
 							style={{ background: color }}
 						/>
 						<span
-							className="text-[11px] font-mono uppercase font-medium tracking-wider"
+							className="text-[10px] font-mono uppercase font-medium tracking-wider"
 							style={{ color }}
 						>
 							{memory.category}
