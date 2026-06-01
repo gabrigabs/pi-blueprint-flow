@@ -33,8 +33,11 @@ export function ProjectSidebar() {
 				className="flex items-center justify-between border-b px-4 py-3"
 				style={{ borderColor: "var(--border-subtle)" }}
 			>
-				<h2 className="section-label flex items-center gap-1.5">
-					<GitBranch size={11} /> Flows
+				<h2
+					className="text-xs font-medium uppercase tracking-wide"
+					style={{ color: "var(--text-tertiary)" }}
+				>
+					Flows
 				</h2>
 				<div className="flex items-center gap-0.5">
 					{selectedWorkspaceId && (
@@ -42,26 +45,26 @@ export function ProjectSidebar() {
 							type="button"
 							onClick={() => openModal("create_flow")}
 							title="New flow (N)"
-							className="rounded p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
+							className="rounded-lg p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
 							style={{ color: "var(--text-tertiary)" }}
 						>
-							<Plus size={12} />
+							<Plus size={13} />
 						</button>
 					)}
 					<button
 						type="button"
 						onClick={toggleSidebar}
 						title="Hide sidebar ([)"
-						className="rounded p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
+						className="rounded-lg p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
 						style={{ color: "var(--text-muted)" }}
 					>
-						<PanelLeftClose size={12} />
+						<PanelLeftClose size={13} />
 					</button>
 				</div>
 			</div>
 
 			{/* Flow list */}
-			<div className="flex-1 overflow-y-auto scrollbar-thin p-3">
+			<div className="flex-1 overflow-y-auto scrollbar-thin p-2">
 				{!selectedWorkspaceId ? (
 					<EmptyState
 						icon={GitBranch}
@@ -87,21 +90,19 @@ export function ProjectSidebar() {
 									<button
 										type="button"
 										onClick={() => selectFlow(f.id)}
-										className="group w-full rounded-lg px-3 py-2.5 text-left transition-all duration-150"
+										className="group w-full rounded-xl px-3 py-2.5 text-left transition-all duration-150"
 										style={{
-											background: isSelected ? "var(--cyan-glow)" : undefined,
-											borderLeft: isSelected
-												? "2px solid var(--cyan-400)"
-												: "2px solid transparent",
+											background: isSelected ? "var(--bg-surface)" : undefined,
 										}}
 									>
 										<div className="flex items-center justify-between">
 											<span
-												className="block truncate text-sm font-medium"
+												className="block truncate text-sm"
 												style={{
 													color: isSelected
-														? "var(--cyan-300)"
-														: "var(--text-primary)",
+														? "var(--text-primary)"
+														: "var(--text-secondary)",
+													fontWeight: isSelected ? 500 : 400,
 												}}
 											>
 												{f.title}
@@ -118,9 +119,8 @@ export function ProjectSidebar() {
 										</div>
 										<div className="flex items-center gap-2 mt-1">
 											<StatusDot status={f.status} />
-											<TypeBadge type={f.type} />
 											<span
-												className="font-mono text-[10px]"
+												className="text-xs"
 												style={{ color: "var(--text-muted)" }}
 											>
 												{f.current_step}
@@ -150,26 +150,5 @@ function StatusDot({ status }: { status: string }) {
 			className="inline-block h-1.5 w-1.5 rounded-full"
 			style={{ background: colors[status] ?? "var(--text-muted)" }}
 		/>
-	);
-}
-
-function TypeBadge({ type }: { type: string }) {
-	if (!type || type === "feature") return null;
-
-	const colors: Record<string, string> = {
-		bugfix: "var(--rose-400)",
-		refactor: "#a78bfa",
-		spike: "var(--amber-400)",
-		research: "var(--cyan-400)",
-		maintenance: "var(--text-tertiary)",
-	};
-
-	return (
-		<span
-			className="font-mono text-[10px]"
-			style={{ color: colors[type] ?? "var(--text-tertiary)" }}
-		>
-			{type}
-		</span>
 	);
 }

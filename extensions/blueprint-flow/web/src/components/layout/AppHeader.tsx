@@ -22,6 +22,7 @@ export function AppHeader() {
 		actionRuns,
 		sidebarCollapsed,
 		selectWorkspace,
+		selectFlow,
 		openModal,
 		toggleSidebar,
 	} = useStore();
@@ -29,10 +30,6 @@ export function AppHeader() {
 	const currentWorkspace = workspaces.find((p) => p.id === selectedWorkspaceId);
 	const currentFlow = useStore((s) =>
 		s.flows.find((f) => f.id === s.selectedFlowId),
-	);
-	const steps = useStore((s) => s.steps);
-	const currentStep = steps.find(
-		(s) => s.status === "running" || s.status === "needs_user",
 	);
 	const memories = useStore((s) => s.memories);
 
@@ -78,39 +75,73 @@ export function AppHeader() {
 
 	return (
 		<header
-			className="relative z-10 flex items-center justify-between border-b px-5 py-2.5"
+			className="relative z-10 flex items-center justify-between border-b px-4 py-2"
 			style={{
 				borderColor: "var(--border-subtle)",
 				background: "var(--bg-elevated)",
 			}}
 		>
 			{/* Left: Logo + Workspace selector */}
-			<div className="flex items-center gap-4">
-				<div className="flex items-center gap-2.5">
-					<div className="h-5 w-5 rounded-sm bg-gradient-to-br from-[var(--accent-primary)] to-[var(--cyan-500)] flex items-center justify-center">
-						<span className="text-[9px] font-bold text-white font-mono">
-							BF
-						</span>
-					</div>
-					<h1
-						className="font-display text-lg font-semibold tracking-tight"
-						style={{ color: "var(--text-primary)" }}
-					>
-						Blueprint Flow
-					</h1>
-				</div>
-
-				{sidebarCollapsed && (
+			<div className="flex items-center gap-3">
+				<div className="flex items-center gap-2">
+					{sidebarCollapsed && (
+						<button
+							type="button"
+							onClick={toggleSidebar}
+							title="Show sidebar"
+							className="rounded-lg p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
+							style={{ color: "var(--text-muted)" }}
+						>
+							<PanelLeftOpen size={14} />
+						</button>
+					)}
 					<button
 						type="button"
-						onClick={toggleSidebar}
-						title="Show sidebar"
-						className="rounded p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
-						style={{ color: "var(--text-muted)" }}
+						onClick={() => {
+							selectWorkspace(null);
+							selectFlow(null);
+						}}
+						title="Home"
+						className="shrink-0 transition-opacity hover:opacity-80"
 					>
-						<PanelLeftOpen size={14} />
+						<svg
+							width="22"
+							height="22"
+							viewBox="0 0 22 22"
+							fill="none"
+							xmlns="http://www.w3.org/2000/svg"
+						>
+							<rect
+								width="22"
+								height="22"
+								rx="6"
+								fill="var(--accent-primary)"
+								fillOpacity="0.15"
+							/>
+							<circle cx="6" cy="11" r="2" fill="var(--accent-primary)" />
+							<circle cx="16" cy="6" r="2" fill="var(--cyan-300)" />
+							<circle cx="16" cy="16" r="2" fill="var(--accent-success)" />
+							<line
+								x1="8"
+								y1="11"
+								x2="14"
+								y2="6.5"
+								stroke="var(--accent-primary)"
+								strokeOpacity="0.6"
+								strokeWidth="1.2"
+							/>
+							<line
+								x1="8"
+								y1="11"
+								x2="14"
+								y2="15.5"
+								stroke="var(--accent-primary)"
+								strokeOpacity="0.6"
+								strokeWidth="1.2"
+							/>
+						</svg>
 					</button>
-				)}
+				</div>
 
 				{/* Workspace dropdown */}
 				<div className="relative" ref={dropdownRef}>
@@ -189,34 +220,23 @@ export function AppHeader() {
 
 				{/* Breadcrumb */}
 				{currentFlow && (
-					<div className="flex items-center gap-2">
-						<span style={{ color: "var(--text-muted)" }}>/</span>
+					<div className="flex items-center gap-1.5">
+						<span style={{ color: "var(--border-strong)" }}>/</span>
 						<span
-							className="font-mono text-xs"
+							className="text-sm"
 							style={{ color: "var(--text-secondary)" }}
 						>
 							{currentFlow.title}
 						</span>
-						{currentStep && (
-							<>
-								<span style={{ color: "var(--text-muted)" }}>/</span>
-								<span
-									className="font-mono text-[10px]"
-									style={{ color: "var(--text-muted)" }}
-								>
-									{currentStep.name}
-								</span>
-							</>
-						)}
 					</div>
 				)}
 			</div>
 
 			{/* Right: Status indicators */}
-			<div className="flex items-center gap-4">
+			<div className="flex items-center gap-3">
 				{activeRun && (
 					<div
-						className="flex items-center gap-2 rounded-md px-2.5 py-1"
+						className="flex items-center gap-1.5 rounded-lg px-2.5 py-1"
 						style={{
 							background: "var(--amber-glow)",
 							border: "1px solid rgba(230, 126, 34, 0.15)",
@@ -228,10 +248,10 @@ export function AppHeader() {
 							style={{ color: "var(--amber-400)" }}
 						/>
 						<span
-							className="font-mono text-[10px] font-medium uppercase tracking-wider"
-							style={{ color: "var(--amber-300)" }}
+							className="text-xs font-medium"
+							style={{ color: "var(--amber-400)" }}
 						>
-							Agent Active
+							Running
 						</span>
 					</div>
 				)}
@@ -239,22 +259,18 @@ export function AppHeader() {
 				{bridgeStatus === "not_connected" && !activeRun && (
 					<div className="flex items-center gap-1.5">
 						<Radio size={10} style={{ color: "var(--rose-400)" }} />
-						<span
-							className="font-mono text-[10px]"
-							style={{ color: "var(--rose-400)" }}
-						>
+						<span className="text-xs" style={{ color: "var(--rose-400)" }}>
 							Pi Offline
 						</span>
 					</div>
 				)}
 
-				{/* Knowledge base button */}
 				{selectedWorkspaceId && (
 					<button
 						type="button"
 						onClick={() => openModal("knowledge")}
 						title="Knowledge Base"
-						className="relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] transition-colors hover:bg-[var(--bg-surface-hover)]"
+						className="relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-[var(--bg-surface-hover)]"
 						style={{ color: "var(--text-tertiary)" }}
 					>
 						<Brain size={13} />
@@ -275,30 +291,21 @@ export function AppHeader() {
 
 				<div className="flex items-center gap-1.5">
 					{connectionState === "connected" ? (
-						<>
-							<div className="status-dot bg-[var(--accent-success)]" />
-							<Wifi
-								size={12}
-								style={{ color: "var(--accent-success)", opacity: 0.6 }}
-							/>
-						</>
+						<Wifi
+							size={13}
+							style={{ color: "var(--accent-success)", opacity: 0.7 }}
+						/>
 					) : connectionState === "reconnecting" ? (
-						<>
-							<div className="status-dot bg-[var(--amber-400)] animate-pulse" />
-							<RefreshCw
-								size={12}
-								className="animate-spin"
-								style={{ color: "var(--amber-400)", opacity: 0.7 }}
-							/>
-						</>
+						<RefreshCw
+							size={13}
+							className="animate-spin"
+							style={{ color: "var(--amber-400)", opacity: 0.7 }}
+						/>
 					) : (
-						<>
-							<div className="status-dot bg-[var(--rose-400)]" />
-							<WifiOff
-								size={12}
-								style={{ color: "var(--rose-400)", opacity: 0.6 }}
-							/>
-						</>
+						<WifiOff
+							size={13}
+							style={{ color: "var(--rose-400)", opacity: 0.6 }}
+						/>
 					)}
 				</div>
 			</div>
