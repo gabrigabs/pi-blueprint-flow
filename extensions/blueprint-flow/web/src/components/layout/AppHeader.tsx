@@ -75,16 +75,16 @@ export function AppHeader() {
 
 	return (
 		<header
-			className="relative z-10 flex items-center justify-between border-b px-4 py-2"
+			className="relative z-10 flex items-center justify-between border-b px-5 py-3"
 			style={{
 				borderColor: "var(--border-subtle)",
 				background: "var(--bg-elevated)",
 			}}
 		>
 			{/* Left: Logo + Workspace selector */}
-			<div className="flex items-center gap-3">
-				<div className="flex items-center gap-2">
-					{sidebarCollapsed && (
+			<div className="flex items-center gap-4">
+				<div className="flex items-center gap-2.5">
+					{sidebarCollapsed && selectedWorkspaceId && (
 						<button
 							type="button"
 							onClick={toggleSidebar}
@@ -92,7 +92,7 @@ export function AppHeader() {
 							className="rounded-lg p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
 							style={{ color: "var(--text-muted)" }}
 						>
-							<PanelLeftOpen size={14} />
+							<PanelLeftOpen size={15} />
 						</button>
 					)}
 					<button
@@ -105,11 +105,12 @@ export function AppHeader() {
 						className="shrink-0 transition-opacity hover:opacity-80"
 					>
 						<svg
-							width="22"
-							height="22"
+							width="24"
+							height="24"
 							viewBox="0 0 22 22"
 							fill="none"
 							xmlns="http://www.w3.org/2000/svg"
+							aria-label="Blueprint Flow"
 						>
 							<rect
 								width="22"
@@ -143,34 +144,58 @@ export function AppHeader() {
 					</button>
 				</div>
 
-				{/* Workspace dropdown */}
+				{/* Workspace selector — prominent */}
 				<div className="relative" ref={dropdownRef}>
 					<button
 						type="button"
 						onClick={() => setDropdownOpen(!dropdownOpen)}
-						className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
+						className="flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition-all duration-150 hover:bg-[var(--bg-surface-hover)] active:scale-[0.98]"
 						style={{
 							color: currentWorkspace
 								? "var(--text-primary)"
 								: "var(--text-tertiary)",
 						}}
 					>
-						{currentWorkspace?.name ?? "Select workspace"}
-						<ChevronDown size={12} style={{ color: "var(--text-muted)" }} />
+						{currentWorkspace?.name ?? "All Workspaces"}
+						<ChevronDown
+							size={14}
+							style={{ color: "var(--text-muted)", opacity: 0.7 }}
+						/>
 					</button>
 
 					{dropdownOpen && (
 						<div
-							className="absolute top-full left-0 mt-1 w-56 rounded-xl border py-1 shadow-xl animate-fade-in"
+							className="absolute top-full left-0 mt-2 w-64 rounded-xl border py-1.5 shadow-2xl animate-fade-in"
 							style={{
 								background: "var(--bg-elevated)",
 								borderColor: "var(--border-default)",
 							}}
 						>
+							<button
+								type="button"
+								onClick={() => {
+									selectWorkspace(null);
+									selectFlow(null);
+									setDropdownOpen(false);
+								}}
+								className="flex w-full items-center px-4 py-2.5 text-left text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
+								style={{
+									color: !selectedWorkspaceId
+										? "var(--accent-primary)"
+										: "var(--text-secondary)",
+									fontWeight: !selectedWorkspaceId ? 500 : 400,
+								}}
+							>
+								All Workspaces
+							</button>
+							<div
+								className="border-t my-1"
+								style={{ borderColor: "var(--border-subtle)" }}
+							/>
 							{workspaces.map((p) => (
 								<div
 									key={p.id}
-									className="group flex items-center justify-between px-3 py-2 transition-colors hover:bg-[var(--bg-surface-hover)]"
+									className="group flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
 								>
 									<button
 										type="button"
@@ -184,6 +209,7 @@ export function AppHeader() {
 												p.id === selectedWorkspaceId
 													? "var(--accent-primary)"
 													: "var(--text-primary)",
+											fontWeight: p.id === selectedWorkspaceId ? 500 : 400,
 										}}
 									>
 										{p.name}
@@ -191,11 +217,11 @@ export function AppHeader() {
 									<button
 										type="button"
 										onClick={(e) => handleDeleteWorkspace(e, p.id)}
-										className="hidden group-hover:flex items-center rounded p-0.5 transition-colors hover:bg-[var(--rose-glow)]"
+										className="hidden group-hover:flex items-center rounded p-1 transition-colors hover:bg-[var(--rose-glow)]"
 										style={{ color: "var(--rose-400)" }}
 										title="Delete workspace"
 									>
-										<Trash2 size={11} />
+										<Trash2 size={12} />
 									</button>
 								</div>
 							))}
@@ -209,8 +235,8 @@ export function AppHeader() {
 									openModal("create_workspace");
 									setDropdownOpen(false);
 								}}
-								className="w-full px-3 py-2 text-left text-xs transition-colors hover:bg-[var(--bg-surface-hover)]"
-								style={{ color: "var(--text-tertiary)" }}
+								className="w-full px-4 py-2.5 text-left text-sm font-medium transition-colors hover:bg-[var(--bg-surface-hover)]"
+								style={{ color: "var(--accent-primary)" }}
 							>
 								+ New Workspace
 							</button>
@@ -220,8 +246,13 @@ export function AppHeader() {
 
 				{/* Breadcrumb */}
 				{currentFlow && (
-					<div className="flex items-center gap-1.5">
-						<span style={{ color: "var(--border-strong)" }}>/</span>
+					<div className="flex items-center gap-2">
+						<span
+							className="text-sm"
+							style={{ color: "var(--border-strong)", opacity: 0.5 }}
+						>
+							/
+						</span>
 						<span
 							className="text-sm"
 							style={{ color: "var(--text-secondary)" }}
@@ -236,7 +267,7 @@ export function AppHeader() {
 			<div className="flex items-center gap-3">
 				{activeRun && (
 					<div
-						className="flex items-center gap-1.5 rounded-lg px-2.5 py-1"
+						className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
 						style={{
 							background: "var(--amber-glow)",
 							border: "1px solid rgba(230, 126, 34, 0.15)",
@@ -273,7 +304,7 @@ export function AppHeader() {
 						className="relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-[var(--bg-surface-hover)]"
 						style={{ color: "var(--text-tertiary)" }}
 					>
-						<Brain size={13} />
+						<Brain size={14} />
 						<span className="hidden sm:inline">Knowledge</span>
 						{memories.length > 0 && (
 							<span
