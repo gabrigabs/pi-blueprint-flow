@@ -29,7 +29,10 @@ export function WorkflowTemplateBadge({ steps, onClick }: Props) {
 		>
 			<Layers size={11} style={{ color: "var(--accent-primary)" }} />
 			<span>{label}</span>
-			<span className="font-mono text-[10px]" style={{ color: "var(--text-muted)" }}>
+			<span
+				className="font-mono text-[10px]"
+				style={{ color: "var(--text-muted)" }}
+			>
 				{count} steps
 			</span>
 		</button>

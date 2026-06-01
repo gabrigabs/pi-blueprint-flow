@@ -16,12 +16,15 @@ import {
 	Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from "../../constants/workflow-templates";
+import {
+	WORKFLOW_TEMPLATES,
+	type WorkflowTemplate,
+} from "../../constants/workflow-templates";
 import { api } from "../../lib/api";
 import type { WorkflowStep } from "../../store";
 import { useStore } from "../../store";
-import { WorkflowStepList } from "./WorkflowStepList";
 import { WorkflowTemplateSelector } from "../onboarding/WorkflowTemplateSelector";
+import { WorkflowStepList } from "./WorkflowStepList";
 
 const STEP_ICONS: Record<string, typeof Zap> = {
 	intake: Zap,
@@ -51,7 +54,11 @@ const STEP_COLORS: Record<string, string> = {
 	memory_update: "#a78bfa",
 };
 
-function PipelineVisualization({ steps, hoveredStep, setHoveredStep }: {
+function PipelineVisualization({
+	steps,
+	hoveredStep,
+	setHoveredStep,
+}: {
 	steps: WorkflowStep[];
 	hoveredStep: number | null;
 	setHoveredStep: (i: number | null) => void;
@@ -76,13 +83,15 @@ function PipelineVisualization({ steps, hoveredStep, setHoveredStep }: {
 				<div
 					className="absolute inset-0"
 					style={{
-						background: "linear-gradient(180deg, var(--bg-inset) 0%, rgba(22, 25, 30, 0.95) 100%)",
+						background:
+							"linear-gradient(180deg, var(--bg-inset) 0%, rgba(22, 25, 30, 0.95) 100%)",
 					}}
 				/>
 				<div
 					className="absolute inset-0 opacity-30 pointer-events-none"
 					style={{
-						backgroundImage: "radial-gradient(circle at 1px 1px, rgba(91, 155, 213, 0.05) 1px, transparent 0)",
+						backgroundImage:
+							"radial-gradient(circle at 1px 1px, rgba(91, 155, 213, 0.05) 1px, transparent 0)",
 						backgroundSize: "24px 24px",
 					}}
 				/>
@@ -102,7 +111,9 @@ function PipelineVisualization({ steps, hoveredStep, setHoveredStep }: {
 									style={{
 										opacity: mounted ? 1 : 0,
 										transform: mounted
-											? isHovered ? "translateY(-4px)" : "translateY(0)"
+											? isHovered
+												? "translateY(-4px)"
+												: "translateY(0)"
 											: "translateY(8px)",
 										transition: `opacity 0.4s ease ${i * 50}ms, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)`,
 									}}
@@ -201,7 +212,12 @@ function PipelineVisualization({ steps, hoveredStep, setHoveredStep }: {
 }
 
 export function WorkflowConfigPanel() {
-	const { selectedWorkspaceId, activeWorkflow, setActiveWorkflow, setWorkflows } = useStore();
+	const {
+		selectedWorkspaceId,
+		activeWorkflow,
+		setActiveWorkflow,
+		setWorkflows,
+	} = useStore();
 	const [steps, setSteps] = useState<WorkflowStep[]>([]);
 	const [showTemplates, setShowTemplates] = useState(false);
 	const [showEditor, setShowEditor] = useState(false);
@@ -212,10 +228,13 @@ export function WorkflowConfigPanel() {
 
 	useEffect(() => {
 		if (selectedWorkspaceId) {
-			api.workflows.getWorkspaceWorkflow(selectedWorkspaceId).then((w) => {
-				setActiveWorkflow(w);
-				setSteps(w.steps);
-			}).catch(() => {});
+			api.workflows
+				.getWorkspaceWorkflow(selectedWorkspaceId)
+				.then((w) => {
+					setActiveWorkflow(w);
+					setSteps(w.steps);
+				})
+				.catch(() => {});
 		}
 	}, [selectedWorkspaceId, setActiveWorkflow]);
 
@@ -296,43 +315,69 @@ export function WorkflowConfigPanel() {
 	}
 
 	return (
-		<div className="workflow-config-panel rounded-xl border overflow-hidden" style={{ borderColor: "var(--border-default)" }}>
+		<div
+			className="workflow-config-panel rounded-xl border overflow-hidden"
+			style={{ borderColor: "var(--border-default)" }}
+		>
 			{/* Atmospheric background */}
-			<div className="relative" style={{ background: "linear-gradient(135deg, var(--bg-elevated) 0%, rgba(91, 155, 213, 0.03) 50%, var(--bg-elevated) 100%)" }}>
+			<div
+				className="relative"
+				style={{
+					background:
+						"linear-gradient(135deg, var(--bg-elevated) 0%, rgba(91, 155, 213, 0.03) 50%, var(--bg-elevated) 100%)",
+				}}
+			>
 				{/* Header */}
 				<div className="flex items-center justify-between px-5 py-4">
 					<div className="flex items-center gap-3">
 						<div
 							className="flex h-8 w-8 items-center justify-center rounded-lg"
 							style={{
-								background: "linear-gradient(135deg, rgba(91, 155, 213, 0.15), rgba(167, 139, 250, 0.1))",
+								background:
+									"linear-gradient(135deg, rgba(91, 155, 213, 0.15), rgba(167, 139, 250, 0.1))",
 								border: "1px solid rgba(91, 155, 213, 0.2)",
 							}}
 						>
 							<Layers size={14} style={{ color: "var(--cyan-400)" }} />
 						</div>
 						<div>
-							<h3 className="text-sm font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+							<h3
+								className="text-sm font-semibold tracking-tight"
+								style={{ color: "var(--text-primary)" }}
+							>
 								Pipeline
 							</h3>
-							<p className="font-mono text-[10px] uppercase tracking-wider mt-0.5" style={{ color: "var(--text-muted)" }}>
+							<p
+								className="font-mono text-[10px] uppercase tracking-wider mt-0.5"
+								style={{ color: "var(--text-muted)" }}
+							>
 								{matchedTemplate?.name ?? "Custom"} · {steps.length} stages
 							</p>
 						</div>
 					</div>
 					<div className="flex items-center gap-1.5">
 						<button
-							onClick={() => { setShowTemplates(!showTemplates); setShowEditor(false); }}
+							onClick={() => {
+								setShowTemplates(!showTemplates);
+								setShowEditor(false);
+							}}
 							className="rounded-lg px-3 py-1.5 text-[11px] font-medium transition-all hover:bg-[var(--bg-surface-hover)]"
 							style={{
-								color: showTemplates ? "var(--cyan-400)" : "var(--text-tertiary)",
-								background: showTemplates ? "rgba(91, 155, 213, 0.08)" : undefined,
+								color: showTemplates
+									? "var(--cyan-400)"
+									: "var(--text-tertiary)",
+								background: showTemplates
+									? "rgba(91, 155, 213, 0.08)"
+									: undefined,
 							}}
 						>
 							Templates
 						</button>
 						<button
-							onClick={() => { setShowEditor(!showEditor); setShowTemplates(false); }}
+							onClick={() => {
+								setShowEditor(!showEditor);
+								setShowTemplates(false);
+							}}
 							className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-medium transition-all hover:bg-[var(--bg-surface-hover)]"
 							style={{
 								color: showEditor ? "var(--cyan-400)" : "var(--text-tertiary)",
@@ -357,7 +402,13 @@ export function WorkflowConfigPanel() {
 
 			{/* Template selector */}
 			{showTemplates && (
-				<div className="border-t px-5 py-4" style={{ borderColor: "var(--border-subtle)", background: "var(--bg-elevated)" }}>
+				<div
+					className="border-t px-5 py-4"
+					style={{
+						borderColor: "var(--border-subtle)",
+						background: "var(--bg-elevated)",
+					}}
+				>
 					<WorkflowTemplateSelector
 						selected={matchedTemplate?.id ?? null}
 						onSelect={handleTemplateSelect}
@@ -367,11 +418,23 @@ export function WorkflowConfigPanel() {
 
 			{/* Step editor */}
 			{showEditor && (
-				<div className="border-t px-5 py-4 space-y-3" style={{ borderColor: "var(--border-subtle)", background: "var(--bg-elevated)" }}>
+				<div
+					className="border-t px-5 py-4 space-y-3"
+					style={{
+						borderColor: "var(--border-subtle)",
+						background: "var(--bg-elevated)",
+					}}
+				>
 					<WorkflowStepList steps={steps} onChange={handleStepsChange} />
 
 					{error && (
-						<p className="text-xs rounded-lg px-3 py-2" style={{ background: "var(--rose-glow)", color: "var(--rose-400)" }}>
+						<p
+							className="text-xs rounded-lg px-3 py-2"
+							style={{
+								background: "var(--rose-glow)",
+								color: "var(--rose-400)",
+							}}
+						>
 							{error}
 						</p>
 					)}

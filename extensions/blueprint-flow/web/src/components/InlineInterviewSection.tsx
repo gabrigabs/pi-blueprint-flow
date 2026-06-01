@@ -21,7 +21,9 @@ export function InlineInterviewSection({ flowId }: Props) {
 	if (interviews.length === 0) {
 		return (
 			<div className="py-3 px-2">
-				<span className="text-xs text-[var(--text-muted)]">No interview questions yet</span>
+				<span className="text-xs text-[var(--text-muted)]">
+					No interview questions yet
+				</span>
 			</div>
 		);
 	}
@@ -116,7 +118,7 @@ function PendingQuestion({
 
 	function toggleOption(opt: string) {
 		setSelectedOptions((prev) =>
-			prev.includes(opt) ? prev.filter((o) => o !== opt) : [...prev, opt]
+			prev.includes(opt) ? prev.filter((o) => o !== opt) : [...prev, opt],
 		);
 	}
 
@@ -137,7 +139,9 @@ function PendingQuestion({
 					<div className="mt-1 flex items-center gap-2">
 						<TypeBadge type={interview.type} />
 						{interview.required === 1 && (
-							<span className="text-[10px] text-red-400 font-medium">required</span>
+							<span className="text-[10px] text-red-400 font-medium">
+								required
+							</span>
 						)}
 					</div>
 				</div>

@@ -108,10 +108,7 @@ export function StepActions({
 					executionMode || settings.executionMode,
 				),
 			};
-			const result = (await api.flows.runStep(
-				flowId,
-				mergedSettings,
-			)) as any;
+			const result = (await api.flows.runStep(flowId, mergedSettings)) as any;
 			setShowRunPanel(false);
 			if (result.actionStatus === "not_connected") {
 				addToast({

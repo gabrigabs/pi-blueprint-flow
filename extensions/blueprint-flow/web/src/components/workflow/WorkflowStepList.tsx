@@ -31,10 +31,22 @@ export function WorkflowStepList({ steps, onChange }: Props) {
 		onChange(steps.filter((_, i) => i !== index));
 	}
 
-	function handleChange(index: number, field: keyof WorkflowStep, value: string) {
+	function handleChange(
+		index: number,
+		field: keyof WorkflowStep,
+		value: string,
+	) {
 		onChange(
 			steps.map((s, i) =>
-				i === index ? { ...s, [field]: field === "name" ? value.toLowerCase().replace(/\s+/g, "_") : value } : s,
+				i === index
+					? {
+							...s,
+							[field]:
+								field === "name"
+									? value.toLowerCase().replace(/\s+/g, "_")
+									: value,
+						}
+					: s,
 			),
 		);
 	}
@@ -69,8 +81,12 @@ export function WorkflowStepList({ steps, onChange }: Props) {
 					onDragEnd={handleDragEnd}
 					className="flex items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors"
 					style={{
-						borderColor: dragIndex === i ? "var(--accent-primary)" : "var(--border-subtle)",
-						background: dragIndex === i ? "var(--bg-surface-hover)" : "var(--bg-surface)",
+						borderColor:
+							dragIndex === i
+								? "var(--accent-primary)"
+								: "var(--border-subtle)",
+						background:
+							dragIndex === i ? "var(--bg-surface-hover)" : "var(--bg-surface)",
 					}}
 				>
 					<GripVertical
@@ -123,7 +139,9 @@ export function WorkflowStepList({ steps, onChange }: Props) {
 						}}
 					>
 						{ACTION_TYPES.map((t) => (
-							<option key={t.value} value={t.value}>{t.label}</option>
+							<option key={t.value} value={t.value}>
+								{t.label}
+							</option>
 						))}
 					</select>
 

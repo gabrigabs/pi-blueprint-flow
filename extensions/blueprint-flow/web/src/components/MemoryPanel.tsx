@@ -1,4 +1,10 @@
-import { BookOpen, Brain, ChevronDown, ChevronRight, Filter } from "lucide-react";
+import {
+	BookOpen,
+	Brain,
+	ChevronDown,
+	ChevronRight,
+	Filter,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useStore } from "../store";
 import { MarkdownContent } from "./MarkdownContent";
@@ -136,9 +142,15 @@ function MemoriesView({
 							className="flex w-full items-center gap-2 px-3 py-2 text-left"
 						>
 							{isExpanded ? (
-								<ChevronDown size={11} className="text-[var(--text-muted)] shrink-0" />
+								<ChevronDown
+									size={11}
+									className="text-[var(--text-muted)] shrink-0"
+								/>
 							) : (
-								<ChevronRight size={11} className="text-[var(--text-muted)] shrink-0" />
+								<ChevronRight
+									size={11}
+									className="text-[var(--text-muted)] shrink-0"
+								/>
 							)}
 							<CategoryBadge category={m.category} />
 							<span className="flex-1 truncate text-xs text-gray-300">
@@ -162,7 +174,13 @@ function MemoriesView({
 	);
 }
 
-function WikiView({ pages, workspaceId }: { pages: WikiPageSummary[]; workspaceId: string | null }) {
+function WikiView({
+	pages,
+	workspaceId,
+}: {
+	pages: WikiPageSummary[];
+	workspaceId: string | null;
+}) {
 	const [expandedId, setExpandedId] = useState<string | null>(null);
 	const [wikiContent, setWikiContent] = useState<string>("");
 
@@ -213,9 +231,15 @@ function WikiView({ pages, workspaceId }: { pages: WikiPageSummary[]; workspaceI
 							className="flex w-full items-center gap-2 px-3 py-2 text-left"
 						>
 							{isExpanded ? (
-								<ChevronDown size={11} className="text-[var(--text-muted)] shrink-0" />
+								<ChevronDown
+									size={11}
+									className="text-[var(--text-muted)] shrink-0"
+								/>
 							) : (
-								<ChevronRight size={11} className="text-[var(--text-muted)] shrink-0" />
+								<ChevronRight
+									size={11}
+									className="text-[var(--text-muted)] shrink-0"
+								/>
 							)}
 							<BookOpen size={11} className="text-gray-500 shrink-0" />
 							<span className="flex-1 truncate text-xs font-medium text-gray-200">
@@ -257,7 +281,9 @@ function CategoryBadge({ category }: { category: string }) {
 	const style = colors[category] || "text-gray-400 bg-gray-800";
 
 	return (
-		<span className={`rounded px-1.5 py-0.5 text-[10px] font-medium shrink-0 ${style}`}>
+		<span
+			className={`rounded px-1.5 py-0.5 text-[10px] font-medium shrink-0 ${style}`}
+		>
 			{category}
 		</span>
 	);

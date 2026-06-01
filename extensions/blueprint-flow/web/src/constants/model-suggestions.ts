@@ -11,7 +11,10 @@ export const STEP_MODEL_SUGGESTIONS: Record<string, ModelSuggestion> = {
 	ddd: { prefer: "reasoning", reason: "Complex domain modeling" },
 	design: { prefer: "strong", reason: "Creative + structural output" },
 	behavior: { prefer: "reasoning", reason: "Scenario generation" },
-	implementation_plan: { prefer: "reasoning", reason: "Architecture decisions" },
+	implementation_plan: {
+		prefer: "reasoning",
+		reason: "Architecture decisions",
+	},
 	implementation: { prefer: "strong", reason: "Code generation quality" },
 	review: { prefer: "reasoning", reason: "Critical analysis" },
 	memory_update: { prefer: "budget", reason: "Simple extraction" },
@@ -19,8 +22,11 @@ export const STEP_MODEL_SUGGESTIONS: Record<string, ModelSuggestion> = {
 
 export function getSuggestionLabel(prefer: ModelSuggestion["prefer"]): string {
 	switch (prefer) {
-		case "budget": return "Budget model (e.g. Haiku)";
-		case "reasoning": return "Reasoning model (e.g. Sonnet)";
-		case "strong": return "Strong model (e.g. Opus)";
+		case "budget":
+			return "Budget model (e.g. Haiku)";
+		case "reasoning":
+			return "Reasoning model (e.g. Sonnet)";
+		case "strong":
+			return "Strong model (e.g. Opus)";
 	}
 }

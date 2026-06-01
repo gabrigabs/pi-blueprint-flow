@@ -1,4 +1,4 @@
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, type NodeProps, Position } from "@xyflow/react";
 import { Code2, FileText, MessageCircle, Zap } from "lucide-react";
 import { memo } from "react";
 import { useStore } from "../../store";
@@ -11,8 +11,19 @@ const TYPE_ICONS: Record<string, typeof FileText> = {
 	activity: Zap,
 };
 
-function ArtifactSatelliteComponent({ data }: NodeProps & { data: SatelliteNodeData }) {
-	const { artifactId, filename, type, stepColor, isInterview, interviewCount, isActivity, activityStatus } = data;
+function ArtifactSatelliteComponent({
+	data,
+}: NodeProps & { data: SatelliteNodeData }) {
+	const {
+		artifactId,
+		filename,
+		type,
+		stepColor,
+		isInterview,
+		interviewCount,
+		isActivity,
+		activityStatus,
+	} = data;
 	const selectArtifact = useStore((s) => s.selectArtifact);
 
 	const Icon = TYPE_ICONS[type] ?? FileText;
@@ -53,7 +64,11 @@ function ArtifactSatelliteComponent({ data }: NodeProps & { data: SatelliteNodeD
 			/>
 
 			<div className="flex items-center gap-2 px-3 h-full">
-				<Icon size={13} style={{ color: stepColor, opacity: 0.8 }} className="shrink-0" />
+				<Icon
+					size={13}
+					style={{ color: stepColor, opacity: 0.8 }}
+					className="shrink-0"
+				/>
 				<div className="min-w-0 flex-1">
 					<p
 						className="text-[11px] font-mono truncate leading-tight"
@@ -62,12 +77,23 @@ function ArtifactSatelliteComponent({ data }: NodeProps & { data: SatelliteNodeD
 						{filename}
 					</p>
 					{isInterview && interviewCount && (
-						<p className="text-[9px] font-mono" style={{ color: "var(--amber-400)" }}>
+						<p
+							className="text-[9px] font-mono"
+							style={{ color: "var(--amber-400)" }}
+						>
 							{interviewCount} pending
 						</p>
 					)}
 					{isActivity && activityStatus && (
-						<p className="text-[9px] font-mono" style={{ color: activityStatus === "done" ? "var(--emerald-400)" : "var(--cyan-400)" }}>
+						<p
+							className="text-[9px] font-mono"
+							style={{
+								color:
+									activityStatus === "done"
+										? "var(--emerald-400)"
+										: "var(--cyan-400)",
+							}}
+						>
 							{activityStatus}
 						</p>
 					)}

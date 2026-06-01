@@ -41,12 +41,15 @@ export function DesignCanvas({ flowId }: { flowId: string }) {
 			const res = await fetch(`/api/flows/${flowId}/design/variants`);
 			const data = await res.json();
 			setVariants(data);
-		} catch {} finally {
+		} catch {
+		} finally {
 			setLoading(false);
 		}
 	}, [flowId]);
 
-	useEffect(() => { fetchVariants(); }, [fetchVariants]);
+	useEffect(() => {
+		fetchVariants();
+	}, [fetchVariants]);
 
 	async function selectVariant(id: string) {
 		await fetch(`/api/design/variants/${id}`, {
@@ -73,7 +76,10 @@ export function DesignCanvas({ flowId }: { flowId: string }) {
 	if (loading) {
 		return (
 			<div className="flex items-center justify-center h-full">
-				<RefreshCw size={16} className="animate-spin text-[var(--text-muted)]" />
+				<RefreshCw
+					size={16}
+					className="animate-spin text-[var(--text-muted)]"
+				/>
 			</div>
 		);
 	}
@@ -82,7 +88,9 @@ export function DesignCanvas({ flowId }: { flowId: string }) {
 		return (
 			<div className="flex flex-col items-center justify-center h-full gap-3">
 				<Palette size={24} className="text-[var(--text-muted)]" />
-				<p className="text-sm text-[var(--text-muted)]">No design variants yet</p>
+				<p className="text-sm text-[var(--text-muted)]">
+					No design variants yet
+				</p>
 				<p className="text-xs text-[var(--text-muted)]">
 					Run the design step to generate mockup variants
 				</p>
@@ -106,7 +114,9 @@ export function DesignCanvas({ flowId }: { flowId: string }) {
 
 			{/* Variants grid */}
 			<div className="flex-1 overflow-auto p-4">
-				<div className={`grid gap-4 h-full ${variants.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+				<div
+					className={`grid gap-4 h-full ${variants.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}
+				>
 					{variants.map((variant) => (
 						<VariantCard
 							key={variant.id}
@@ -124,19 +134,25 @@ export function DesignCanvas({ flowId }: { flowId: string }) {
 					<DesignSlider
 						label="Spacing"
 						value={tokens.spacing ?? 16}
-						min={4} max={48} step={4}
+						min={4}
+						max={48}
+						step={4}
 						onChange={(v) => setTokens((t) => ({ ...t, spacing: v }))}
 					/>
 					<DesignSlider
 						label="Font"
 						value={tokens.fontSize ?? 16}
-						min={12} max={24} step={1}
+						min={12}
+						max={24}
+						step={1}
 						onChange={(v) => setTokens((t) => ({ ...t, fontSize: v }))}
 					/>
 					<DesignSlider
 						label="Radius"
 						value={tokens.borderRadius ?? 8}
-						min={0} max={24} step={2}
+						min={0}
+						max={24}
+						step={2}
 						onChange={(v) => setTokens((t) => ({ ...t, borderRadius: v }))}
 					/>
 					<div className="flex-1" />

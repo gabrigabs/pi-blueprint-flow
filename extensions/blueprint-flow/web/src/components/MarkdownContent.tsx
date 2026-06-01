@@ -5,7 +5,10 @@ interface MarkdownContentProps {
 	searchQuery?: string;
 }
 
-export function MarkdownContent({ content, searchQuery = "" }: MarkdownContentProps) {
+export function MarkdownContent({
+	content,
+	searchQuery = "",
+}: MarkdownContentProps) {
 	const lines = content.split("\n");
 
 	return (
@@ -15,14 +18,20 @@ export function MarkdownContent({ content, searchQuery = "" }: MarkdownContentPr
 
 				if (line.startsWith("### ")) {
 					return (
-						<h4 key={i} className="text-sm font-semibold text-gray-200 mt-3 mb-1">
+						<h4
+							key={i}
+							className="text-sm font-semibold text-gray-200 mt-3 mb-1"
+						>
 							{highlighted || line.slice(4)}
 						</h4>
 					);
 				}
 				if (line.startsWith("## ")) {
 					return (
-						<h3 key={i} className="text-sm font-bold text-gray-100 mt-4 mb-1 border-b border-gray-800 pb-1">
+						<h3
+							key={i}
+							className="text-sm font-bold text-gray-100 mt-4 mb-1 border-b border-gray-800 pb-1"
+						>
 							{highlighted || line.slice(3)}
 						</h3>
 					);
@@ -81,7 +90,10 @@ export function MarkdownContent({ content, searchQuery = "" }: MarkdownContentPr
 
 				if (line.startsWith("> ")) {
 					return (
-						<div key={i} className="border-l-2 border-gray-600 pl-3 text-gray-400 italic">
+						<div
+							key={i}
+							className="border-l-2 border-gray-600 pl-3 text-gray-400 italic"
+						>
 							{highlighted || line.slice(2)}
 						</div>
 					);
@@ -93,7 +105,10 @@ export function MarkdownContent({ content, searchQuery = "" }: MarkdownContentPr
 
 				if (line.startsWith("  ") || line.startsWith("\t")) {
 					return (
-						<div key={i} className="font-mono text-xs text-blue-300/80 bg-gray-900 px-2 py-0.5 rounded">
+						<div
+							key={i}
+							className="font-mono text-xs text-blue-300/80 bg-gray-900 px-2 py-0.5 rounded"
+						>
 							{highlighted || line}
 						</div>
 					);

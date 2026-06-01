@@ -9,12 +9,15 @@ function getModelBadges(model: AgentModelInfo): Badge[] {
 	const badges: Badge[] = [];
 	const id = model.id.toLowerCase();
 
-	if (model.cost.input < 1.0) badges.push({ label: "Budget", color: "emerald" });
-	else if (model.cost.input > 10.0) badges.push({ label: "Premium", color: "amber" });
+	if (model.cost.input < 1.0)
+		badges.push({ label: "Budget", color: "emerald" });
+	else if (model.cost.input > 10.0)
+		badges.push({ label: "Premium", color: "amber" });
 
 	if (model.reasoning) badges.push({ label: "Reasoning", color: "violet" });
 
-	if (model.contextWindow >= 200000) badges.push({ label: "200k ctx", color: "blue" });
+	if (model.contextWindow >= 200000)
+		badges.push({ label: "200k ctx", color: "blue" });
 
 	if (id.includes("haiku")) badges.push({ label: "Fast", color: "emerald" });
 	if (id.includes("opus")) badges.push({ label: "Strong", color: "amber" });
@@ -38,7 +41,13 @@ const BADGE_COLORS: Record<string, { bg: string; text: string }> = {
 	cyan: { bg: "rgba(34, 211, 238, 0.15)", text: "rgb(103, 232, 249)" },
 };
 
-export function ModelBadges({ model, compact }: { model: AgentModelInfo; compact?: boolean }) {
+export function ModelBadges({
+	model,
+	compact,
+}: {
+	model: AgentModelInfo;
+	compact?: boolean;
+}) {
 	const badges = getModelBadges(model);
 	if (badges.length === 0) return null;
 
@@ -62,4 +71,4 @@ export function ModelBadges({ model, compact }: { model: AgentModelInfo; compact
 	);
 }
 
-export { getModelBadges, type Badge };
+export { type Badge, getModelBadges };

@@ -40,7 +40,9 @@ export function InlineArtifactViewer({ stepName, flowId }: Props) {
 	if (stepArtifacts.length === 0) {
 		return (
 			<div className="py-3 px-2">
-				<span className="text-xs text-[var(--text-muted)]">No artifacts for this step yet</span>
+				<span className="text-xs text-[var(--text-muted)]">
+					No artifacts for this step yet
+				</span>
 			</div>
 		);
 	}
@@ -68,7 +70,10 @@ export function InlineArtifactViewer({ stepName, flowId }: Props) {
 			{stepArtifacts.map((artifact) => {
 				const isExpanded = expandedId === artifact.id;
 				return (
-					<div key={artifact.id} className="rounded-lg border border-[var(--border-subtle)] overflow-hidden">
+					<div
+						key={artifact.id}
+						className="rounded-lg border border-[var(--border-subtle)] overflow-hidden"
+					>
 						{/* Card header */}
 						<button
 							onClick={() => {
@@ -81,7 +86,11 @@ export function InlineArtifactViewer({ stepName, flowId }: Props) {
 									: "hover:bg-[var(--bg-surface-hover)]"
 							}`}
 						>
-							{isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+							{isExpanded ? (
+								<ChevronDown size={12} />
+							) : (
+								<ChevronRight size={12} />
+							)}
 							<ArtifactIcon type={artifact.type} />
 							<span className="flex-1 truncate text-xs text-[var(--text-secondary)]">
 								{artifact.filename}
@@ -97,11 +106,17 @@ export function InlineArtifactViewer({ stepName, flowId }: Props) {
 								{/* Toolbar */}
 								<div className="flex items-center justify-end gap-1 px-3 py-1.5 border-b border-[var(--border-subtle)]">
 									<button
-										onClick={() => setViewMode(viewMode === "preview" ? "raw" : "preview")}
+										onClick={() =>
+											setViewMode(viewMode === "preview" ? "raw" : "preview")
+										}
 										className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-tertiary)]"
 										title={viewMode === "preview" ? "View raw" : "View preview"}
 									>
-										{viewMode === "preview" ? <Code size={12} /> : <Eye size={12} />}
+										{viewMode === "preview" ? (
+											<Code size={12} />
+										) : (
+											<Eye size={12} />
+										)}
 									</button>
 									<button
 										onClick={handleCopy}

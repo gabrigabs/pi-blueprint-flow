@@ -213,6 +213,7 @@ export function registerFlowRoutes(app: FastifyInstance): void {
 					"DELETE FROM action_run_events WHERE action_run_id IN (SELECT id FROM action_runs WHERE flow_id = ?)",
 				).run(id);
 				db.prepare("DELETE FROM action_runs WHERE flow_id = ?").run(id);
+				db.prepare("DELETE FROM agent_run_settings WHERE flow_id = ?").run(id);
 				db.prepare("DELETE FROM artifacts WHERE flow_id = ?").run(id);
 				db.prepare("DELETE FROM interviews WHERE flow_id = ?").run(id);
 				db.prepare("DELETE FROM steps WHERE flow_id = ?").run(id);

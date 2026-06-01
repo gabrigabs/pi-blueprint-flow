@@ -19,10 +19,34 @@ export function InlineStepTabs({
 	interviewCount,
 	showInterview,
 }: Props) {
-	const tabs: Array<{ id: StepTab; label: string; count: number; icon: React.ReactNode; show: boolean }> = [
-		{ id: "actions", label: "Actions", count: actionCount, icon: <Zap size={11} />, show: true },
-		{ id: "artifacts", label: "Artifacts", count: artifactCount, icon: <FileText size={11} />, show: true },
-		{ id: "interview", label: "Interview", count: interviewCount, icon: <MessageSquare size={11} />, show: showInterview },
+	const tabs: Array<{
+		id: StepTab;
+		label: string;
+		count: number;
+		icon: React.ReactNode;
+		show: boolean;
+	}> = [
+		{
+			id: "actions",
+			label: "Actions",
+			count: actionCount,
+			icon: <Zap size={11} />,
+			show: true,
+		},
+		{
+			id: "artifacts",
+			label: "Artifacts",
+			count: artifactCount,
+			icon: <FileText size={11} />,
+			show: true,
+		},
+		{
+			id: "interview",
+			label: "Interview",
+			count: interviewCount,
+			icon: <MessageSquare size={11} />,
+			show: showInterview,
+		},
 	];
 
 	return (

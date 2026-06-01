@@ -69,7 +69,7 @@ export function App() {
 
 				{/* Main content */}
 				<main
-					className="flex flex-1 flex-col overflow-hidden"
+					className="flex flex-1 flex-col overflow-hidden animate-fade-in"
 					style={{ background: "var(--bg-base)" }}
 				>
 					{selectedFlowId ? (

@@ -1,6 +1,7 @@
 import { GitBranch, PanelLeftClose, Plus, Trash2 } from "lucide-react";
 import { api } from "../lib/api";
 import { useStore } from "../store";
+import { EmptyState } from "./ui/EmptyState";
 
 export function ProjectSidebar() {
 	const {
@@ -40,7 +41,7 @@ export function ProjectSidebar() {
 						<button
 							type="button"
 							onClick={() => openModal("create_flow")}
-							title="New flow"
+							title="New flow (N)"
 							className="rounded p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
 							style={{ color: "var(--text-tertiary)" }}
 						>
@@ -50,7 +51,7 @@ export function ProjectSidebar() {
 					<button
 						type="button"
 						onClick={toggleSidebar}
-						title="Hide sidebar"
+						title="Hide sidebar ([)"
 						className="rounded p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
 						style={{ color: "var(--text-muted)" }}
 					>
@@ -59,31 +60,26 @@ export function ProjectSidebar() {
 				</div>
 			</div>
 
-			{/* Feature list */}
+			{/* Flow list */}
 			<div className="flex-1 overflow-y-auto scrollbar-thin p-3">
 				{!selectedWorkspaceId ? (
-					<p
-						className="px-2 py-4 text-center text-xs"
-						style={{ color: "var(--text-muted)" }}
-					>
-						Select a workspace to see flows
-					</p>
+					<EmptyState
+						icon={GitBranch}
+						title="No workspace selected"
+						description="Select a workspace to see its flows"
+					/>
 				) : flows.length === 0 ? (
-					<button
-						type="button"
-						onClick={() => openModal("create_flow")}
-						className="w-full rounded-lg border border-dashed px-3 py-4 text-xs transition-colors hover:border-[var(--cyan-400)]/30 hover:text-[var(--cyan-400)]"
-						style={{
-							borderColor: "var(--border-default)",
-							color: "var(--text-tertiary)",
+					<EmptyState
+						icon={GitBranch}
+						title="No flows yet"
+						description="Start your first flow"
+						action={{
+							label: "+ New Flow",
+							onClick: () => openModal("create_flow"),
 						}}
-					>
-						<span className="font-mono text-[10px] uppercase tracking-wider">
-							+ New Flow
-						</span>
-					</button>
+					/>
 				) : (
-					<ul className="space-y-1">
+					<ul className="space-y-0.5">
 						{flows.map((f) => {
 							const isSelected = selectedFlowId === f.id;
 							return (
@@ -91,7 +87,7 @@ export function ProjectSidebar() {
 									<button
 										type="button"
 										onClick={() => selectFlow(f.id)}
-										className="group w-full rounded-lg px-3 py-2.5 text-left transition-all"
+										className="group w-full rounded-lg px-3 py-2.5 text-left transition-all duration-150"
 										style={{
 											background: isSelected ? "var(--cyan-glow)" : undefined,
 											borderLeft: isSelected

@@ -34,8 +34,7 @@ export function useWebSocket() {
 	);
 	const wasConnectedRef = useRef(false);
 
-	const { setConnected, setConnectionState, setWorkspaces, selectWorkspace } =
-		useStore();
+	const { setConnected, setConnectionState, setWorkspaces } = useStore();
 
 	useEffect(() => {
 		const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -161,9 +160,6 @@ export function useWebSocket() {
 			case "init":
 				if (msg.data.workspaces) {
 					setWorkspaces(msg.data.workspaces);
-					if (msg.data.workspaces.length > 0 && !store.selectedWorkspaceId) {
-						selectWorkspace(msg.data.workspaces[0].id);
-					}
 				}
 				if (msg.data.bridgeStatus) {
 					store.setBridgeStatus(msg.data.bridgeStatus);

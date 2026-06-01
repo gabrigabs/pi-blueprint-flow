@@ -35,7 +35,13 @@ export function KnowledgeReadingModal({ memory, onClose }: Props) {
 			className="fixed inset-0 z-50 flex items-center justify-center"
 			onClick={onClose}
 		>
-			<div className="absolute inset-0" style={{ background: "rgba(0, 0, 0, 0.6)", backdropFilter: "blur(4px)" }} />
+			<div
+				className="absolute inset-0"
+				style={{
+					background: "rgba(0, 0, 0, 0.6)",
+					backdropFilter: "blur(4px)",
+				}}
+			/>
 			<div
 				className="relative w-[600px] max-h-[80vh] rounded-2xl border overflow-hidden flex flex-col animate-fade-up"
 				style={{
@@ -46,9 +52,15 @@ export function KnowledgeReadingModal({ memory, onClose }: Props) {
 				onClick={(e) => e.stopPropagation()}
 			>
 				{/* Header */}
-				<div className="flex items-center justify-between px-6 py-4 border-b shrink-0" style={{ borderColor: "var(--border-subtle)" }}>
+				<div
+					className="flex items-center justify-between px-6 py-4 border-b shrink-0"
+					style={{ borderColor: "var(--border-subtle)" }}
+				>
 					<div className="flex items-center gap-3">
-						<div className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+						<div
+							className="h-2.5 w-2.5 rounded-full"
+							style={{ background: color }}
+						/>
 						<span
 							className="text-[11px] font-mono uppercase font-medium tracking-wider"
 							style={{ color }}

@@ -35,15 +35,31 @@ export function InlineActionRuns({ stepName, flowId }: Props) {
 	);
 
 	useEffect(() => {
-		function handleLiveEvent(e: CustomEvent<{ actionRunId: string; type: string; message: string | null }>) {
+		function handleLiveEvent(
+			e: CustomEvent<{
+				actionRunId: string;
+				type: string;
+				message: string | null;
+			}>,
+		) {
 			const { actionRunId, type, message } = e.detail;
 			if (expandedRunId && actionRunId === expandedRunId) {
-				setLiveEvents((prev) => [...prev.slice(-50), { type, message, timestamp: Date.now() }]);
+				setLiveEvents((prev) => [
+					...prev.slice(-50),
+					{ type, message, timestamp: Date.now() },
+				]);
 			}
 		}
 
-		window.addEventListener("blueprint:action-event", handleLiveEvent as EventListener);
-		return () => window.removeEventListener("blueprint:action-event", handleLiveEvent as EventListener);
+		window.addEventListener(
+			"blueprint:action-event",
+			handleLiveEvent as EventListener,
+		);
+		return () =>
+			window.removeEventListener(
+				"blueprint:action-event",
+				handleLiveEvent as EventListener,
+			);
 	}, [expandedRunId]);
 
 	useEffect(() => {
@@ -69,13 +85,18 @@ export function InlineActionRuns({ stepName, flowId }: Props) {
 		} else {
 			setExpandedRunId(id);
 			setLiveEvents([]);
-			api.actionRuns.getEvents(id).then((events) => {
-				setLiveEvents(events.map((e) => ({
-					type: e.type,
-					message: e.message,
-					timestamp: new Date(e.created_at).getTime(),
-				})));
-			}).catch(() => {});
+			api.actionRuns
+				.getEvents(id)
+				.then((events) => {
+					setLiveEvents(
+						events.map((e) => ({
+							type: e.type,
+							message: e.message,
+							timestamp: new Date(e.created_at).getTime(),
+						})),
+					);
+				})
+				.catch(() => {});
 		}
 	};
 
@@ -88,7 +109,9 @@ export function InlineActionRuns({ stepName, flowId }: Props) {
 						<span className="text-xs text-red-400">Pi agent not connected</span>
 					</>
 				) : (
-					<span className="text-xs text-[var(--text-muted)]">No actions run for this step yet</span>
+					<span className="text-xs text-[var(--text-muted)]">
+						No actions run for this step yet
+					</span>
 				)}
 			</div>
 		);
@@ -131,8 +154,20 @@ function RunCard({
 }) {
 	const [retryFeedback, setRetryFeedback] = useState("");
 	const [retrying, setRetrying] = useState(false);
-	const isActive = ["created", "queued", "waiting_for_pi", "injected", "agent_running", "tool_running"].includes(run.status);
-	const isTerminal = ["completed", "failed", "cancelled", "not_connected"].includes(run.status);
+	const isActive = [
+		"created",
+		"queued",
+		"waiting_for_pi",
+		"injected",
+		"agent_running",
+		"tool_running",
+	].includes(run.status);
+	const isTerminal = [
+		"completed",
+		"failed",
+		"cancelled",
+		"not_connected",
+	].includes(run.status);
 	const canRetry = ["completed", "failed", "cancelled"].includes(run.status);
 
 	async function handleRetryClick() {
@@ -159,20 +194,28 @@ function RunCard({
 				<div className="flex items-center gap-2 min-w-0">
 					<ActionStatusBadge status={run.status} />
 					<span className="text-xs text-[var(--text-secondary)] truncate">
-						{run.action_type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+						{run.action_type
+							.replace(/_/g, " ")
+							.replace(/\b\w/g, (c) => c.toUpperCase())}
 					</span>
 				</div>
 
 				<div className="flex items-center gap-1 shrink-0">
 					{run.error && (
-						<span className="max-w-[100px] truncate text-[10px] text-[var(--rose-400)]/80" title={run.error}>
+						<span
+							className="max-w-[100px] truncate text-[10px] text-[var(--rose-400)]/80"
+							title={run.error}
+						>
 							{run.error}
 						</span>
 					)}
 					{isActive && (
 						<button
 							type="button"
-							onClick={(e) => { e.stopPropagation(); onCancel(); }}
+							onClick={(e) => {
+								e.stopPropagation();
+								onCancel();
+							}}
 							className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--rose-400)] hover:bg-[var(--rose-glow)] transition-colors"
 							title="Cancel"
 						>
@@ -234,7 +277,9 @@ function RunCard({
 						</div>
 					)}
 					{liveEvents.length === 0 ? (
-						<p className="text-[11px] text-[var(--text-muted)] italic">No events yet</p>
+						<p className="text-[11px] text-[var(--text-muted)] italic">
+							No events yet
+						</p>
 					) : (
 						<div className="space-y-0.5">
 							{liveEvents.map((evt, i) => (
@@ -266,7 +311,9 @@ function EventLine({ event }: { event: LiveEvent }) {
 		<div className="flex items-baseline gap-2 text-[11px] leading-relaxed">
 			<span className={`font-mono shrink-0 ${color}`}>{shortType}</span>
 			{event.message && (
-				<span className="text-[var(--text-tertiary)] truncate">{event.message}</span>
+				<span className="text-[var(--text-tertiary)] truncate">
+					{event.message}
+				</span>
 			)}
 		</div>
 	);

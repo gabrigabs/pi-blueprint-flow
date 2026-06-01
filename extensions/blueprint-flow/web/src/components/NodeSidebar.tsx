@@ -20,14 +20,24 @@ function StepStatusPill({ status }: { status: string }) {
 	};
 
 	return (
-		<span className={`rounded px-1.5 py-0.5 text-[10px] font-mono ${styles[status] || styles.pending}`}>
+		<span
+			className={`rounded px-1.5 py-0.5 text-[10px] font-mono ${styles[status] || styles.pending}`}
+		>
 			{status}
 		</span>
 	);
 }
 
 export function NodeSidebar() {
-	const { selectedNodeId, selectedFlowId, selectNode, steps, artifacts, actionRuns, interviews } = useStore();
+	const {
+		selectedNodeId,
+		selectedFlowId,
+		selectNode,
+		steps,
+		artifacts,
+		actionRuns,
+		interviews,
+	} = useStore();
 	const currentFlow = useStore((s) =>
 		s.flows.find((f) => f.id === s.selectedFlowId),
 	);
@@ -35,7 +45,9 @@ export function NodeSidebar() {
 	const step = steps.find((s) => s.id === selectedNodeId);
 	const [activeTab, setActiveTab] = useState<StepTab>("actions");
 
-	useEffect(() => { setActiveTab("actions"); }, [selectedNodeId]);
+	useEffect(() => {
+		setActiveTab("actions");
+	}, [selectedNodeId]);
 
 	if (!step || !selectedFlowId) return null;
 
@@ -47,7 +59,9 @@ export function NodeSidebar() {
 	const isActive = step.status === "running" || step.status === "needs_user";
 	const showInterview = step.name === "interview";
 	const showDesign = step.name === "design";
-	const interviewCount = showInterview ? interviews.filter((i) => i.answer === null).length : 0;
+	const interviewCount = showInterview
+		? interviews.filter((i) => i.answer === null).length
+		: 0;
 
 	return (
 		<aside
@@ -63,7 +77,10 @@ export function NodeSidebar() {
 				style={{ borderColor: "var(--border-subtle)" }}
 			>
 				<div className="flex items-center gap-2 min-w-0">
-					<h3 className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>
+					<h3
+						className="text-sm font-medium truncate"
+						style={{ color: "var(--text-primary)" }}
+					>
 						{STEP_LABELS[step.name] || step.name}
 					</h3>
 					<StepStatusPill status={step.status} />
@@ -105,7 +122,10 @@ export function NodeSidebar() {
 
 			{/* Design canvas (if design step) */}
 			{showDesign && (
-				<div className="border-t px-4 py-3 shrink-0 max-h-[280px] overflow-hidden" style={{ borderColor: "var(--border-subtle)" }}>
+				<div
+					className="border-t px-4 py-3 shrink-0 max-h-[280px] overflow-hidden"
+					style={{ borderColor: "var(--border-subtle)" }}
+				>
 					<DesignCanvas flowId={selectedFlowId} />
 				</div>
 			)}
