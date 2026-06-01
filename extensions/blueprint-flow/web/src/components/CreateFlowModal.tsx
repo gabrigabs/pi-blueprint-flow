@@ -34,21 +34,6 @@ const TEMPLATE_ICONS: Record<string, React.ElementType> = {
 	plus: Plus,
 };
 
-const FLOW_TYPES = [
-	{ value: "feature", label: "Feature" },
-	{ value: "bugfix", label: "Bugfix" },
-	{ value: "refactor", label: "Refactor" },
-	{ value: "spike", label: "Spike" },
-	{ value: "research", label: "Research" },
-	{ value: "maintenance", label: "Maintenance" },
-] as const;
-
-const PRIORITY_OPTIONS = [
-	{ value: "low", label: "Low" },
-	{ value: "medium", label: "Medium" },
-	{ value: "high", label: "High" },
-] as const;
-
 type ModalState = "form" | "creating" | "success";
 type WorkflowMode = "workspace" | "custom";
 
@@ -62,14 +47,12 @@ export function CreateFlowModal() {
 	} = useStore();
 	const [modalState, setModalState] = useState<ModalState>("form");
 	const [title, setTitle] = useState("");
-	const [description, setDescription] = useState("");
+	const [goal, setGoal] = useState("");
 	const [workflowMode, setWorkflowMode] = useState<WorkflowMode>("workspace");
 	const [customTemplate, setCustomTemplate] = useState<WorkflowTemplate | null>(
 		null,
 	);
-	const [showAdvanced, setShowAdvanced] = useState(false);
-	const [type, setType] = useState("feature");
-	const [priority, setPriority] = useState("medium");
+	const [showWorkflow, setShowWorkflow] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [createdTitle, setCreatedTitle] = useState("");
@@ -90,9 +73,7 @@ export function CreateFlowModal() {
 		try {
 			const flow = await api.flows.create(selectedWorkspaceId, {
 				title: title.trim(),
-				description: description.trim() || undefined,
-				type,
-				priority,
+				description: goal.trim() || undefined,
 			});
 
 			if (
@@ -115,7 +96,7 @@ export function CreateFlowModal() {
 			setCreatedTitle(flow.title);
 			setModalState("success");
 
-			setTimeout(() => closeModal(), 1000);
+			setTimeout(() => closeModal(), 900);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create flow");
 			setModalState("form");
@@ -130,13 +111,13 @@ export function CreateFlowModal() {
 			onClose={closeModal}
 			title={
 				modalState === "creating"
-					? "Creating Flow..."
+					? "Creating..."
 					: modalState === "success"
 						? "Flow Created"
 						: "New Flow"
 			}
 			icon={<GitBranch size={16} style={{ color: "var(--accent-success)" }} />}
-			width="lg"
+			width="md"
 			preventOutsideClose={modalState === "creating"}
 			footer={
 				modalState === "form" ? (
@@ -153,7 +134,7 @@ export function CreateFlowModal() {
 							type="button"
 							onClick={() => handleSubmit()}
 							disabled={!title.trim() || loading}
-							className="rounded-lg px-4 py-1.5 text-sm font-medium text-white transition-colors disabled:opacity-40"
+							className="rounded-lg px-4 py-1.5 text-sm font-medium text-white transition-all disabled:opacity-40 active:scale-[0.98]"
 							style={{ background: "var(--accent-success)" }}
 						>
 							Create Flow
@@ -164,6 +145,7 @@ export function CreateFlowModal() {
 		>
 			{modalState === "form" && (
 				<form onSubmit={handleSubmit} className="space-y-4">
+					{/* Title */}
 					<label className="block">
 						<span
 							className="mb-1.5 block text-xs font-medium"
@@ -176,21 +158,23 @@ export function CreateFlowModal() {
 							value={title}
 							onChange={(e) => setTitle(e.target.value)}
 							placeholder="What do you want to accomplish?"
-							className="w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none"
+							className="w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--border-accent)]"
 							style={{
 								borderColor: "var(--border-default)",
 								background: "var(--bg-surface)",
 								color: "var(--text-primary)",
+								transition: "border-color 0.15s",
 							}}
 						/>
 					</label>
 
+					{/* Goal / Context */}
 					<label className="block">
 						<span
 							className="mb-1.5 block text-xs font-medium"
 							style={{ color: "var(--text-secondary)" }}
 						>
-							Description
+							Goal or context
 							<span
 								className="ml-1.5 font-normal"
 								style={{ color: "var(--text-muted)" }}
@@ -199,215 +183,145 @@ export function CreateFlowModal() {
 							</span>
 						</span>
 						<textarea
-							value={description}
-							onChange={(e) => setDescription(e.target.value)}
-							placeholder="Brief context or goals..."
-							rows={2}
-							className="w-full resize-none rounded-lg border px-3 py-2.5 text-sm focus:outline-none"
+							value={goal}
+							onChange={(e) => setGoal(e.target.value)}
+							placeholder="Describe what you're trying to achieve, any constraints, or relevant context..."
+							rows={3}
+							className="w-full resize-none rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--border-accent)]"
 							style={{
 								borderColor: "var(--border-default)",
 								background: "var(--bg-surface)",
 								color: "var(--text-primary)",
+								transition: "border-color 0.15s",
 							}}
 						/>
 					</label>
 
-					{/* Workflow mode toggle */}
+					{/* Workflow (collapsible) */}
 					<div
-						className="rounded-lg border p-3"
-						style={{
-							borderColor: "var(--border-subtle)",
-							background: "var(--bg-elevated)",
-						}}
-					>
-						<div className="flex items-center gap-3 mb-2">
-							<span
-								className="text-xs font-medium"
-								style={{ color: "var(--text-secondary)" }}
-							>
-								Workflow
-							</span>
-							<div
-								className="flex rounded-md border"
-								style={{ borderColor: "var(--border-default)" }}
-							>
-								<button
-									type="button"
-									onClick={() => setWorkflowMode("workspace")}
-									className="px-2.5 py-1 text-[11px] font-medium rounded-l-md transition-colors"
-									style={{
-										background:
-											workflowMode === "workspace"
-												? "var(--bg-surface-hover)"
-												: "transparent",
-										color:
-											workflowMode === "workspace"
-												? "var(--text-primary)"
-												: "var(--text-muted)",
-									}}
-								>
-									Workspace Default
-								</button>
-								<button
-									type="button"
-									onClick={() => setWorkflowMode("custom")}
-									className="px-2.5 py-1 text-[11px] font-medium rounded-r-md transition-colors"
-									style={{
-										background:
-											workflowMode === "custom"
-												? "var(--bg-surface-hover)"
-												: "transparent",
-										color:
-											workflowMode === "custom"
-												? "var(--text-primary)"
-												: "var(--text-muted)",
-										borderLeft: "1px solid var(--border-default)",
-									}}
-								>
-									Custom
-								</button>
-							</div>
-							<span
-								className="font-mono text-[10px]"
-								style={{ color: "var(--text-muted)" }}
-							>
-								{workflowName}
-							</span>
-						</div>
-
-						{workflowMode === "custom" && (
-							<div className="grid grid-cols-2 gap-2 mt-3">
-								{WORKFLOW_TEMPLATES.filter((t) => t.id !== "blank").map(
-									(template) => {
-										const Icon = TEMPLATE_ICONS[template.icon] ?? BookOpen;
-										const isSelected = customTemplate?.id === template.id;
-
-										return (
-											<button
-												key={template.id}
-												type="button"
-												onClick={() => setCustomTemplate(template)}
-												className="flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all"
-												style={{
-													borderColor: isSelected
-														? template.color
-														: "var(--border-default)",
-													background: isSelected
-														? `color-mix(in srgb, ${template.color} 6%, transparent)`
-														: "transparent",
-												}}
-											>
-												<div
-													className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-													style={{
-														background: `color-mix(in srgb, ${template.color} 12%, transparent)`,
-														color: template.color,
-													}}
-												>
-													<Icon size={12} />
-												</div>
-												<div className="min-w-0">
-													<p
-														className="text-[11px] font-medium truncate"
-														style={{
-															color: isSelected
-																? template.color
-																: "var(--text-primary)",
-														}}
-													>
-														{template.name}
-													</p>
-													<p
-														className="text-[10px] truncate"
-														style={{ color: "var(--text-muted)" }}
-													>
-														{template.steps.length} steps
-													</p>
-												</div>
-											</button>
-										);
-									},
-								)}
-							</div>
-						)}
-					</div>
-
-					{/* Advanced section */}
-					<div
-						className="rounded-lg border"
+						className="rounded-lg border overflow-hidden"
 						style={{ borderColor: "var(--border-subtle)" }}
 					>
 						<button
 							type="button"
-							onClick={() => setShowAdvanced(!showAdvanced)}
-							className="flex w-full items-center justify-between px-3 py-2"
+							onClick={() => setShowWorkflow(!showWorkflow)}
+							className="flex w-full items-center justify-between px-3 py-2.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
 						>
-							<span
-								className="text-[11px] font-medium"
-								style={{ color: "var(--text-muted)" }}
-							>
-								Advanced
-							</span>
-							{showAdvanced ? (
+							<div className="flex items-center gap-2">
+								<span
+									className="text-xs font-medium"
+									style={{ color: "var(--text-secondary)" }}
+								>
+									Workflow
+								</span>
+								<span
+									className="font-mono text-[10px] rounded px-1.5 py-0.5"
+									style={{
+										background: "var(--bg-surface)",
+										color: "var(--text-muted)",
+									}}
+								>
+									{workflowName}
+								</span>
+							</div>
+							{showWorkflow ? (
 								<ChevronUp size={12} style={{ color: "var(--text-muted)" }} />
 							) : (
 								<ChevronDown size={12} style={{ color: "var(--text-muted)" }} />
 							)}
 						</button>
 
-						{showAdvanced && (
+						{showWorkflow && (
 							<div
-								className="grid grid-cols-2 gap-3 border-t px-3 py-3"
+								className="border-t px-3 py-3 space-y-3"
 								style={{ borderColor: "var(--border-subtle)" }}
 							>
-								<label className="block">
-									<span
-										className="mb-1 block text-[11px]"
-										style={{ color: "var(--text-muted)" }}
-									>
-										Type
-									</span>
-									<select
-										value={type}
-										onChange={(e) => setType(e.target.value)}
-										className="w-full rounded-md border px-2 py-1.5 text-xs focus:outline-none"
-										style={{
-											borderColor: "var(--border-default)",
-											background: "var(--bg-surface)",
-											color: "var(--text-primary)",
-										}}
-									>
-										{FLOW_TYPES.map((t) => (
-											<option key={t.value} value={t.value}>
-												{t.label}
-											</option>
-										))}
-									</select>
-								</label>
-								<label className="block">
-									<span
-										className="mb-1 block text-[11px]"
-										style={{ color: "var(--text-muted)" }}
-									>
-										Priority
-									</span>
-									<select
-										value={priority}
-										onChange={(e) => setPriority(e.target.value)}
-										className="w-full rounded-md border px-2 py-1.5 text-xs focus:outline-none"
-										style={{
-											borderColor: "var(--border-default)",
-											background: "var(--bg-surface)",
-											color: "var(--text-primary)",
-										}}
-									>
-										{PRIORITY_OPTIONS.map((p) => (
-											<option key={p.value} value={p.value}>
-												{p.label}
-											</option>
-										))}
-									</select>
-								</label>
+								{/* Mode toggle */}
+								<div
+									className="flex rounded-md border self-start"
+									style={{ borderColor: "var(--border-default)" }}
+								>
+									{(["workspace", "custom"] as const).map((mode) => (
+										<button
+											key={mode}
+											type="button"
+											onClick={() => setWorkflowMode(mode)}
+											className="px-3 py-1 text-[11px] font-medium transition-colors first:rounded-l-md last:rounded-r-md"
+											style={{
+												background:
+													workflowMode === mode
+														? "var(--bg-surface-hover)"
+														: "transparent",
+												color:
+													workflowMode === mode
+														? "var(--text-primary)"
+														: "var(--text-muted)",
+												borderLeft:
+													mode === "custom"
+														? "1px solid var(--border-default)"
+														: undefined,
+											}}
+										>
+											{mode === "workspace" ? "Workspace Default" : "Custom"}
+										</button>
+									))}
+								</div>
+
+								{workflowMode === "custom" && (
+									<div className="grid grid-cols-2 gap-2">
+										{WORKFLOW_TEMPLATES.filter((t) => t.id !== "blank").map(
+											(template) => {
+												const Icon = TEMPLATE_ICONS[template.icon] ?? BookOpen;
+												const isSelected = customTemplate?.id === template.id;
+
+												return (
+													<button
+														key={template.id}
+														type="button"
+														onClick={() => setCustomTemplate(template)}
+														className="flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all"
+														style={{
+															borderColor: isSelected
+																? template.color
+																: "var(--border-default)",
+															background: isSelected
+																? `color-mix(in srgb, ${template.color} 6%, transparent)`
+																: "transparent",
+														}}
+													>
+														<div
+															className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+															style={{
+																background: `color-mix(in srgb, ${template.color} 12%, transparent)`,
+																color: template.color,
+															}}
+														>
+															<Icon size={12} />
+														</div>
+														<div className="min-w-0">
+															<p
+																className="text-[11px] font-medium truncate"
+																style={{
+																	color: isSelected
+																		? template.color
+																		: "var(--text-primary)",
+																}}
+															>
+																{template.name}
+															</p>
+															<p
+																className="text-[10px] truncate"
+																style={{ color: "var(--text-muted)" }}
+															>
+																{template.steps.length} steps
+															</p>
+														</div>
+													</button>
+												);
+											},
+										)}
+									</div>
+								)}
 							</div>
 						)}
 					</div>
@@ -429,12 +343,12 @@ export function CreateFlowModal() {
 			{modalState === "creating" && (
 				<div className="flex flex-col items-center justify-center py-10">
 					<Loader2
-						size={28}
+						size={24}
 						className="animate-spin mb-3"
 						style={{ color: "var(--accent-success)" }}
 					/>
-					<p className="text-sm" style={{ color: "var(--text-primary)" }}>
-						Creating flow and initializing steps...
+					<p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+						Setting up your flow...
 					</p>
 				</div>
 			)}
@@ -442,13 +356,13 @@ export function CreateFlowModal() {
 			{modalState === "success" && (
 				<div className="flex flex-col items-center justify-center py-10">
 					<div
-						className="mb-3 flex h-12 w-12 items-center justify-center rounded-full"
+						className="mb-3 flex h-11 w-11 items-center justify-center rounded-full"
 						style={{
 							background: "var(--emerald-glow)",
 							border: "1px solid rgba(107, 207, 127, 0.3)",
 						}}
 					>
-						<CheckCircle size={22} style={{ color: "var(--emerald-400)" }} />
+						<CheckCircle size={20} style={{ color: "var(--emerald-400)" }} />
 					</div>
 					<p
 						className="text-sm font-medium"
