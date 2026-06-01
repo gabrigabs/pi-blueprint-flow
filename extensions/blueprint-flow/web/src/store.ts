@@ -15,6 +15,7 @@ export interface Workspace {
 export interface Flow {
 	id: string;
 	workspace_id: string;
+	workflow_id: string | null;
 	title: string;
 	description: string | null;
 	type: string;

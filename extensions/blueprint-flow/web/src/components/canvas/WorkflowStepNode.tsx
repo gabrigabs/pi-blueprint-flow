@@ -178,6 +178,11 @@ function WorkflowStepNodeComponent({
 				await api.actionRuns.forceCancel(activeRun.id);
 			} catch {}
 		}
+		useStore.getState().updateActionRun(activeRun.id, {
+			status: "cancelled",
+			updated_at: new Date().toISOString(),
+		});
+		useStore.getState().clearLiveActivity();
 	}
 
 	async function handleSkip(event: MouseEvent) {

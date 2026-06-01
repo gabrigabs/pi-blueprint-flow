@@ -119,8 +119,17 @@ export function registerActionRunRoutes(app: FastifyInstance): void {
 		async (req, reply) => {
 			const db = getDb();
 			const run = db
-				.prepare("SELECT id, status FROM action_runs WHERE id = ?")
-				.get(req.params.id) as { id: string; status: string } | undefined;
+				.prepare(
+					"SELECT id, status, flow_id, step_name FROM action_runs WHERE id = ?",
+				)
+				.get(req.params.id) as
+				| {
+						id: string;
+						status: string;
+						flow_id: string | null;
+						step_name: string | null;
+				  }
+				| undefined;
 
 			if (!run) {
 				return reply
@@ -139,9 +148,17 @@ export function registerActionRunRoutes(app: FastifyInstance): void {
 				});
 			}
 
+			const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+
 			db.prepare(
 				"UPDATE action_runs SET status = 'cancelled', completed_at = ? WHERE id = ?",
-			).run(new Date().toISOString().replace("T", " ").slice(0, 19), run.id);
+			).run(now, run.id);
+
+			if (run.flow_id && run.step_name) {
+				db.prepare(
+					"UPDATE steps SET status = 'current' WHERE flow_id = ? AND name = ? AND status = 'running'",
+				).run(run.flow_id, run.step_name);
+			}
 
 			bus.emit("action:updated", {
 				id: run.id,

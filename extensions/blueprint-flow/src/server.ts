@@ -394,6 +394,9 @@ export async function startServer(
 		db.prepare(
 			`UPDATE action_runs SET status = 'cancelled', completed_at = ? WHERE status IN (${placeholders})`,
 		).run(now, ...staleStatuses);
+		db.prepare(
+			"UPDATE steps SET status = 'current' WHERE status = 'running'",
+		).run();
 	} catch {}
 
 	// Start listening

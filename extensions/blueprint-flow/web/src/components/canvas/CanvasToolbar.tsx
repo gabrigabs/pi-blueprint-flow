@@ -80,13 +80,25 @@ export function CanvasToolbar({
 	}
 
 	async function handleStop() {
-		if (!activeRun) return;
-		try {
-			await api.actionRuns.cancel(activeRun.id);
-		} catch {
+		if (activeRun) {
 			try {
-				await api.actionRuns.forceCancel(activeRun.id);
-			} catch {}
+				await api.actionRuns.cancel(activeRun.id);
+			} catch {
+				try {
+					await api.actionRuns.forceCancel(activeRun.id);
+				} catch {}
+			}
+			useStore.getState().updateActionRun(activeRun.id, {
+				status: "cancelled",
+				updated_at: new Date().toISOString(),
+			});
+		}
+		useStore.getState().clearLiveActivity();
+		if (selectedFlowId) {
+			const freshSteps = await fetch(`/api/flows/${selectedFlowId}/steps`)
+				.then((r) => r.json())
+				.catch(() => null);
+			if (freshSteps) useStore.getState().setSteps(freshSteps);
 		}
 	}
 

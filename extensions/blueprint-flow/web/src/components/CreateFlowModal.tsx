@@ -71,11 +71,6 @@ export function CreateFlowModal() {
 		setModalState("creating");
 
 		try {
-			const flow = await api.flows.create(selectedWorkspaceId, {
-				title: title.trim(),
-				description: goal.trim() || undefined,
-			});
-
 			if (
 				workflowMode === "custom" &&
 				customTemplate &&
@@ -83,12 +78,17 @@ export function CreateFlowModal() {
 			) {
 				const workflow = await api.workflows.create({
 					workspaceId: selectedWorkspaceId,
-					name: `${flow.title} — ${customTemplate.name}`,
+					name: `${title.trim()} — ${customTemplate.name}`,
 					description: customTemplate.description,
 					steps: customTemplate.steps,
 				});
 				await api.workflows.assignToWorkspace(selectedWorkspaceId, workflow.id);
 			}
+
+			const flow = await api.flows.create(selectedWorkspaceId, {
+				title: title.trim(),
+				description: goal.trim() || undefined,
+			});
 
 			const flows = await api.flows.list(selectedWorkspaceId);
 			setFlows(flows);

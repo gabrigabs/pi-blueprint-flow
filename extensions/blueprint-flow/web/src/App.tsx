@@ -35,16 +35,29 @@ export function App() {
 	useEffect(() => {
 		if (selectedFlowId) {
 			Promise.all([
+				fetch(`/api/flows/${selectedFlowId}`).then((r) => r.json()),
 				fetch(`/api/flows/${selectedFlowId}/steps`).then((r) => r.json()),
 				fetch(`/api/flows/${selectedFlowId}/artifacts`).then((r) => r.json()),
 				fetch(`/api/flows/${selectedFlowId}/interviews`).then((r) => r.json()),
 			])
-				.then(([steps, artifacts, interviews]) => {
-					useStore.getState().setSteps(steps);
-					useStore.getState().setArtifacts(artifacts);
-					useStore.getState().setInterviews(interviews);
+				.then(([flow, steps, artifacts, interviews]) => {
+					const store = useStore.getState();
+					store.setSteps(steps);
+					store.setArtifacts(artifacts);
+					store.setInterviews(interviews);
+
+					if (flow.workflow_id) {
+						fetch(`/api/workflows/${flow.workflow_id}`)
+							.then((r) => r.json())
+							.then((workflow) =>
+								useStore.getState().setActiveWorkflow(workflow),
+							)
+							.catch(() => {});
+					}
 				})
 				.catch(() => {});
+		} else {
+			useStore.getState().setActiveWorkflow(null);
 		}
 	}, [selectedFlowId]);
 
