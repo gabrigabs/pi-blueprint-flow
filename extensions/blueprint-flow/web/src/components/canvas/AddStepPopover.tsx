@@ -58,18 +58,20 @@ export function AddStepPopover({ index, onClose }: Props) {
 	return (
 		<div
 			role="dialog"
-			className="absolute z-50"
+			className="relative"
 			onClick={(e) => e.stopPropagation()}
 			onKeyDown={(e) => e.stopPropagation()}
 			onPointerDown={(e) => e.stopPropagation()}
+			style={{ zIndex: 9999 }}
 		>
 			<div
 				className="flex flex-col gap-3 rounded-xl border p-4"
 				style={{
-					width: 260,
+					width: 280,
 					background: "var(--bg-elevated)",
 					borderColor: "var(--border-default)",
-					boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+					boxShadow:
+						"0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px var(--border-subtle)",
 				}}
 			>
 				{/* Header */}

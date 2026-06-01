@@ -117,38 +117,54 @@ export function CreateFlowModal() {
 						: "New Flow"
 			}
 			icon={<GitBranch size={16} style={{ color: "var(--accent-success)" }} />}
-			width="md"
+			width="lg"
 			preventOutsideClose={modalState === "creating"}
 			footer={
 				modalState === "form" ? (
-					<div className="flex justify-end gap-2">
-						<button
-							type="button"
-							onClick={closeModal}
-							className="rounded-lg px-3 py-1.5 text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
-							style={{ color: "var(--text-tertiary)" }}
+					<div className="flex items-center justify-between">
+						<span
+							className="text-[11px]"
+							style={{ color: "var(--text-muted)" }}
 						>
-							Cancel
-						</button>
-						<button
-							type="button"
-							onClick={() => handleSubmit()}
-							disabled={!title.trim() || loading}
-							className="rounded-lg px-4 py-1.5 text-sm font-medium text-white transition-all disabled:opacity-40 active:scale-[0.98]"
-							style={{ background: "var(--accent-success)" }}
-						>
-							Create Flow
-						</button>
+							{workflowMode === "custom" && customTemplate
+								? `${customTemplate.steps.length} steps`
+								: activeWorkflow
+									? `${activeWorkflow.steps.length} steps`
+									: ""}
+						</span>
+						<div className="flex gap-2">
+							<button
+								type="button"
+								onClick={closeModal}
+								className="rounded-lg px-3.5 py-2 text-[13px] transition-colors hover:bg-[var(--bg-surface-hover)]"
+								style={{ color: "var(--text-tertiary)" }}
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								onClick={() => handleSubmit()}
+								disabled={!title.trim() || loading}
+								className="rounded-lg px-5 py-2 text-[13px] font-medium text-white transition-all disabled:opacity-40 active:scale-[0.97]"
+								style={{
+									background: "var(--accent-success)",
+									boxShadow:
+										"0 2px 8px rgba(107, 207, 127, 0.2), inset 0 1px 0 rgba(255,255,255,0.1)",
+								}}
+							>
+								Create Flow
+							</button>
+						</div>
 					</div>
 				) : null
 			}
 		>
 			{modalState === "form" && (
-				<form onSubmit={handleSubmit} className="space-y-4">
+				<form onSubmit={handleSubmit} className="space-y-5">
 					{/* Title */}
 					<label className="block">
 						<span
-							className="mb-1.5 block text-xs font-medium"
+							className="section-label mb-2 block"
 							style={{ color: "var(--text-secondary)" }}
 						>
 							Title
@@ -158,12 +174,23 @@ export function CreateFlowModal() {
 							value={title}
 							onChange={(e) => setTitle(e.target.value)}
 							placeholder="What do you want to accomplish?"
-							className="w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--border-accent)]"
+							autoFocus
+							className="w-full rounded-lg border px-3.5 py-2.5 text-[13px] focus:outline-none transition-all duration-150"
 							style={{
 								borderColor: "var(--border-default)",
-								background: "var(--bg-surface)",
+								background: "var(--bg-base)",
 								color: "var(--text-primary)",
-								transition: "border-color 0.15s",
+								boxShadow: "inset 0 1px 3px rgba(0,0,0,0.2)",
+							}}
+							onFocus={(e) => {
+								e.currentTarget.style.borderColor = "var(--accent-primary)";
+								e.currentTarget.style.boxShadow =
+									"inset 0 1px 3px rgba(0,0,0,0.2), 0 0 0 2px rgba(91, 155, 213, 0.1)";
+							}}
+							onBlur={(e) => {
+								e.currentTarget.style.borderColor = "var(--border-default)";
+								e.currentTarget.style.boxShadow =
+									"inset 0 1px 3px rgba(0,0,0,0.2)";
 							}}
 						/>
 					</label>
@@ -171,12 +198,12 @@ export function CreateFlowModal() {
 					{/* Goal / Context */}
 					<label className="block">
 						<span
-							className="mb-1.5 block text-xs font-medium"
+							className="section-label mb-2 block"
 							style={{ color: "var(--text-secondary)" }}
 						>
 							Goal or context
 							<span
-								className="ml-1.5 font-normal"
+								className="ml-1.5 font-normal normal-case tracking-normal"
 								style={{ color: "var(--text-muted)" }}
 							>
 								optional
@@ -187,82 +214,101 @@ export function CreateFlowModal() {
 							onChange={(e) => setGoal(e.target.value)}
 							placeholder="Describe what you're trying to achieve, any constraints, or relevant context..."
 							rows={3}
-							className="w-full resize-none rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-[var(--border-accent)]"
+							className="w-full resize-none rounded-lg border px-3.5 py-2.5 text-[13px] focus:outline-none transition-all duration-150"
 							style={{
 								borderColor: "var(--border-default)",
-								background: "var(--bg-surface)",
+								background: "var(--bg-base)",
 								color: "var(--text-primary)",
-								transition: "border-color 0.15s",
+								boxShadow: "inset 0 1px 3px rgba(0,0,0,0.2)",
+							}}
+							onFocus={(e) => {
+								e.currentTarget.style.borderColor = "var(--accent-primary)";
+								e.currentTarget.style.boxShadow =
+									"inset 0 1px 3px rgba(0,0,0,0.2), 0 0 0 2px rgba(91, 155, 213, 0.1)";
+							}}
+							onBlur={(e) => {
+								e.currentTarget.style.borderColor = "var(--border-default)";
+								e.currentTarget.style.boxShadow =
+									"inset 0 1px 3px rgba(0,0,0,0.2)";
 							}}
 						/>
 					</label>
 
 					{/* Workflow (collapsible) */}
 					<div
-						className="rounded-lg border overflow-hidden"
-						style={{ borderColor: "var(--border-subtle)" }}
+						className="rounded-xl overflow-hidden transition-all duration-200"
+						style={{
+							border: "1px solid var(--border-subtle)",
+							background: showWorkflow ? "var(--bg-surface)" : "transparent",
+						}}
 					>
 						<button
 							type="button"
 							onClick={() => setShowWorkflow(!showWorkflow)}
-							className="flex w-full items-center justify-between px-3 py-2.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
+							className="flex w-full items-center justify-between px-4 py-3 transition-colors hover:bg-[var(--bg-surface-hover)]"
 						>
-							<div className="flex items-center gap-2">
+							<div className="flex items-center gap-2.5">
 								<span
-									className="text-xs font-medium"
+									className="section-label"
 									style={{ color: "var(--text-secondary)" }}
 								>
 									Workflow
 								</span>
 								<span
-									className="font-mono text-[10px] rounded px-1.5 py-0.5"
+									className="font-mono text-[10px] rounded-md px-2 py-0.5"
 									style={{
-										background: "var(--bg-surface)",
+										background: "var(--bg-elevated)",
 										color: "var(--text-muted)",
+										border: "1px solid var(--border-subtle)",
 									}}
 								>
 									{workflowName}
 								</span>
 							</div>
 							{showWorkflow ? (
-								<ChevronUp size={12} style={{ color: "var(--text-muted)" }} />
+								<ChevronUp size={13} style={{ color: "var(--text-muted)" }} />
 							) : (
-								<ChevronDown size={12} style={{ color: "var(--text-muted)" }} />
+								<ChevronDown size={13} style={{ color: "var(--text-muted)" }} />
 							)}
 						</button>
 
 						{showWorkflow && (
 							<div
-								className="border-t px-3 py-3 space-y-3"
-								style={{ borderColor: "var(--border-subtle)" }}
+								className="px-4 pb-4 pt-1 space-y-3"
+								style={{ borderTop: "1px solid var(--border-subtle)" }}
 							>
 								{/* Mode toggle */}
 								<div
-									className="flex rounded-md border self-start"
-									style={{ borderColor: "var(--border-default)" }}
+									className="inline-flex rounded-lg p-0.5"
+									style={{
+										background: "var(--bg-base)",
+										border: "1px solid var(--border-subtle)",
+									}}
 								>
 									{(["workspace", "custom"] as const).map((mode) => (
 										<button
 											key={mode}
 											type="button"
 											onClick={() => setWorkflowMode(mode)}
-											className="px-3 py-1 text-[11px] font-medium transition-colors first:rounded-l-md last:rounded-r-md"
+											className="rounded-md px-3 py-1.5 text-[11px] font-medium transition-all duration-150"
 											style={{
 												background:
 													workflowMode === mode
-														? "var(--bg-surface-hover)"
+														? "var(--bg-elevated)"
 														: "transparent",
 												color:
 													workflowMode === mode
 														? "var(--text-primary)"
 														: "var(--text-muted)",
-												borderLeft:
-													mode === "custom"
-														? "1px solid var(--border-default)"
-														: undefined,
+												boxShadow:
+													workflowMode === mode
+														? "0 1px 3px rgba(0,0,0,0.2)"
+														: "none",
 											}}
 										>
-											{mode === "workspace" ? "Workspace Default" : "Custom"}
+											{mode === "workspace"
+												? "Workspace Default"
+												: "Custom Template"}
 										</button>
 									))}
 								</div>
@@ -279,28 +325,32 @@ export function CreateFlowModal() {
 														key={template.id}
 														type="button"
 														onClick={() => setCustomTemplate(template)}
-														className="flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all"
+														className="group flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all duration-150 active:scale-[0.98]"
 														style={{
 															borderColor: isSelected
 																? template.color
-																: "var(--border-default)",
+																: "var(--border-subtle)",
 															background: isSelected
-																? `color-mix(in srgb, ${template.color} 6%, transparent)`
-																: "transparent",
+																? `color-mix(in srgb, ${template.color} 5%, var(--bg-base))`
+																: "var(--bg-base)",
+															boxShadow: isSelected
+																? `0 0 12px -4px color-mix(in srgb, ${template.color} 30%, transparent)`
+																: "none",
 														}}
 													>
 														<div
-															className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+															className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-transform duration-150 group-hover:scale-105"
 															style={{
 																background: `color-mix(in srgb, ${template.color} 12%, transparent)`,
+																border: `1px solid color-mix(in srgb, ${template.color} 20%, transparent)`,
 																color: template.color,
 															}}
 														>
-															<Icon size={12} />
+															<Icon size={13} />
 														</div>
 														<div className="min-w-0">
 															<p
-																className="text-[11px] font-medium truncate"
+																className="text-[12px] font-medium truncate"
 																style={{
 																	color: isSelected
 																		? template.color
@@ -310,7 +360,7 @@ export function CreateFlowModal() {
 																{template.name}
 															</p>
 															<p
-																className="text-[10px] truncate"
+																className="text-[10px] truncate mt-0.5"
 																style={{ color: "var(--text-muted)" }}
 															>
 																{template.steps.length} steps
@@ -327,45 +377,60 @@ export function CreateFlowModal() {
 					</div>
 
 					{error && (
-						<p
-							className="rounded-lg px-3 py-2 text-xs"
+						<div
+							className="flex items-center gap-2 rounded-lg px-3.5 py-2.5 text-[12px]"
 							style={{
-								background: "var(--rose-glow)",
+								background: "rgba(231, 76, 60, 0.06)",
+								border: "1px solid rgba(231, 76, 60, 0.2)",
 								color: "var(--rose-400)",
 							}}
 						>
 							{error}
-						</p>
+						</div>
 					)}
 				</form>
 			)}
 
 			{modalState === "creating" && (
-				<div className="flex flex-col items-center justify-center py-10">
-					<Loader2
-						size={24}
-						className="animate-spin mb-3"
-						style={{ color: "var(--accent-success)" }}
-					/>
-					<p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+				<div className="flex flex-col items-center justify-center py-12">
+					<div
+						className="relative mb-4 flex h-12 w-12 items-center justify-center rounded-xl"
+						style={{
+							background:
+								"linear-gradient(135deg, rgba(107, 207, 127, 0.08) 0%, rgba(107, 207, 127, 0.02) 100%)",
+							border: "1px solid rgba(107, 207, 127, 0.2)",
+						}}
+					>
+						<Loader2
+							size={20}
+							className="animate-spin"
+							style={{ color: "var(--accent-success)" }}
+						/>
+					</div>
+					<p
+						className="text-[13px] font-medium"
+						style={{ color: "var(--text-secondary)" }}
+					>
 						Setting up your flow...
 					</p>
 				</div>
 			)}
 
 			{modalState === "success" && (
-				<div className="flex flex-col items-center justify-center py-10">
+				<div className="flex flex-col items-center justify-center py-12 animate-scale-in">
 					<div
-						className="mb-3 flex h-11 w-11 items-center justify-center rounded-full"
+						className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl"
 						style={{
-							background: "var(--emerald-glow)",
+							background:
+								"linear-gradient(135deg, rgba(107, 207, 127, 0.1) 0%, rgba(107, 207, 127, 0.03) 100%)",
 							border: "1px solid rgba(107, 207, 127, 0.3)",
+							boxShadow: "0 0 20px -4px rgba(107, 207, 127, 0.2)",
 						}}
 					>
 						<CheckCircle size={20} style={{ color: "var(--emerald-400)" }} />
 					</div>
 					<p
-						className="text-sm font-medium"
+						className="text-[13px] font-medium"
 						style={{ color: "var(--emerald-400)" }}
 					>
 						"{createdTitle}" created

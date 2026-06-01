@@ -1,6 +1,12 @@
-import { BaseEdge, type EdgeProps, getSmoothStepPath } from "@xyflow/react";
+import {
+	BaseEdge,
+	type EdgeProps,
+	getSmoothStepPath,
+	useReactFlow,
+} from "@xyflow/react";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AddStepPopover } from "./AddStepPopover";
 
 export function DropZoneEdge({
@@ -15,7 +21,12 @@ export function DropZoneEdge({
 }: EdgeProps) {
 	const [open, setOpen] = useState(false);
 	const [hovered, setHovered] = useState(false);
+	const [portalPos, setPortalPos] = useState<{ x: number; y: number } | null>(
+		null,
+	);
 	const index = (data as { index?: number })?.index ?? 0;
+	const buttonRef = useRef<HTMLButtonElement>(null);
+	const { flowToScreenPosition } = useReactFlow();
 
 	const [edgePath, labelX, labelY] = getSmoothStepPath({
 		sourceX,
@@ -25,6 +36,16 @@ export function DropZoneEdge({
 		sourcePosition,
 		targetPosition,
 	});
+
+	function handleToggle() {
+		if (open) {
+			setOpen(false);
+			return;
+		}
+		const screenPos = flowToScreenPosition({ x: labelX, y: labelY });
+		setPortalPos({ x: screenPos.x, y: screenPos.y + 20 });
+		setOpen(true);
+	}
 
 	return (
 		<>
@@ -46,15 +67,16 @@ export function DropZoneEdge({
 			>
 				<div className="flex items-center justify-center w-full h-full">
 					<button
+						ref={buttonRef}
 						type="button"
-						onClick={() => setOpen((v) => !v)}
+						onClick={handleToggle}
 						onMouseEnter={() => setHovered(true)}
 						onMouseLeave={() => setHovered(false)}
 						style={{
 							width: 24,
 							height: 24,
 							borderRadius: "50%",
-							background: hovered ? "var(--bg-elevated)" : "var(--bg-elevated)",
+							background: "var(--bg-elevated)",
 							border: hovered
 								? "1px solid var(--accent-primary)"
 								: "1px solid var(--border-default)",
@@ -79,17 +101,26 @@ export function DropZoneEdge({
 					</button>
 				</div>
 			</foreignObject>
-			{open && (
-				<foreignObject
-					x={labelX - 130}
-					y={labelY + 16}
-					width={280}
-					height={350}
-					className="overflow-visible"
-				>
-					<AddStepPopover index={index} onClose={() => setOpen(false)} />
-				</foreignObject>
-			)}
+			{open &&
+				portalPos &&
+				createPortal(
+					<>
+						<div
+							className="fixed inset-0 z-[9998]"
+							onClick={() => setOpen(false)}
+						/>
+						<div
+							className="fixed z-[9999]"
+							style={{
+								left: portalPos.x - 140,
+								top: portalPos.y,
+							}}
+						>
+							<AddStepPopover index={index} onClose={() => setOpen(false)} />
+						</div>
+					</>,
+					document.body,
+				)}
 		</>
 	);
 }
