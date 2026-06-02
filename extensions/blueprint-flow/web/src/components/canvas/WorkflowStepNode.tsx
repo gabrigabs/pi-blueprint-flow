@@ -222,7 +222,7 @@ function WorkflowStepNodeComponent({
 
 	return (
 		<div
-			className={`relative rounded-2xl border transition-all duration-200 ${isLive ? "ring-2 ring-[var(--cyan-400)]/20 animate-pulse" : ""}`}
+			className={`relative rounded-2xl border transition-all duration-200 node-hover ${isLive ? "ring-2 ring-[var(--cyan-400)]/20 animate-pulse" : ""}`}
 			style={{
 				width: NODE_WIDTH,
 				height: isSelected ? NODE_HEIGHT_EXPANDED : NODE_HEIGHT,
@@ -654,7 +654,7 @@ function NodeActionButton({
 		<button
 			type="button"
 			onClick={onClick}
-			className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium transition-colors hover:brightness-110"
+			className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium transition-colors hover:brightness-110 btn-press"
 			style={{ color, background, border: `1px solid ${border}` }}
 			title={label}
 		>
@@ -754,7 +754,7 @@ function EditModeNodeComponent({
 
 	return (
 		<div
-			className="relative rounded-2xl border transition-all duration-200 group"
+			className="relative rounded-2xl border transition-all duration-200 group node-hover"
 			style={{
 				width: EDIT_NODE_WIDTH,
 				height: EDIT_NODE_HEIGHT,

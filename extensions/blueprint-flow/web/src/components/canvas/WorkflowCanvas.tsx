@@ -55,6 +55,7 @@ function WorkflowCanvasInner() {
 	const interviews = useStore((s) => s.interviews);
 	const actionRuns = useStore((s) => s.actionRuns);
 	const selectedNodeId = useStore((s) => s.selectedNodeId);
+	const selectedFlowId = useStore((s) => s.selectedFlowId);
 	const selectNode = useStore((s) => s.selectNode);
 	const canvasEditMode = useStore((s) => s.canvasEditMode);
 	const editModeSteps = useStore((s) => s.editModeSteps);
@@ -64,6 +65,38 @@ function WorkflowCanvasInner() {
 	const [showKnowledge, setShowKnowledge] = useState(false);
 	const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 	const { setCenter, getNode, fitView } = useReactFlow();
+
+	const positionsKey = selectedFlowId
+		? `flow-${selectedFlowId}-positions`
+		: null;
+
+	function getSavedPositions(): Record<
+		string,
+		{ x: number; y: number }
+	> | null {
+		if (!positionsKey) return null;
+		try {
+			const raw = localStorage.getItem(positionsKey);
+			return raw ? JSON.parse(raw) : null;
+		} catch {
+			return null;
+		}
+	}
+
+	function savePositions(nodeList: Node[]) {
+		if (!positionsKey) return;
+		const positions: Record<string, { x: number; y: number }> = {};
+		for (const n of nodeList) {
+			if (!n.id.startsWith("sat-")) {
+				positions[n.id] = n.position;
+			}
+		}
+		localStorage.setItem(positionsKey, JSON.stringify(positions));
+	}
+
+	function clearSavedPositions() {
+		if (positionsKey) localStorage.removeItem(positionsKey);
+	}
 
 	const initialNodes: StepNode[] = [];
 	const initialEdges: Edge[] = [];
@@ -96,18 +129,24 @@ function WorkflowCanvasInner() {
 		prevStructureRef.current = structureKey;
 
 		if (structureChanged || !hasNodesRef.current) {
+			const saved = getSavedPositions();
 			autoLayout(n, e, direction, selectedNodeId).then(
 				({ nodes: layouted }) => {
+					const positioned = saved
+						? layouted.map((node) =>
+								saved[node.id] ? { ...node, position: saved[node.id] } : node,
+							)
+						: layouted;
 					const sats = stepsToSatelliteNodes(
 						steps,
 						artifacts,
 						interviews,
 						actionRuns,
 						hoveredNodeId,
-						layouted,
+						positioned,
 					);
 					const satEdges = stepsToSatelliteEdges(hoveredNodeId, sats);
-					setNodes([...layouted, ...sats] as StepNode[]);
+					setNodes([...positioned, ...sats] as StepNode[]);
 					setEdges([...e, ...satEdges]);
 					hasNodesRef.current = true;
 				},
@@ -270,20 +309,49 @@ function WorkflowCanvasInner() {
 
 	const onNodeDragStop = useCallback(
 		(_: React.MouseEvent, node: Node) => {
-			if (!canvasEditMode || !editModeSteps) return;
-			const sorted = [...nodes]
-				.filter((n) => n.id.startsWith("edit-"))
-				.sort((a, b) => a.position.y - b.position.y);
-			const fromIndex = editModeSteps.findIndex(
-				(s, i) => `edit-${i}-${s.name}` === node.id,
-			);
-			const toIndex = sorted.findIndex((n) => n.id === node.id);
-			if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
-				reorderEditStep(fromIndex, toIndex);
+			if (canvasEditMode && editModeSteps) {
+				const sorted = [...nodes]
+					.filter((n) => n.id.startsWith("edit-"))
+					.sort((a, b) => a.position.y - b.position.y);
+				const fromIndex = editModeSteps.findIndex(
+					(s, i) => `edit-${i}-${s.name}` === node.id,
+				);
+				const toIndex = sorted.findIndex((n) => n.id === node.id);
+				if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+					reorderEditStep(fromIndex, toIndex);
+				}
+			} else {
+				savePositions(nodes);
 			}
 		},
 		[canvasEditMode, editModeSteps, nodes, reorderEditStep],
 	);
+
+	function handleResetLayout() {
+		clearSavedPositions();
+		const n = stepsToNodes(
+			steps,
+			artifacts,
+			interviews,
+			actionRuns,
+			selectedNodeId,
+			activeWorkflow?.steps,
+		);
+		const e = stepsToEdges(steps);
+		autoLayout(n, e, direction, selectedNodeId).then(({ nodes: layouted }) => {
+			const sats = stepsToSatelliteNodes(
+				steps,
+				artifacts,
+				interviews,
+				actionRuns,
+				hoveredNodeId,
+				layouted,
+			);
+			const satEdges = stepsToSatelliteEdges(hoveredNodeId, sats);
+			setNodes([...layouted, ...sats] as StepNode[]);
+			setEdges([...e, ...satEdges]);
+		});
+	}
 
 	function handleFitView() {
 		fitView({ padding: 0.6, duration: 500 });
@@ -312,6 +380,7 @@ function WorkflowCanvasInner() {
 				direction={direction}
 				onDirectionChange={setDirection}
 				onFitView={handleFitView}
+				onResetLayout={handleResetLayout}
 				showKnowledge={showKnowledge}
 				onToggleKnowledge={() => setShowKnowledge(!showKnowledge)}
 			/>
@@ -325,7 +394,7 @@ function WorkflowCanvasInner() {
 				onNodeClick={onNodeClick}
 				onNodeMouseEnter={canvasEditMode ? undefined : onNodeMouseEnter}
 				onNodeMouseLeave={canvasEditMode ? undefined : onNodeMouseLeave}
-				onNodeDragStop={canvasEditMode ? onNodeDragStop : undefined}
+				onNodeDragStop={onNodeDragStop}
 				onPaneClick={onPaneClick}
 				fitView
 				fitViewOptions={{ padding: 0.6 }}

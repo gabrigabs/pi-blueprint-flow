@@ -161,7 +161,7 @@ export function StepDetailDrawer() {
 
 	return (
 		<div
-			className="absolute top-0 right-0 bottom-0 z-20 w-[400px] flex flex-col overflow-hidden border-l animate-fade-in"
+			className="absolute top-0 right-0 bottom-0 z-20 w-[400px] flex flex-col overflow-hidden border-l animate-slide-in-right"
 			style={{
 				background: "var(--bg-elevated)",
 				borderColor: "var(--border-default)",

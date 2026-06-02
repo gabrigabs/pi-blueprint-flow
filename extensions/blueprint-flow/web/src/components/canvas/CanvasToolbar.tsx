@@ -8,6 +8,7 @@ import {
 	Maximize2,
 	Pencil,
 	Play,
+	RotateCcw,
 	Square,
 	Zap,
 } from "lucide-react";
@@ -21,6 +22,7 @@ interface Props {
 	direction: LayoutDirection;
 	onDirectionChange: (d: LayoutDirection) => void;
 	onFitView: () => void;
+	onResetLayout?: () => void;
 	showKnowledge: boolean;
 	onToggleKnowledge: () => void;
 }
@@ -29,6 +31,7 @@ export function CanvasToolbar({
 	direction,
 	onDirectionChange,
 	onFitView,
+	onResetLayout,
 	showKnowledge,
 	onToggleKnowledge,
 }: Props) {
@@ -330,6 +333,19 @@ export function CanvasToolbar({
 			>
 				<Maximize2 size={14} />
 			</button>
+
+			{/* Reset layout */}
+			{onResetLayout && (
+				<button
+					type="button"
+					onClick={onResetLayout}
+					title="Reset layout"
+					className="rounded-lg p-1.5 transition-colors hover:bg-[var(--bg-surface-hover)]"
+					style={{ color: "var(--text-tertiary)" }}
+				>
+					<RotateCcw size={14} />
+				</button>
+			)}
 
 			{/* Zoom indicator */}
 			<span

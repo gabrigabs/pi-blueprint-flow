@@ -194,6 +194,36 @@ body::before {
 	}
 }
 
+.node-hover {
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.node-hover:hover {
+	transform: scale(1.01);
+	box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.5);
+}
+
+.btn-press {
+	transition: transform 0.1s ease;
+}
+.btn-press:active {
+	transform: scale(0.97);
+}
+
+.animate-slide-in-right {
+	animation: slideInRight 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes slideInRight {
+	from {
+		opacity: 0;
+		transform: translateX(16px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
 .animate-scale-in {
 	animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
