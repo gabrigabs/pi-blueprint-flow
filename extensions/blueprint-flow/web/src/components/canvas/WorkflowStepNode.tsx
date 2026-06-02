@@ -9,6 +9,7 @@ import {
 	Code2,
 	FileSearch,
 	FileText,
+	GitBranch,
 	Hand,
 	Layers,
 	Loader2,
@@ -111,6 +112,7 @@ function WorkflowStepNodeComponent({
 		stepName,
 		stepType,
 		optional,
+		skipCondition,
 		artifactCount,
 		artifacts,
 		isSelected,
@@ -440,6 +442,27 @@ function WorkflowStepNodeComponent({
 								</span>
 							</div>
 						)}
+						{skipCondition && (
+							<div
+								className="flex items-center gap-1 rounded-md px-1.5 py-0.5"
+								title={skipCondition}
+								style={{
+									background: "rgba(251, 191, 36, 0.06)",
+									border: "1px solid rgba(251, 191, 36, 0.2)",
+								}}
+							>
+								<GitBranch
+									size={8}
+									style={{ color: "var(--amber-400, #fbbf24)" }}
+								/>
+								<span
+									className="text-[11px] font-medium"
+									style={{ color: "var(--amber-400, #fbbf24)" }}
+								>
+									Conditional
+								</span>
+							</div>
+						)}
 					</div>
 				</div>
 			</div>
@@ -685,7 +708,15 @@ const TYPE_CONFIG = {
 function EditModeNodeComponent({
 	data,
 }: NodeProps & { data: EditStepNodeData }) {
-	const { label, stepName, stepType, optional, index, isSelected } = data;
+	const {
+		label,
+		stepName,
+		stepType,
+		optional,
+		skipCondition,
+		index,
+		isSelected,
+	} = data;
 	const removeEditStep = useStore((s) => s.removeEditStep);
 	const updateEditStep = useStore((s) => s.updateEditStep);
 	const config = TYPE_CONFIG[stepType] ?? TYPE_CONFIG.agent;
@@ -817,6 +848,18 @@ function EditModeNodeComponent({
 							}}
 						>
 							Optional
+						</span>
+					)}
+					{skipCondition && (
+						<span
+							className="rounded-md px-1.5 py-0.5 text-[11px] font-medium"
+							title={skipCondition}
+							style={{
+								background: "rgba(251, 191, 36, 0.08)",
+								color: "#fbbf24",
+							}}
+						>
+							Conditional
 						</span>
 					)}
 					<button

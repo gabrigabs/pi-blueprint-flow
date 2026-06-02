@@ -84,7 +84,12 @@ export function App() {
 					className="flex flex-1 flex-col overflow-hidden"
 					style={{ background: "var(--bg-base)" }}
 				>
-					{selectedFlowId ? <WorkflowCanvas /> : <HomeView />}
+					<div
+						key={selectedFlowId ? "canvas" : "home"}
+						className="flex flex-1 flex-col overflow-hidden animate-view-transition"
+					>
+						{selectedFlowId ? <WorkflowCanvas /> : <HomeView />}
+					</div>
 				</main>
 			</div>
 

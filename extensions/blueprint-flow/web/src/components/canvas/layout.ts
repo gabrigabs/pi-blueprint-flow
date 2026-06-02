@@ -338,6 +338,7 @@ export interface EditStepNodeData {
 	stepType: "agent" | "manual" | "hybrid";
 	actionType?: string;
 	optional?: boolean;
+	skipCondition?: string;
 	index: number;
 	isSelected: boolean;
 	[key: string]: unknown;
@@ -357,6 +358,7 @@ export function editStepsToNodes(
 			stepType: step.type ?? "agent",
 			actionType: step.actionType,
 			optional: step.optional,
+			skipCondition: step.skipCondition,
 			index,
 			isSelected: `edit-${index}-${step.name}` === selectedNodeId,
 		},
