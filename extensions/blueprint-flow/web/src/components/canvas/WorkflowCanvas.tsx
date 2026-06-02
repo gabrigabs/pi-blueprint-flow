@@ -308,7 +308,7 @@ function WorkflowCanvasInner() {
 	const reorderEditStep = useStore((s) => s.reorderEditStep);
 
 	const onNodeDragStop = useCallback(
-		(_: React.MouseEvent, node: Node) => {
+		(_: unknown, node: Node) => {
 			if (canvasEditMode && editModeSteps) {
 				const sorted = [...nodes]
 					.filter((n) => n.id.startsWith("edit-"))

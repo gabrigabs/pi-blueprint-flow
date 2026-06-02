@@ -6,10 +6,11 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "cd extensions/blueprint-flow && npm run build",
+    "build": "cd extensions/blueprint-flow/web && npm install && npm run build",
     "build:web": "cd extensions/blueprint-flow/web && npm install && npm run build",
     "dev:web": "cd extensions/blueprint-flow/web && npm run dev",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare": "npm run build"
   },
   "repository": {
     "type": "git",

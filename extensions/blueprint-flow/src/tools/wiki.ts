@@ -55,7 +55,7 @@ export const wikiUpsertPageTool = {
 
 		// Check if page exists for this project+slug
 		const existing = db
-			.prepare("SELECT id FROM wiki_pages WHERE project_id = ? AND slug = ?")
+			.prepare("SELECT id FROM wiki_pages WHERE workspace_id = ? AND slug = ?")
 			.get(params.project_id, params.slug) as { id: string } | undefined;
 
 		let pageId: string;
@@ -75,7 +75,7 @@ export const wikiUpsertPageTool = {
 		} else {
 			pageId = nanoid(12);
 			db.prepare(
-				"INSERT INTO wiki_pages (id, project_id, slug, title, category, content_md, summary, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+				"INSERT INTO wiki_pages (id, workspace_id, slug, title, category, content_md, summary, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 			).run(
 				pageId,
 				params.project_id,
@@ -143,7 +143,7 @@ export const wikiSearchTool = {
 
 		// Search wiki pages (title + content LIKE match)
 		const queryPattern = `%${params.query}%`;
-		let pageSql = `SELECT * FROM wiki_pages WHERE project_id = ? AND (title LIKE ? OR content_md LIKE ? OR summary LIKE ?)`;
+		let pageSql = `SELECT * FROM wiki_pages WHERE workspace_id = ? AND (title LIKE ? OR content_md LIKE ? OR summary LIKE ?)`;
 		const pageParams: (string | number)[] = [
 			params.project_id,
 			queryPattern,
@@ -170,7 +170,7 @@ export const wikiSearchTool = {
 		}
 
 		// Search memory facts
-		let factSql = `SELECT * FROM memory_facts WHERE project_id = ? AND fact LIKE ?`;
+		let factSql = `SELECT * FROM memory_facts WHERE workspace_id = ? AND fact LIKE ?`;
 		const factParams: (string | number)[] = [params.project_id, queryPattern];
 
 		if (params.category) {
@@ -192,7 +192,7 @@ export const wikiSearchTool = {
 		}
 
 		// Also search legacy memories table
-		let memorySql = `SELECT * FROM memories WHERE project_id = ? AND content LIKE ?`;
+		let memorySql = `SELECT * FROM memories WHERE workspace_id = ? AND content LIKE ?`;
 		const memoryParams: (string | number)[] = [params.project_id, queryPattern];
 		if (params.category) {
 			memorySql += " AND category = ?";
@@ -293,13 +293,13 @@ export const memoryAddFactTool = {
 		let pageId: string | null = null;
 		if (params.page_slug) {
 			const page = db
-				.prepare("SELECT id FROM wiki_pages WHERE project_id = ? AND slug = ?")
+				.prepare("SELECT id FROM wiki_pages WHERE workspace_id = ? AND slug = ?")
 				.get(params.project_id, params.page_slug) as { id: string } | undefined;
 			pageId = page?.id ?? null;
 		}
 
 		db.prepare(
-			`INSERT INTO memory_facts (id, project_id, page_id, category, fact, confidence, source_type, source_id)
+			`INSERT INTO memory_facts (id, workspace_id, page_id, category, fact, confidence, source_type, source_id)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		).run(
 			id,
@@ -378,7 +378,7 @@ export const memoryRetrieveContextTool = {
 		// Get pages matching intent or relevant categories
 		const pages = db
 			.prepare(
-				`SELECT * FROM wiki_pages WHERE project_id = ?
+				`SELECT * FROM wiki_pages WHERE workspace_id = ?
 				 AND (title LIKE ? OR content_md LIKE ? OR category IN (${stepCategories.map(() => "?").join(",")}))
 				 ORDER BY updated_at DESC LIMIT 5`,
 			)
@@ -403,7 +403,7 @@ export const memoryRetrieveContextTool = {
 		// 2. Memory facts — high confidence first
 		const facts = db
 			.prepare(
-				`SELECT * FROM memory_facts WHERE project_id = ? AND fact LIKE ?
+				`SELECT * FROM memory_facts WHERE workspace_id = ? AND fact LIKE ?
 				 ORDER BY confidence DESC, updated_at DESC LIMIT 10`,
 			)
 			.all(params.project_id, queryPattern) as MemoryFact[];
@@ -421,7 +421,7 @@ export const memoryRetrieveContextTool = {
 		// 3. Legacy memories
 		const memories = db
 			.prepare(
-				`SELECT * FROM memories WHERE project_id = ? AND content LIKE ?
+				`SELECT * FROM memories WHERE workspace_id = ? AND content LIKE ?
 				 ORDER BY created_at DESC LIMIT 5`,
 			)
 			.all(params.project_id, queryPattern) as Array<{
